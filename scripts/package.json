@@ -1,11 +1,11 @@
 {
   "name": "ytpro",
-  "version": "3.9.53",
+  "version": "3.9.52",
   "description": "All in one YouTube App with AdBlocker, Downloader , Background Player , PIP Mode , Google Gemini ✨ and many more features.",
   "main": "script.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/prateek-chaubey/YTPro.git"
+    "url": "git+https://github.com/SP-Mods-WA/Yt.git"
   },
   "keywords": [
     "YOUTUBE",
@@ -24,7 +24,7 @@
   "author": "Prateek Chaubey",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/prateek-chaubey/YTPro/issues"
+    "url": "https://github.com/SP-Mods-WA/Yt/issues"
   },
-  "homepage": "https://github.com/prateek-chaubey/YTPro#readme"
+  "homepage": "https://github.com/SP-Mods-WA/Yt#readme"
 }
