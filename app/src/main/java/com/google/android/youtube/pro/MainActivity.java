@@ -112,7 +112,7 @@ public class MainActivity extends Activity {
                 if (url.contains("youtube.com/ytpro_cdn/esm")) {
                     modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
                 } else if (url.contains("youtube.com/ytpro_cdn/npm")) {
-                    modifiedUrl = url.replace("youtube.com/ytpro_cdn", "cdn.jsdelivr.net");
+                    modifiedUrl = url.replace("youtube.com/ytpro_cdn/npm/ytpro", "cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts");
                 }
                 try {
                     URL newUrl = new URL(modifiedUrl);
@@ -721,20 +721,3 @@ public class MainActivity extends Activity {
             getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
   }
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
