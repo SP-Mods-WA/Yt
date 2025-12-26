@@ -113,9 +113,9 @@ public class MainActivity extends Activity {
                     modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
                 } else if (url.contains("youtube.com/ytpro_cdn/npm")) {
                     modifiedUrl = url.replace(
-                "youtube.com/ytpro_cdn/npm/ytpro", 
-                "cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts"
-            );
+        "youtube.com/ytpro_cdn/npm/ytpro/", 
+        "cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/"
+    );
                 }
                 try {
                     URL newUrl = new URL(modifiedUrl);
