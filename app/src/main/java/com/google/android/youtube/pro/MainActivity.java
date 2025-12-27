@@ -66,6 +66,7 @@ public class MainActivity extends Activity {
     } else {
 
     load(false);
+    checkForAppUpdate();
 }
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -1016,6 +1017,20 @@ private int dpToPx(int dp) {
     float density = getResources().getDisplayMetrics().density;
     return Math.round(dp * density);
 }
+
+private void checkForAppUpdate() {
+    // 2 seconds delay එකකින් check කරන්න (app load වෙන්න වෙලාව දෙන්න)
+    new android.os.Handler().postDelayed(new Runnable() {
+        @Override
+        public void run() {
+            if (isNetworkAvailable()) {
+                UpdateChecker updateChecker = new UpdateChecker(MainActivity.this);
+                updateChecker.checkForUpdate();
+            }
+        }
+    }, 2000);
+}
+
 
 }
 
