@@ -102,89 +102,102 @@ public class MainActivity extends Activity {
     web.setWebViewClient(new WebViewClient() {
     @Override
     public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            String url = request.getUrl().toString();
+        String url = request.getUrl().toString();
 
-            if (url.contains("youtube.com/ytpro_cdn/")) {
+        if (url.contains("youtube.com/ytpro_cdn/")) {
+            String modifiedUrl = null;
 
-
-                String modifiedUrl = null;
-
-                if (url.contains("youtube.com/ytpro_cdn/esm")) {
-                    modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
-                } else if (url.contains("youtube.com/ytpro_cdn/npm")) {
-                    modifiedUrl = url.replace(
-        "youtube.com/ytpro_cdn/npm/ytpro/", 
-        "cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/"
-    );
-                }
-                try {
-                    URL newUrl = new URL(modifiedUrl);
-                    HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
-
-                    connection.setUseCaches(false);
-                    connection.setDefaultUseCaches(false);
-                    connection.addRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
-                    connection.addRequestProperty("Pragma", "no-cache");
-                    connection.addRequestProperty("Expires", "0");
-                    connection.setRequestProperty("User-Agent", "YTPRO");
-                    connection.setRequestProperty("Accept", "**");
-
-                    connection.setConnectTimeout(10000);
-                    connection.setReadTimeout(10000);
-
-                    connection.setRequestMethod("GET");
-
-                    connection.connect();
-
-                    String mimeType = connection.getContentType();
-                    String encoding = connection.getContentEncoding();
-                    if (encoding == null) encoding = "utf-8";
-                    String contentType = connection.getContentType();
-                    if (contentType == null) {
-                        contentType = "application/javascript";
-                    }
-
-                        Map < String, String > headers = new HashMap < > ();
-                        headers.put("Access-Control-Allow-Origin", "*");
-                        headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-                        headers.put("Access-Control-Allow-Headers", "*");
-                        headers.put("Content-Type", contentType);
-
-                        headers.put("Access-Control-Allow-Credentials", "true");
-                        headers.put("Cross-Origin-Resource-Policy", "cross-origin");
-
-                        if (request.getMethod().equals("OPTIONS")) {
-                            return new WebResourceResponse(
-                                "text/plain",
-                                "UTF-8",
-                                204,
-                                "No Content",
-                                headers,
-                                null
-                            );
-                        }
-
-
-
-                        return new WebResourceResponse(
-                            mimeType,
-                            encoding,
-                            connection.getResponseCode(),
-                            "OK",
-                            headers,
-                            connection.getInputStream()
-                        );
-
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        return super.shouldInterceptRequest(view, request);
-                    }
-
-                }
-
+            if (url.contains("youtube.com/ytpro_cdn/esm")) {
+                modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
+                Log.e("CDN", "ESM: " + modifiedUrl);
+            } else if (url.contains("youtube.com/ytpro_cdn/npm")) {
+                modifiedUrl = url.replace(
+                    "youtube.com/ytpro_cdn/npm/ytpro/", 
+                    "cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/"
+                );
+                Log.e("CDN", "jsDelivr: " + modifiedUrl);
+            }
+            
+            // ✅ NULL check added
+            if (modifiedUrl == null) {
+                Log.e("CDN", "❌ modifiedUrl is NULL for: " + url);
                 return super.shouldInterceptRequest(view, request);
-      }
+            }
+            
+            try {
+                URL newUrl = new URL(modifiedUrl);
+                HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
+
+                connection.setUseCaches(false);
+                connection.setDefaultUseCaches(false);
+                connection.addRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
+                connection.addRequestProperty("Pragma", "no-cache");
+                connection.addRequestProperty("Expires", "0");
+                connection.setRequestProperty("User-Agent", "YTPRO");
+                connection.setRequestProperty("Accept", "*/*");  // ✅ FIXED
+
+                connection.setConnectTimeout(10000);
+                connection.setReadTimeout(10000);
+                connection.setRequestMethod("GET");
+                connection.connect();
+
+                int responseCode = connection.getResponseCode();
+                Log.e("CDN", "Response: " + responseCode + " for " + modifiedUrl);
+                
+                if (responseCode != 200) {
+                    Log.e("CDN", "❌ Failed: " + responseCode);
+                    return super.shouldInterceptRequest(view, request);
+                }
+
+                String mimeType = connection.getContentType();
+                String encoding = connection.getContentEncoding();
+                if (encoding == null) encoding = "utf-8";
+                
+                String contentType = connection.getContentType();
+                if (contentType == null) {
+                    contentType = "application/javascript";
+                }
+
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Access-Control-Allow-Origin", "*");
+                headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                headers.put("Access-Control-Allow-Headers", "*");
+                headers.put("Content-Type", contentType);
+                headers.put("Access-Control-Allow-Credentials", "true");
+                headers.put("Cross-Origin-Resource-Policy", "cross-origin");
+
+                if (request.getMethod().equals("OPTIONS")) {
+                    return new WebResourceResponse(
+                        "text/plain",
+                        "UTF-8",
+                        204,
+                        "No Content",
+                        headers,
+                        null
+                    );
+                }
+
+                return new WebResourceResponse(
+                    mimeType,
+                    encoding,
+                    connection.getResponseCode(),
+                    "OK",
+                    headers,
+                    connection.getInputStream()
+                );
+
+            } catch (Exception e) {
+                Log.e("CDN Error", "Exception for " + modifiedUrl + ": " + e.getMessage());
+                e.printStackTrace();
+                return super.shouldInterceptRequest(view, request);
+            }
+        }
+
+        return super.shouldInterceptRequest(view, request);
+    }
+      
+      
+      
       @Override
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
 
