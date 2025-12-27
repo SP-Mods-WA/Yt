@@ -1,7 +1,7 @@
 /*****YTPRO*******
-Author: Sandun Piumal
+Author: Prateek Chaubey
 Version: 3.9.5
-URI: https://www.spmods.download
+URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
 
@@ -20,14 +20,14 @@ s2: PN51tJhZscE
 */
 if(window.eruda == null && localStorage.getItem("devMode") == "true"){
 //ERUDA
-window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//cdn.jsdelivr.net/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
+window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//youtube.com/ytpro_cdn/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
 }
 /**/
 
 if(!YTProVer){
 
 /*Few Stupid Inits*/
-var YTProVer="1.0";
+var YTProVer="3.95";
 var ytoldV="";
 var isF=false;   //what is this for?
 var isAp=false; // oh it's for bg play 
@@ -701,7 +701,12 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
 </svg>
 </button>
-
+<br>
+<button onclick="checkUpdates();">Check for Updates
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="${isD ? "#ccc" : "#444"}"  viewBox="0 0 16 16">
+<path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
+</svg>
+</button>
 <br>
 <div>Autoskip Sponsors <span onclick="sttCnf(this,'autoSpn');" style="${sttCnf(0,0,"autoSpn")}" ><b style="${sttCnf(0,1,"autoSpn")}"></b></span></div>
 <br>
@@ -735,13 +740,13 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 </svg>
 </button>
 <br>
-<button onclick="Android.oplink('spmodsofficial@gmail.com')">Report Bugs
+<button onclick="Android.oplink('https://github.com/prateek-chaubey/YTPRO/issues')">Report Bugs
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="${isD ? "#ccc" : "#444"}" viewBox="0 0 16 16">
 <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
 </svg>
 </button>
 <br>
-<button style="font-weight:bolder;" onclick="Android.oplink('https://www.spmods.download');">Become a Sponsor
+<button style="font-weight:bolder;" onclick="Android.oplink('https://github.com/sponsors/prateek-chaubey');">Become a Sponsor
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${isD ? "#ccc" : "#444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 2l6 6-6 6"/>
 </svg>
@@ -750,7 +755,9 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 <br>
 <div>Developer Mode <span onclick="sttCnf(this,'devMode');" style="${sttCnf(0,0,"devMode")}" ><b style="${sttCnf(0,1,"devMode")}"></b></span></div>
 <br><br>
-<br>
+<p style="font-size:1.25rem;width:calc(100% - 20px);margin:auto;text-align:left"><b style="font-weight:bold">Disclaimer</b>: This is an unofficial OSS Youtube Mod, all the logos and brand names are property of Google LLC.<br>
+You can find the source code at <a href="#" style="font-family:monospace;" onclick="Android.oplink('https://github.com/prateek-chaubey/YTPRO')" > https://github.com/prateek-chaubey/YTPRO</a>
+<br><br></p><br><br><br>
 
 <div class="geminiModels">
 
@@ -783,7 +790,7 @@ stroke="black" ${ !isD ? "stroke-width='1'" : "" } stroke-linejoin="round" strok
 
 
 
-<z style="margin-left:6px">by SPMods</z>
+<z style="margin-left:6px">by Prateek Chaubey</z>
 </div>
 `;
 
@@ -836,9 +843,9 @@ updateModel();
 Android.showToast("Your app is up to date");
 }
 
-fetch('https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js', {cache: 'reload'});
-fetch('https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js', {cache: 'reload'});
-fetch('https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js', {cache: 'reload'});
+fetch('https://youtube.com/ytpro_cdn/npm/ytpro', {cache: 'reload'});
+fetch('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', {cache: 'reload'});
+fetch('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', {cache: 'reload'});
 }
 
 
@@ -910,7 +917,7 @@ document.getElementById("volS").remove();
 if(localStorage.getItem("devMode") == "false"){
 try{eruda.destroy();}catch{}
 }else{
-window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//cdn.jsdelivr.net/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
+window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//youtube.com/ytpro_cdn/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
 }
 
 
@@ -1165,7 +1172,7 @@ window.location.href=e.destination.url;
 var script = doc.createElement("script");
 var scriptSource=`window.addEventListener('DOMContentLoaded', function() {
 var script2 = document.createElement('script');
-script2.src="//cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
+script2.src="//youtube.com/ytpro_cdn/npm/ytpro";
 document.body.appendChild(script2);
 });
 `;
@@ -1180,7 +1187,7 @@ window.location.href=e.destination.url;
 var script = doc.createElement("script");
 var scriptSource=`window.addEventListener('DOMContentLoaded', function() {
 var script2 = document.createElement('script');
-script2.src="//cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
+script2.src="//youtube.com/ytpro_cdn/npm/ytpro";
 document.body.appendChild(script2);
 });
 `;
@@ -1444,7 +1451,7 @@ Android.getSNlM0e(secured);
 GeminiAT=await callbackSNlM0e();
 
 var sd = document.createElement('script');
-sd.src="//cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js";
+sd.src="//youtube.com/ytpro_cdn/npm/showdown/dist/showdown.min.js";
 document.body.appendChild(sd);
 
 }
@@ -2515,12 +2522,12 @@ Latest Version ${YTProVer} of YTPRO is available , update the YTPRO to get lates
 - Optimized the UI of both Download and Settings menu<br>
 - Added new UI icons based on the latest YouTube's UI<br>
 - Fixed bugs and improved functionality<br>
-- for the full list <u onclick="Android.oplink('https://www.spmods.download/releases');" >click here</u>
+- for the full list <u onclick="Android.oplink('https://github.com/prateek-chaubey/YTPRO/releases');" >click here</u>
 <br>
 <br>
 <div style="display:flex;">
 <!--<button style="border:0;border-radius:10px;height:30px;width:150px;background:;" onclick="this.parentElement.parentElement.parentElement.remove();">Cancel</button>-->
-<button style="border:0;border-radius:10px;height:30px;width:150px;background:rgba(255,50,50,.7);float:right;" onclick="Android.downvid('YTPRO.zip','https://www.spmods.download','application/zip');">Download</button>
+<button style="border:0;border-radius:10px;height:30px;width:150px;background:rgba(255,50,50,.7);float:right;" onclick="Android.downvid('YTPRO.zip','https://nightly.link/prateek-chaubey/YTPro/workflows/gradle/main/YTPRO.zip','application/zip');">Download</button>
 </div>
 
 </div>
