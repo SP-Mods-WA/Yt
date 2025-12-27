@@ -20,7 +20,7 @@ s2: PN51tJhZscE
 */
 if(window.eruda == null && localStorage.getItem("devMode") == "true"){
 //ERUDA
-window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//youtube.com/ytpro_cdn/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
+window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//cdn.jsdelivr.net/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
 }
 /**/
 
@@ -836,9 +836,9 @@ updateModel();
 Android.showToast("Your app is up to date");
 }
 
-fetch('https://youtube.com/ytpro_cdn/npm/ytpro', {cache: 'reload'});
-fetch('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', {cache: 'reload'});
-fetch('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', {cache: 'reload'});
+fetch('https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js', {cache: 'reload'});
+fetch('https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js', {cache: 'reload'});
+fetch('https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js', {cache: 'reload'});
 }
 
 
@@ -910,7 +910,7 @@ document.getElementById("volS").remove();
 if(localStorage.getItem("devMode") == "false"){
 try{eruda.destroy();}catch{}
 }else{
-window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//youtube.com/ytpro_cdn/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
+window.location.href=`javascript:(function () { var script = document.createElement('script'); script.src="//cdn.jsdelivr.net/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init();} })();`;
 }
 
 
@@ -1165,7 +1165,7 @@ window.location.href=e.destination.url;
 var script = doc.createElement("script");
 var scriptSource=`window.addEventListener('DOMContentLoaded', function() {
 var script2 = document.createElement('script');
-script2.src="//youtube.com/ytpro_cdn/npm/ytpro";
+script2.src="//cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
 document.body.appendChild(script2);
 });
 `;
@@ -1180,7 +1180,7 @@ window.location.href=e.destination.url;
 var script = doc.createElement("script");
 var scriptSource=`window.addEventListener('DOMContentLoaded', function() {
 var script2 = document.createElement('script');
-script2.src="//youtube.com/ytpro_cdn/npm/ytpro";
+script2.src="//cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
 document.body.appendChild(script2);
 });
 `;
@@ -1444,7 +1444,7 @@ Android.getSNlM0e(secured);
 GeminiAT=await callbackSNlM0e();
 
 var sd = document.createElement('script');
-sd.src="//youtube.com/ytpro_cdn/npm/showdown/dist/showdown.min.js";
+sd.src="//cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js";
 document.body.appendChild(sd);
 
 }
