@@ -56,6 +56,10 @@ public class MainActivity extends Activity {
     if (!prefs.contains("bgplay")) {
       prefs.edit().putBoolean("bgplay", true).apply();
     }
+    
+    if (!isNetworkAvailable()) {
+        showOfflineScreen();
+    } else {
 
     load(false);
 
@@ -292,6 +296,44 @@ public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceReque
 
     super.onPageFinished(p1, url);
 }
+
+
+@Override
+    public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+        if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+            errorCode == WebViewClient.ERROR_CONNECT || 
+            errorCode == WebViewClient.ERROR_TIMEOUT) {
+            
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    showOfflineScreen();
+                }
+            });
+        }
+        super.onReceivedError(view, errorCode, description, failingUrl);
+    }
+    
+    @Override
+    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (request.isForMainFrame()) {
+                int errorCode = error.getErrorCode();
+                if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+                    errorCode == WebViewClient.ERROR_CONNECT || 
+                    errorCode == WebViewClient.ERROR_TIMEOUT) {
+                    
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            showOfflineScreen();
+                        }
+                    });
+                }
+            }
+        }
+        super.onReceivedError(view, request, error);
+    }
       
     });
 
@@ -824,18 +866,153 @@ private void checkScriptStatus() {
     );
 }
 
+private boolean isNetworkAvailable() {
+    ConnectivityManager connectivityManager = 
+        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+    
+    if (connectivityManager != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Network network = connectivityManager.getActiveNetwork();
+            if (network == null) return false;
+            
+            NetworkCapabilities capabilities = 
+                connectivityManager.getNetworkCapabilities(network);
+            return capabilities != null && (
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            );
+        } else {
+            NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+            return networkInfo != null && networkInfo.isConnected();
+        }
+    }
+    return false;
 }
 
+private void showOfflineScreen() {
+    isOffline = true;
+    
+    // Create main layout
+    offlineLayout = new RelativeLayout(this);
+    offlineLayout.setLayoutParams(new RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.MATCH_PARENT,
+        RelativeLayout.LayoutParams.MATCH_PARENT
+    ));
+    offlineLayout.setBackgroundColor(Color.parseColor("#0F0F0F"));
+    
+    // Create center container
+    LinearLayout centerLayout = new LinearLayout(this);
+    RelativeLayout.LayoutParams centerParams = new RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.WRAP_CONTENT,
+        RelativeLayout.LayoutParams.WRAP_CONTENT
+    );
+    centerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+    centerLayout.setLayoutParams(centerParams);
+    centerLayout.setOrientation(LinearLayout.VERTICAL);
+    centerLayout.setGravity(Gravity.CENTER);
+    
+    // Icon (using emoji as fallback)
+    TextView iconView = new TextView(this);
+    iconView.setText("📡");
+    iconView.setTextSize(80);
+    LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    iconParams.bottomMargin = dpToPx(24);
+    iconView.setLayoutParams(iconParams);
+    iconView.setGravity(Gravity.CENTER);
+    centerLayout.addView(iconView);
+    
+    // Title
+    TextView titleView = new TextView(this);
+    titleView.setText("අන්තර්ජාලය සම්බන්ධ නැහැ");
+    titleView.setTextSize(20);
+    titleView.setTextColor(Color.WHITE);
+    titleView.setTypeface(null, Typeface.BOLD);
+    LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    titleParams.bottomMargin = dpToPx(8);
+    titleView.setLayoutParams(titleParams);
+    centerLayout.addView(titleView);
+    
+    // Message
+    TextView messageView = new TextView(this);
+    messageView.setText("ඔබගේ Wi-Fi හෝ mobile data\nconnection එක පරික්ෂා කරන්න");
+    messageView.setTextSize(14);
+    messageView.setTextColor(Color.parseColor("#AAAAAA"));
+    messageView.setGravity(Gravity.CENTER);
+    LinearLayout.LayoutParams msgParams = new LinearLayout.LayoutParams(
+        dpToPx(280),
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    msgParams.bottomMargin = dpToPx(32);
+    messageView.setLayoutParams(msgParams);
+    centerLayout.addView(messageView);
+    
+    // Retry Button
+    Button retryButton = new Button(this);
+    retryButton.setText("නැවත උත්සහ කරන්න");
+    retryButton.setTextColor(Color.WHITE);
+    retryButton.setTextSize(16);
+    retryButton.setTypeface(null, Typeface.BOLD);
+    retryButton.setAllCaps(false);
+    
+    // Button styling
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        retryButton.setBackgroundTintList(
+            android.content.res.ColorStateList.valueOf(Color.parseColor("#FF0000"))
+        );
+    } else {
+        retryButton.setBackgroundColor(Color.parseColor("#FF0000"));
+    }
+    
+    LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+        dpToPx(200),
+        dpToPx(50)
+    );
+    retryButton.setLayoutParams(btnParams);
+    
+    // Retry button click
+    retryButton.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (isNetworkAvailable()) {
+                hideOfflineScreen();
+                load(false);
+            } else {
+                Toast.makeText(MainActivity.this, 
+                    "තවමත් connection එක නැහැ", 
+                    Toast.LENGTH_SHORT).show();
+            }
+        }
+    });
+    
+    centerLayout.addView(retryButton);
+    offlineLayout.addView(centerLayout);
+    
+    // Add to main view
+    addContentView(offlineLayout, new ViewGroup.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT
+    ));
+}
 
+private void hideOfflineScreen() {
+    if (offlineLayout != null && offlineLayout.getParent() != null) {
+        ((ViewGroup) offlineLayout.getParent()).removeView(offlineLayout);
+        isOffline = false;
+    }
+}
 
+private int dpToPx(int dp) {
+    float density = getResources().getDisplayMetrics().density;
+    return Math.round(dp * density);
+}
 
-
-
-
-
-
-
-
-
+}
 
 
