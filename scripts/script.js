@@ -27,7 +27,7 @@ window.location.href=`javascript:(function () { var script = document.createElem
 if(!YTProVer){
 
 /*Few Stupid Inits*/
-var YTProVer="1.1";
+var YTProVer="3.95";
 var ytoldV="";
 var isF=false;   //what is this for?
 var isAp=false; // oh it's for bg play 
@@ -974,7 +974,13 @@ id=new URLSearchParams(window.location.search).get("v");
 
 ytproDownDiv.innerHTML="Loading...";
 
-window.getDownloadStreams();
+// Add this check:
+    if (typeof window.getDownloadStreams === 'function') {
+        window.getDownloadStreams();
+    } else {
+        ytproDownDiv.innerHTML = "Error: getDownloadStreams() function not found!<br>Check if innertube.js is loaded.";
+        console.error("getDownloadStreams is not defined");
+    }
 
 }
 
