@@ -44,6 +44,10 @@ public class MainActivity extends Activity {
 
   private YTProWebview web;
   private OnBackInvokedCallback backCallback;
+  
+  private RelativeLayout offlineLayout;
+  private boolean isOffline = false;
+
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +66,7 @@ public class MainActivity extends Activity {
     } else {
 
     load(false);
-
+}
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
   }
@@ -1014,5 +1018,17 @@ private int dpToPx(int dp) {
 }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
