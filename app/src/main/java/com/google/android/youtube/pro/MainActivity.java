@@ -195,9 +195,9 @@ public class MainActivity extends Activity {
       public void onPageFinished(WebView p1, String url) {
 
         web.evaluateJavascript("if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {window.trustedTypes.createPolicy('default', {createHTML: (string) => string,createScriptURL: string => string, createScript: string => string, });}",null);
-        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@latest/scripts/script.js'; document.body.appendChild(script);  })();",null);
-web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@latest/scripts/bgplay.js'; document.body.appendChild(script);  })();",null);
-web.evaluateJavascript("(function () { var script = document.createElement('script');script.type='module';script.src='https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@latest/scripts/innertube.js'; document.body.appendChild(script);  })();",null);
+        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro/script.js'; document.body.appendChild(script);  })();",null);
+web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js'; document.body.appendChild(script);  })();",null);
+web.evaluateJavascript("(function () { var script = document.createElement('script');script.type='module';script.src='https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js'; document.body.appendChild(script);  })();",null);
 
 
 
