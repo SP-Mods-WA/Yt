@@ -931,7 +931,7 @@ private void showOfflineScreen() {
     
     // Title
     TextView titleView = new TextView(this);
-    titleView.setText("අන්තර්ජාලය සම්බන්ධ නැහැ");
+    titleView.setText("No internet connection");
     titleView.setTextSize(20);
     titleView.setTextColor(Color.WHITE);
     titleView.setTypeface(null, Typeface.BOLD);
@@ -945,7 +945,7 @@ private void showOfflineScreen() {
     
     // Message
     TextView messageView = new TextView(this);
-    messageView.setText("ඔබගේ Wi-Fi හෝ mobile data\nconnection එක පරික්ෂා කරන්න");
+    messageView.setText("Check your Wi-Fi or mobile data\nconnection.");
     messageView.setTextSize(14);
     messageView.setTextColor(Color.parseColor("#AAAAAA"));
     messageView.setGravity(Gravity.CENTER);
@@ -959,7 +959,7 @@ private void showOfflineScreen() {
     
     // Retry Button
     Button retryButton = new Button(this);
-    retryButton.setText("නැවත උත්සහ කරන්න");
+    retryButton.setText("Try again.");
     retryButton.setTextColor(Color.WHITE);
     retryButton.setTextSize(16);
     retryButton.setTypeface(null, Typeface.BOLD);
@@ -989,7 +989,7 @@ private void showOfflineScreen() {
                 load(false);
             } else {
                 Toast.makeText(MainActivity.this, 
-                    "තවමත් connection එක නැහැ", 
+                    "Still no connection.", 
                     Toast.LENGTH_SHORT).show();
             }
         }
