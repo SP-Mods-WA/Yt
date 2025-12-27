@@ -803,7 +803,7 @@ public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceReque
     }
   }
 
-}
+
 
 private void checkScriptStatus() {
     web.evaluateJavascript(
@@ -824,6 +824,7 @@ private void checkScriptStatus() {
     );
 }
 
+}
 
 
 
