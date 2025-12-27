@@ -101,100 +101,101 @@ public class MainActivity extends Activity {
 
     web.setWebViewClient(new WebViewClient() {
     @Override
-    public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-        String url = request.getUrl().toString();
+public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+    String url = request.getUrl().toString();
+    
+    Log.d("WebView", "🌐 Requesting: " + url);
 
-        if (url.contains("youtube.com/ytpro_cdn/")) {
-            String modifiedUrl = null;
+    if (url.contains("youtube.com/ytpro_cdn/")) {
+        String modifiedUrl = null;
 
-            if (url.contains("youtube.com/ytpro_cdn/esm")) {
-                modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
-                Log.e("CDN", "ESM: " + modifiedUrl);
-            } else if (url.contains("youtube.com/ytpro_cdn/npm")) {
+        if (url.contains("youtube.com/ytpro_cdn/esm")) {
+            modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
+            Log.d("CDN", "✅ ESM Redirect: " + modifiedUrl);
+            
+        } else if (url.contains("youtube.com/ytpro_cdn/npm/ytpro")) {
+            // ✅ FIXED: Better URL replacement
+            if (url.contains("innertube.js")) {
+                modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js";
+            } else if (url.contains("bgplay.js")) {
+                modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
+            } else if (url.contains("script.js")) {
+                modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
+            } else {
                 modifiedUrl = url.replace(
                     "youtube.com/ytpro_cdn/npm/ytpro/", 
                     "cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/"
                 );
-                Log.e("CDN", "jsDelivr: " + modifiedUrl);
             }
-            
-            // ✅ NULL check added
-            if (modifiedUrl == null) {
-                Log.e("CDN", "❌ modifiedUrl is NULL for: " + url);
-                return super.shouldInterceptRequest(view, request);
-            }
-            
-            try {
-                URL newUrl = new URL(modifiedUrl);
-                HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
-
-                connection.setUseCaches(false);
-                connection.setDefaultUseCaches(false);
-                connection.addRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
-                connection.addRequestProperty("Pragma", "no-cache");
-                connection.addRequestProperty("Expires", "0");
-                connection.setRequestProperty("User-Agent", "YTPRO");
-                connection.setRequestProperty("Accept", "*/*");  // ✅ FIXED
-
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(10000);
-                connection.setRequestMethod("GET");
-                connection.connect();
-
-                int responseCode = connection.getResponseCode();
-                Log.e("CDN", "Response: " + responseCode + " for " + modifiedUrl);
-                
-                if (responseCode != 200) {
-                    Log.e("CDN", "❌ Failed: " + responseCode);
-                    return super.shouldInterceptRequest(view, request);
-                }
-
-                String mimeType = connection.getContentType();
-                String encoding = connection.getContentEncoding();
-                if (encoding == null) encoding = "utf-8";
-                
-                String contentType = connection.getContentType();
-                if (contentType == null) {
-                    contentType = "application/javascript";
-                }
-
-                Map<String, String> headers = new HashMap<>();
-                headers.put("Access-Control-Allow-Origin", "*");
-                headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-                headers.put("Access-Control-Allow-Headers", "*");
-                headers.put("Content-Type", contentType);
-                headers.put("Access-Control-Allow-Credentials", "true");
-                headers.put("Cross-Origin-Resource-Policy", "cross-origin");
-
-                if (request.getMethod().equals("OPTIONS")) {
-                    return new WebResourceResponse(
-                        "text/plain",
-                        "UTF-8",
-                        204,
-                        "No Content",
-                        headers,
-                        null
-                    );
-                }
-
-                return new WebResourceResponse(
-                    mimeType,
-                    encoding,
-                    connection.getResponseCode(),
-                    "OK",
-                    headers,
-                    connection.getInputStream()
-                );
-
-            } catch (Exception e) {
-                Log.e("CDN Error", "Exception for " + modifiedUrl + ": " + e.getMessage());
-                e.printStackTrace();
-                return super.shouldInterceptRequest(view, request);
-            }
+            Log.d("CDN", "✅ jsDelivr Redirect: " + modifiedUrl);
         }
+        
+        // ✅ NULL check
+        if (modifiedUrl == null) {
+            Log.e("CDN", "❌ modifiedUrl is NULL for: " + url);
+            return super.shouldInterceptRequest(view, request);
+        }
+        
+        try {
+            URL newUrl = new URL(modifiedUrl);
+            HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
 
-        return super.shouldInterceptRequest(view, request);
+            // ✅ Better headers
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
+            connection.setRequestProperty("Accept", "*/*");
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("Pragma", "no-cache");
+            
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            connection.setRequestMethod("GET");
+            connection.connect();
+
+            int responseCode = connection.getResponseCode();
+            Log.d("CDN", "📡 Response: " + responseCode + " for " + modifiedUrl);
+            
+            if (responseCode != 200) {
+                Log.e("CDN", "❌ Failed: " + responseCode);
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            String contentType = connection.getContentType();
+            if (contentType == null || contentType.isEmpty()) {
+                if (modifiedUrl.endsWith(".js")) {
+                    contentType = "application/javascript";
+                } else {
+                    contentType = "text/plain";
+                }
+            }
+            
+            String encoding = connection.getContentEncoding();
+            if (encoding == null) encoding = "utf-8";
+
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            headers.put("Access-Control-Allow-Headers", "*");
+            headers.put("Content-Type", contentType + "; charset=utf-8");
+            headers.put("Cross-Origin-Resource-Policy", "cross-origin");
+
+            return new WebResourceResponse(
+                "application/javascript",
+                "utf-8",
+                connection.getResponseCode(),
+                "OK",
+                headers,
+                connection.getInputStream()
+            );
+
+        } catch (Exception e) {
+            Log.e("CDN Error", "❌ Exception for " + modifiedUrl + ": " + e.getMessage());
+            e.printStackTrace();
+            return super.shouldInterceptRequest(view, request);
+        }
     }
+
+    return super.shouldInterceptRequest(view, request);
+}
       
       
       
@@ -206,30 +207,92 @@ public class MainActivity extends Activity {
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-
-        web.evaluateJavascript("if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {window.trustedTypes.createPolicy('default', {createHTML: (string) => string,createScriptURL: string => string, createScript: string => string, });}",null);
-        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro/script.js'; document.body.appendChild(script);  })();",null);
-web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js'; document.body.appendChild(script);  })();",null);
-web.evaluateJavascript("(function () { var script = document.createElement('script');script.type='module';script.src='https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js'; document.body.appendChild(script);  })();",null);
-
-
-
-        if (dl) {
-
-          //Will Patch this later
-
-          //web.loadUrl("javascript:(function () {window.location.hash='download';})();");
-          //dL=false;                
+    
+    // ✅ Setup TrustedTypes first
+    web.evaluateJavascript(
+        "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
+        "  window.trustedTypes.createPolicy('default', {" +
+        "    createHTML: (string) => string," +
+        "    createScriptURL: string => string," +
+        "    createScript: string => string" +
+        "  });" +
+        "}",
+        null
+    );
+    
+    // ✅ Load scripts sequentially with proper error handling
+    String scriptLoader = 
+        "(function() {" +
+        "  console.log('🔄 Starting YTPRO script loader...');" +
+        
+        // Function to load script with error handling
+        "  function loadScript(src, name) {" +
+        "    return new Promise((resolve, reject) => {" +
+        "      console.log('📥 Loading ' + name + ': ' + src);" +
+        "      var script = document.createElement('script');" +
+        "      script.src = src;" +
+        "      script.async = false;" +
+        "      script.onload = function() {" +
+        "        console.log('✅ Loaded ' + name);" +
+        "        resolve();" +
+        "      };" +
+        "      script.onerror = function(e) {" +
+        "        console.error('❌ Failed to load ' + name + ':', e);" +
+        "        reject(new Error('Failed to load ' + name));" +
+        "      };" +
+        "      document.body.appendChild(script);" +
+        "    });" +
+        "  }" +
+        
+        // ✅ Load scripts in sequence
+        "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main Script')" +
+        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG Play'))" +
+        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'InnerTube'))" +
+        "    .then(() => {" +
+        "      console.log('✅ All YTPRO scripts loaded successfully!');" +
+        "      window.YTPRO_LOADED = true;" +
+        "    })" +
+        "    .catch((error) => {" +
+        "      console.error('❌ YTPRO script loading failed:', error);" +
+        "      window.YTPRO_LOADED = false;" +
+        "    });" +
+        "})();";
+    
+    web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
+        @Override
+        public void onReceiveValue(String value) {
+            Log.d("WebView", "📜 Script loader injected");
         }
+    });
 
-        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-          isPlaying = false;
-          mediaSession= false;
-          stopService(new Intent(getApplicationContext(), ForegroundService.class));
-        }
+    // ✅ Check if download hash is present
+    if (dl) {
+        web.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                web.evaluateJavascript(
+                    "if (typeof window.ytproDownVid === 'function') {" +
+                    "  window.location.hash='download';" +
+                    "} else {" +
+                    "  console.error('❌ ytproDownVid not available yet');" +
+                    "}",
+                    null
+                );
+                dL = false;
+            }
+        }, 2000);
+    }
 
-        super.onPageFinished(p1, url);
-      }
+    // ✅ Stop media session when leaving video pages
+    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+        isPlaying = false;
+        mediaSession = false;
+        stopService(new Intent(getApplicationContext(), ForegroundService.class));
+    }
+
+    super.onPageFinished(p1, url);
+}
+      
     });
 
     setReceiver();
@@ -740,6 +803,25 @@ web.evaluateJavascript("(function () { var script = document.createElement('scri
     }
   }
 
+}
+
+private void checkScriptStatus() {
+    web.evaluateJavascript(
+        "(function() {" +
+        "  return JSON.stringify({" +
+        "    loaded: window.YTPRO_LOADED || false," +
+        "    hasMainScript: typeof YTProVer !== 'undefined'," +
+        "    hasInnerTube: typeof window.getDownloadStreams !== 'undefined'," +
+        "    hasBgPlay: typeof window.initBgPlay !== 'undefined'" +
+        "  });" +
+        "})();",
+        new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                Log.d("YTPRO Status", "📊 Script Status: " + value);
+            }
+        }
+    );
 }
 
 
