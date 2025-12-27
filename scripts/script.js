@@ -27,7 +27,7 @@ window.location.href=`javascript:(function () { var script = document.createElem
 if(!YTProVer){
 
 /*Few Stupid Inits*/
-var YTProVer="3.95";
+var YTProVer="1.0";
 var ytoldV="";
 var isF=false;   //what is this for?
 var isAp=false; // oh it's for bg play 
@@ -936,54 +936,246 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 }
 
 /*Video Downloader*/
+
+
+
 async function ytproDownVid(){
-var ytproDown=document.createElement("div");
-var ytproDownDiv=document.createElement("div");
-ytproDownDiv.setAttribute("id","downytprodiv");
-ytproDown.setAttribute("id","outerdownytprodiv");
-ytproDown.setAttribute("style",`
-height:100%;width:100%;position:fixed;top:0;left:0;
-display:flex;justify-content:center;
-background:rgba(0,0,0,0.4);
-z-index:99999999999999;
-`);
-ytproDown.addEventListener("click",
-function(ev){
-if(ev.target != ytproDownDiv && !(ytproDownDiv.contains(ev.target)) ){
-history.back();
-}
-});
+    var ytproDown=document.createElement("div");
+    var ytproDownDiv=document.createElement("div");
+    ytproDownDiv.setAttribute("id","downytprodiv");
+    ytproDown.setAttribute("id","outerdownytprodiv");
+    ytproDown.setAttribute("style",`
+        height:100%;width:100%;position:fixed;top:0;left:0;
+        display:flex;justify-content:center;
+        background:rgba(0,0,0,0.4);
+        z-index:99999999999999;
+    `);
+    ytproDown.addEventListener("click",
+    function(ev){
+        if(ev.target != ytproDownDiv && !(ytproDownDiv.contains(ev.target)) ){
+            history.back();
+        }
+    });
 
-ytproDownDiv.setAttribute("style",`
-height:50%;width:85%;overflow:auto;background:${isD ? "#212121" : "#f1f1f1"};
-position:absolute;bottom:20px;
-z-index:99999999999999;padding:20px;text-align:center;border-radius:25px;text-align:center;
-`);
+    ytproDownDiv.setAttribute("style",`
+        height:60%;width:85%;overflow:auto;background:${isD ? "#212121" : "#f1f1f1"};
+        position:absolute;bottom:20px;
+        z-index:99999999999999;padding:20px;text-align:center;border-radius:25px;text-align:center;
+        color:${isD ? "#ccc" : "#444"};
+    `);
 
-document.body.appendChild(ytproDown);
-ytproDown.appendChild(ytproDownDiv);
+    document.body.appendChild(ytproDown);
+    ytproDown.appendChild(ytproDownDiv);
 
-var id="";
-
-if(window.location.pathname.indexOf("shorts") > -1){
-id=window.location.pathname.substr(8,window.location.pathname.length);
-}
-else{
-id=new URLSearchParams(window.location.search).get("v");
-}
-
-ytproDownDiv.innerHTML="Loading...";
-
-// Add this check:
-    if (typeof window.getDownloadStreams === 'function') {
-        window.getDownloadStreams();
-    } else {
-        ytproDownDiv.innerHTML = "Error: getDownloadStreams() function not found!<br>Check if innertube.js is loaded.";
-        console.error("getDownloadStreams is not defined");
+    var id="";
+    if(window.location.pathname.indexOf("shorts") > -1){
+        id=window.location.pathname.substr(8,window.location.pathname.length);
+    }
+    else{
+        id=new URLSearchParams(window.location.search).get("v");
     }
 
+    ytproDownDiv.innerHTML="Loading video information...";
+
+    try {
+        // YouTube Data API වලින් video info ගන්නවා
+        const videoInfo = await fetchVideoInfo(id);
+        
+        if(!videoInfo) {
+            ytproDownDiv.innerHTML = `
+                <h3 style="color:red;">Error!</h3>
+                <p>Video information load වෙන්න බැහැ.</p>
+                <br>
+                <button onclick="history.back()" style="padding:10px 20px;border-radius:10px;border:none;background:${c};color:${dc};">Close</button>
+            `;
+            return;
+        }
+
+        displayDownloadOptions(ytproDownDiv, videoInfo, id);
+        
+    } catch(error) {
+        console.error("Download error:", error);
+        ytproDownDiv.innerHTML = `
+            <h3 style="color:red;">Error!</h3>
+            <p>${error.message}</p>
+            <br>
+            <p>Alternative methods:</p>
+            <button onclick="Android.oplink('https://y2mate.com/youtube/${id}')" 
+                style="padding:10px;margin:5px;border-radius:10px;border:none;background:${c};color:${dc};">
+                Open in Y2Mate
+            </button>
+            <button onclick="Android.oplink('https://ssyoutube.com/watch?v=${id}')" 
+                style="padding:10px;margin:5px;border-radius:10px;border:none;background:${c};color:${dc};">
+                Open in SSYouTube
+            </button>
+            <br><br>
+            <button onclick="history.back()" 
+                style="padding:10px 20px;border-radius:10px;border:none;background:#f44;color:#fff;">
+                Close
+            </button>
+        `;
+    }
 }
 
+// Video info fetch කරන function
+async function fetchVideoInfo(videoId) {
+    try {
+        // Method 1: YouTube oEmbed API use කරනවා (public API)
+        const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+        const response = await fetch(oEmbedUrl);
+        
+        if(response.ok) {
+            const data = await response.json();
+            return {
+                title: data.title,
+                author: data.author_name,
+                thumbnail: data.thumbnail_url
+            };
+        }
+        
+        // Method 2: Page scraping (fallback)
+        const pageResponse = await fetch(`https://m.youtube.com/watch?v=${videoId}`);
+        const html = await pageResponse.text();
+        
+        // Title extract කරනවා
+        const titleMatch = html.match(/<title>(.+?)<\/title>/);
+        const title = titleMatch ? titleMatch[1].replace(' - YouTube', '') : 'Unknown Title';
+        
+        return {
+            title: title,
+            author: 'Unknown',
+            thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+        };
+        
+    } catch(error) {
+        console.error("Fetch error:", error);
+        return null;
+    }
+}
+
+// Download options display කරන function
+function displayDownloadOptions(container, videoInfo, videoId) {
+    const qualities = [
+        { quality: '1080p', itag: '137+140', format: 'mp4' },
+        { quality: '720p', itag: '136+140', format: 'mp4' },
+        { quality: '480p', itag: '135+140', format: 'mp4' },
+        { quality: '360p', itag: '134+140', format: 'mp4' },
+        { quality: 'Audio Only', itag: '140', format: 'mp3' }
+    ];
+    
+    let html = `
+        <style>
+            .video-info {
+                padding: 15px;
+                background: ${d};
+                border-radius: 15px;
+                margin-bottom: 20px;
+                text-align: left;
+            }
+            .video-info img {
+                width: 100%;
+                border-radius: 10px;
+                margin-bottom: 10px;
+            }
+            .download-option {
+                background: ${d};
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 15px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .download-btn {
+                padding: 10px 20px;
+                border-radius: 10px;
+                border: none;
+                background: ${c};
+                color: ${dc};
+                font-weight: bold;
+                cursor: pointer;
+            }
+            .close-btn {
+                padding: 10px 20px;
+                border-radius: 10px;
+                border: none;
+                background: #f44;
+                color: #fff;
+                margin-top: 20px;
+            }
+        </style>
+        
+        <div class="video-info">
+            <img src="${videoInfo.thumbnail}" alt="thumbnail" onerror="this.src='https://img.youtube.com/vi/${videoId}/hqdefault.jpg'">
+            <h3>${videoInfo.title}</h3>
+            <p>By: ${videoInfo.author}</p>
+        </div>
+        
+        <h3>Select Quality:</h3>
+    `;
+    
+    // Download options add කරනවා
+    qualities.forEach(q => {
+        html += `
+            <div class="download-option">
+                <span><b>${q.quality}</b> (${q.format.toUpperCase()})</span>
+                <button class="download-btn" onclick="downloadVideo('${videoId}', '${q.quality}', '${q.itag}', '${videoInfo.title}')">
+                    ${downBtn} Download
+                </button>
+            </div>
+        `;
+    });
+    
+    // External download options
+    html += `
+        <br>
+        <h4>Or use external downloaders:</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:15px 0;">
+            <button onclick="Android.oplink('https://en.savefrom.net/1-youtube-video-downloader-94/#url=https://youtube.com/watch?v=${videoId}')" 
+                class="download-btn">SaveFrom</button>
+            <button onclick="Android.oplink('https://y2mate.com/youtube/${videoId}')" 
+                class="download-btn">Y2Mate</button>
+            <button onclick="Android.oplink('https://ssyoutube.com/watch?v=${videoId}')" 
+                class="download-btn">SSYouTube</button>
+            <button onclick="Android.oplink('https://yt5s.com/en/youtube-to-mp3/?q=https://youtube.com/watch?v=${videoId}')" 
+                class="download-btn">YT5s</button>
+        </div>
+        
+        <button onclick="history.back()" class="close-btn">Close</button>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// Actual download function
+function downloadVideo(videoId, quality, itag, title) {
+    // Clean title (file name සදහා)
+    const cleanTitle = title.replace(/[|\\?*<":>+\[\]/]/g, '').substring(0, 100);
+    
+    // Method 1: Try direct YouTube CDN URLs (may not work due to restrictions)
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    
+    // Method 2: Use a download proxy service
+    const downloadUrl = `https://loader.to/api/button/?url=https://youtube.com/watch?v=${videoId}&f=${quality}`;
+    
+    // Method 3: Fallback to external downloader
+    const fallbackUrl = `https://en.savefrom.net/1-youtube-video-downloader-94/#url=${videoUrl}`;
+    
+    // Try Android download manager
+    try {
+        // First try direct download (වැඩ නොකරන්න පුළුවන්)
+        Android.downvid(
+            `${cleanTitle}_${quality}.mp4`,
+            downloadUrl,
+            "video/mp4"
+        );
+        Android.showToast(`Downloading ${quality}...`);
+    } catch(error) {
+        // If direct download fails, open external downloader
+        Android.showToast("Opening external downloader...");
+        Android.oplink(fallbackUrl);
+    }
+}
 
 
 
