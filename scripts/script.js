@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal
-Version: 3.9.9
+Version: 4.9.9
 URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -27,7 +27,7 @@ window.location.href=`javascript:(function () { var script = document.createElem
 if(!YTProVer){
 
 /*Few Stupid Inits*/
-var YTProVer="1.1";
+var YTProVer="1.2";
 var ytoldV="";
 var isF=false;   //what is this for?
 var isAp=false; // oh it's for bg play 
@@ -938,24 +938,22 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 
 
 /*****************************************************
- * YTPRO DIRECT DOWNLOAD SYSTEM - WORKING VERSION
- * This uses your existing innertube.js decipher code
+ * YTPRO STANDALONE DIRECT DOWNLOADER
+ * Works without external libraries!
  *****************************************************/
 
-// Import the required libraries (already in your YTPRO)
-// Make sure these are loaded:
-// - BG utils (for PoToken)
-// - Jinter (for decipher)
-// - youtubei.js (for Player functions)
-
-// Global variables for decipher functions
-var cver = "19.35.36";
-var player_id;
-var poToken, visitorData;
-var sig_timestamp, nsig_sc, sig_sc;
+// Simple visitor data generator (replaces ProtoUtils)
+function generateVisitorData() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let result = '';
+    for(let i = 0; i < 11; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
 
 /*****************************************************
- * MAIN DIRECT DOWNLOAD FUNCTION
+ * MAIN DOWNLOAD FUNCTION - SIMPLIFIED
  *****************************************************/
 async function ytproDownVid() {
     var ytproDown = document.createElement("div");
@@ -978,18 +976,19 @@ async function ytproDownVid() {
     });
 
     ytproDownDiv.setAttribute("style", `
-        height:70%;width:90%;max-width:600px;overflow:auto;
-        background:${isD ? "#1a1a1a" : "#ffffff"};
+        height:75%;width:90%;max-width:600px;overflow:auto;
+        background:${typeof isD !== 'undefined' && isD ? "#1a1a1a" : "#ffffff"};
         position:relative;
         z-index:99999999999999;padding:20px;
         border-radius:25px;
-        color:${isD ? "#e0e0e0" : "#333"};
+        color:${typeof isD !== 'undefined' && isD ? "#e0e0e0" : "#333"};
         box-shadow:0 10px 50px rgba(0,0,0,0.5);
     `);
 
     document.body.appendChild(ytproDown);
     ytproDown.appendChild(ytproDownDiv);
 
+    // Get video ID
     var id = "";
     if(window.location.pathname.indexOf("shorts") > -1) {
         id = window.location.pathname.substr(8, window.location.pathname.length);
@@ -998,19 +997,7 @@ async function ytproDownVid() {
     }
 
     if(!id) {
-        ytproDownDiv.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-                <div style="font-size:50px;margin-bottom:15px;">❌</div>
-                <h3>Error!</h3>
-                <p>Video ID හොයාගන්න බැහැ.</p>
-                <br>
-                <button onclick="history.back()" 
-                    style="padding:12px 30px;border-radius:10px;border:none;
-                    background:#f44;color:#fff;font-weight:bold;cursor:pointer;">
-                    Close
-                </button>
-            </div>
-        `;
+        showError(ytproDownDiv, null, "Video ID not found");
         return;
     }
 
@@ -1018,15 +1005,17 @@ async function ytproDownVid() {
     ytproDownDiv.innerHTML = `
         <div style="text-align:center;padding:40px;">
             <div class="loader"></div>
-            <p style="margin-top:20px;font-size:14px;">
-                <span id="loadingText">Preparing download system...</span>
+            <p style="margin-top:20px;font-size:15px;font-weight:bold;">
+                Getting Download Links...
             </p>
-            <div style="margin-top:15px;font-size:12px;opacity:0.6;" id="progressSteps"></div>
+            <p style="margin-top:10px;font-size:13px;opacity:0.7;">
+                Please wait, this may take a few seconds
+            </p>
         </div>
         <style>
             .loader {
-                border: 4px solid ${d};
-                border-top: 4px solid ${c};
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
                 border-radius: 50%;
                 width: 50px;
                 height: 50px;
@@ -1041,390 +1030,213 @@ async function ytproDownVid() {
     `;
 
     try {
-        // Step 1: Get deciphers
-        updateProgress("Getting deciphers...");
-        await getDeciphers();
+        // Method 1: Try to use Invidious API (free, no auth needed)
+        const invidiousInstances = [
+            'inv.nadeko.net',
+            'invidious.jing.rocks',
+            'yt.artemislena.eu',
+            'invidious.privacyredirect.com'
+        ];
         
-        // Step 2: Fetch video info
-        updateProgress("Fetching video information...");
-        var videoInfo = await fetchDirectVideoInfo(id);
+        let videoData = null;
         
-        if(!videoInfo || !videoInfo.streamingData) {
-            throw new Error("Failed to get video streams");
+        for(let instance of invidiousInstances) {
+            try {
+                const response = await fetch(`https://${instance}/api/v1/videos/${id}`, {
+                    method: 'GET'
+                });
+                
+                if(response.ok) {
+                    videoData = await response.json();
+                    if(videoData && videoData.formatStreams) {
+                        break;
+                    }
+                }
+            } catch(e) {
+                console.log(`Failed with ${instance}:`, e);
+                continue;
+            }
         }
         
-        // Step 3: Display downloads
-        updateProgress("Preparing download links...");
-        await displayDirectDownloads(ytproDownDiv, videoInfo, id);
+        if(videoData && (videoData.formatStreams || videoData.adaptiveFormats)) {
+            displayInvidiousDownloads(ytproDownDiv, videoData, id);
+        } else {
+            // Fallback to external downloaders
+            showExternalDownloaders(ytproDownDiv, id, "API temporarily unavailable");
+        }
         
     } catch(error) {
-        console.error("Direct download error:", error);
-        showDownloadError(ytproDownDiv, id, error.message);
+        console.error("Download error:", error);
+        showExternalDownloaders(ytproDownDiv, id, error.message);
     }
 }
 
 /*****************************************************
- * UPDATE LOADING PROGRESS
+ * DISPLAY INVIDIOUS DOWNLOADS
  *****************************************************/
-function updateProgress(text) {
-    const loadingText = document.getElementById("loadingText");
-    const progressSteps = document.getElementById("progressSteps");
+function displayInvidiousDownloads(container, data, videoId) {
+    const c = typeof window.c !== 'undefined' ? window.c : "#3498db";
+    const dc = typeof window.dc !== 'undefined' ? window.dc : "#ffffff";
+    const d = typeof window.d !== 'undefined' ? window.d : "#f5f5f5";
     
-    if(loadingText) {
-        loadingText.textContent = text;
-    }
+    let formats = data.formatStreams || [];
+    let adaptiveFormats = data.adaptiveFormats || [];
+    let audioFormats = adaptiveFormats.filter(f => f.type && f.type.includes('audio'));
     
-    if(progressSteps) {
-        progressSteps.innerHTML += `<div>✓ ${text}</div>`;
-    }
-}
-
-/*****************************************************
- * GET DECIPHERS (from your innertube code)
- *****************************************************/
-async function getDeciphers() {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // Find player ID from scripts
-            var scripts = document.getElementsByTagName('script');
-            for(var i = 0; i < scripts.length; i++) {
-                if(scripts[i].src.indexOf("/base.js") > 0) {
-                    var match = scripts[i].src.match(/(?<=player\/).*(?=\/player)/);
-                    if(match) player_id = match[0];
-                }
-            }
-            
-            if(!player_id) {
-                throw new Error("Could not find player ID");
-            }
-
-            // Generate visitor data and PoToken
-            visitorData = ProtoUtils.encodeVisitorData(
-                Utils.generateRandomString(11), 
-                Math.floor(Date.now() / 1000)
-            );
-            
-            poToken = await getPo(visitorData);
-            
-            // Fetch player JavaScript
-            var player_js = await fetch(
-                `https://www.youtube.com/s/player/${player_id}/player_ias.vflset/en_US/base.js`
-            ).then(x => x.text());
-
-            const ast = Jinter.parseScript(player_js, { 
-                ecmaVersion: 'latest', 
-                ranges: true 
-            });
-
-            // Extract decipher functions
-            sig_timestamp = Player.extractSigTimestamp(player_js);
-            const global_variable = Player.extractGlobalVariable(player_js, ast);
-            sig_sc = Player.extractSigSourceCode(player_js, global_variable);
-            nsig_sc = Player.extractNSigSourceCode(player_js, ast, global_variable);
-
-            resolve("done");
-        } catch(error) {
-            reject(error);
-        }
-    });
-}
-
-/*****************************************************
- * GET POTOKEN (from your innertube code)
- *****************************************************/
-async function getPo(identifier) {
-    const requestKey = 'O43z0dpjhgX20SCx4KAo';
-    
-    const bgConfig = {
-        fetch: (input, init) => fetch(input, init),
-        globalObj: window,
-        requestKey,
-        identifier
-    };
-    
-    const bgChallenge = await BG.Challenge.create(bgConfig);
-    
-    if(!bgChallenge) {
-        throw new Error('Could not get challenge');
-    }
-    
-    const interpreterJavascript = bgChallenge.interpreterJavascript
-        .privateDoNotAccessOrElseSafeScriptWrappedValue;
-    
-    if(interpreterJavascript) {
-        new Function(interpreterJavascript)();
-    } else {
-        throw new Error('Could not load VM');
-    }
-    
-    const poTokenResult = await BG.PoToken.generate({
-        program: bgChallenge.program,
-        globalName: bgChallenge.globalName,
-        bgConfig
-    });
-    
-    return poTokenResult.poToken;
-}
-
-/*****************************************************
- * FETCH VIDEO INFO DIRECTLY
- *****************************************************/
-async function fetchDirectVideoInfo(videoId) {
-    var body = {
-        "videoId": videoId,
-        "racyCheckOk": true,
-        "contentCheckOk": true,
-        "playbackContext": {
-            "contentPlaybackContext": {
-                "vis": 0,
-                "splay": false,
-                "lactMilliseconds": "-1",
-                "signatureTimestamp": sig_timestamp
-            }
-        },
-        "serviceIntegrityDimensions": {
-            "poToken": poToken
-        },
-        "context": {
-            "client": {
-                "hl": "en",
-                "gl": "US",
-                "remoteHost": "",
-                "screenDensityFloat": 1,
-                "screenHeightPoints": 7680,
-                "screenPixelDensity": 1,
-                "screenWidthPoints": 4320,
-                "visitorData": visitorData,
-                "clientName": "ANDROID",
-                "clientVersion": cver,
-                "osName": "Android",
-                "osVersion": "12",
-                "userAgent": "com.google.android.youtube/19.35.36(Linux; U; Android 13)",
-                "clientFormFactor": "UNKNOWN_FORM_FACTOR",
-                "userInterfaceTheme": "USER_INTERFACE_THEME_LIGHT",
-                "timeZone": "Asia/Calcutta",
-                "utcOffsetMinutes": 330,
-                "memoryTotalKbytes": "8000000"
-            },
-            "user": {
-                "enableSafetyMode": false,
-                "lockedSafetyMode": false
-            },
-            "request": {
-                "useSsl": true,
-                "internalExperimentFlags": []
-            }
-        }
-    };
-
-    var response = await fetch(
-        "https://m.youtube.com/youtubei/v1/player?prettyPrint=false",
-        { 
-            method: "POST", 
-            body: JSON.stringify(body),
-            headers: {
-                "Content-Type": "application/json"
-            }
-        }
-    ).then((res) => res.json());
-
-    return response;
-}
-
-/*****************************************************
- * DECIPHER URL
- *****************************************************/
-function decipherUrl(url) {
-    const args = new URLSearchParams(url);
-    const url_components = new URL(args.get('url') || url);
-
-    // Decipher signature
-    if(args.get('s') != null) {
-        const signature = Utils.Platform.shim.eval(sig_sc, {
-            sig: args.get('s')
-        });
-        const sp = args.get('sp');
-        if(sp) {
-            url_components.searchParams.set(sp, signature);
-        } else {
-            url_components.searchParams.set('signature', signature);
-        }
-    }
-
-    // Decipher n parameter
-    const n = url_components.searchParams.get('n');
-    if(n != null) {
-        var nsig = Utils.Platform.shim.eval(nsig_sc, {
-            nsig: n
-        });
-        url_components.searchParams.set('n', nsig);
-    }
-
-    // Add PoToken
-    url_components.searchParams.set('pot', poToken);
-    url_components.searchParams.set('cver', cver);
-    
-    return url_components.toString();
-}
-
-/*****************************************************
- * DISPLAY DIRECT DOWNLOADS
- *****************************************************/
-async function displayDirectDownloads(container, info, videoId) {
-    var thumb = info?.videoDetails?.thumbnail?.thumbnails;
-    var vids = info?.streamingData?.formats || [];
-    var avids = info?.streamingData?.adaptiveFormats || [];
-    var title = info?.videoDetails?.title
-        .replaceAll("|","").replaceAll("\\","").replaceAll("?","")
-        .replaceAll("*","").replaceAll("<","").replaceAll("/","")
-        .replaceAll(":","").replaceAll('"',"").replaceAll(">","")
-        .replaceAll("'","") || "YouTube Video";
-
     container.innerHTML = `
         <style>
-            .download-item {
+            .download-card {
                 background: ${d};
                 padding: 15px;
                 margin: 10px 0;
-                border-radius: 15px;
+                border-radius: 12px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 transition: transform 0.2s;
+                cursor: pointer;
             }
-            .download-item:active {
+            .download-card:active {
                 transform: scale(0.98);
             }
-            .download-btn-direct {
-                padding: 10px 20px;
-                border-radius: 10px;
+            .download-btn-main {
+                padding: 10px 18px;
+                border-radius: 8px;
                 border: none;
                 background: ${c};
                 color: ${dc};
                 font-weight: bold;
                 cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 5px;
+                font-size: 13px;
+                white-space: nowrap;
             }
-            .quality-badge {
+            .quality-tag {
                 background: ${c};
                 color: ${dc};
                 padding: 3px 8px;
-                border-radius: 8px;
+                border-radius: 6px;
                 font-size: 11px;
                 font-weight: bold;
                 margin-left: 8px;
             }
-            .file-info {
+            .format-info {
                 flex: 1;
                 text-align: left;
-                padding: 0 10px;
+                padding-right: 10px;
             }
-            .format-title {
+            .format-name {
                 font-weight: bold;
                 margin-bottom: 4px;
+                display: flex;
+                align-items: center;
             }
-            .format-details {
+            .format-size {
                 font-size: 12px;
                 opacity: 0.7;
+            }
+            .section-title {
+                font-size: 16px;
+                font-weight: bold;
+                margin: 20px 0 10px 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
             }
         </style>
     `;
 
-    // Video title and thumbnail
-    if(thumb && thumb.length > 0) {
+    // Video info
+    if(data.title) {
         container.innerHTML += `
-            <div style="text-align:center;margin-bottom:20px;">
-                <img src="${thumb[thumb.length-1].url}" 
-                     style="width:100%;max-width:350px;border-radius:15px;margin-bottom:10px;"
-                     onerror="this.style.display='none'">
-                <h3 style="font-size:16px;line-height:1.4;">${title}</h3>
+            <div style="text-align:center;margin-bottom:25px;">
+                ${data.videoThumbnails && data.videoThumbnails.length > 0 ? 
+                    `<img src="${data.videoThumbnails[data.videoThumbnails.length-1].url}" 
+                         style="width:100%;max-width:350px;border-radius:12px;margin-bottom:12px;"
+                         onerror="this.style.display='none'">` : ''}
+                <h3 style="font-size:15px;line-height:1.4;font-weight:600;">${data.title}</h3>
+                <p style="font-size:13px;opacity:0.7;margin-top:5px;">by ${data.author || 'Unknown'}</p>
             </div>
         `;
     }
 
-    container.innerHTML += `<h3 style="margin:15px 0;">📥 Direct Downloads</h3>`;
-
-    // Combined formats (video + audio)
-    if(vids.length > 0) {
-        container.innerHTML += `<h4 style="margin:10px 0;font-size:14px;">Video + Audio</h4>`;
+    // Video formats (with audio)
+    if(formats.length > 0) {
+        container.innerHTML += `<div class="section-title">🎬 Video + Audio</div>`;
         
-        for(var i = 0; i < vids.length; i++) {
-            var vid = vids[i];
-            var url = decipherUrl(vid.url);
-            var size = formatFileSize(((vid.bitrate * (vid.approxDurationMs/1000))/8));
+        // Sort by quality
+        formats.sort((a, b) => {
+            const qualityOrder = {'hd720': 3, 'medium': 2, 'small': 1};
+            return (qualityOrder[b.qualityLabel] || 0) - (qualityOrder[a.qualityLabel] || 0);
+        });
+        
+        formats.forEach(format => {
+            let qualityLabel = format.qualityLabel || format.quality || 'Unknown';
+            let size = format.size || 'Unknown size';
             
             container.innerHTML += `
-                <div class="download-item">
-                    <div class="file-info">
-                        <div class="format-title">
-                            ${vid.qualityLabel || vid.quality}
-                            <span class="quality-badge">MP4</span>
+                <div class="download-card" onclick="downloadDirectFile('${format.url}', '${data.title}_${qualityLabel}.mp4')">
+                    <div class="format-info">
+                        <div class="format-name">
+                            ${qualityLabel}
+                            <span class="quality-tag">MP4</span>
                         </div>
-                        <div class="format-details">
-                            ${vid.fps}fps • ${size}
-                        </div>
+                        <div class="format-size">${size}</div>
                     </div>
-                    <button class="download-btn-direct" 
-                        onclick="directDownload('${url}', '${title}_${vid.qualityLabel}.mp4')">
-                        ${downBtn.replace('24','18').replace('24','18')}
-                        Download
+                    <button class="download-btn-main" onclick="event.stopPropagation();downloadDirectFile('${format.url}', '${data.title}_${qualityLabel}.mp4')">
+                        📥 Download
                     </button>
                 </div>
             `;
-        }
+        });
     }
 
-    // Audio only formats
-    var audioFormats = avids.filter(f => f.mimeType.indexOf("audio") > -1);
+    // Audio formats
     if(audioFormats.length > 0) {
-        container.innerHTML += `<h4 style="margin:15px 0 10px 0;font-size:14px;">🎵 Audio Only</h4>`;
+        container.innerHTML += `<div class="section-title">🎵 Audio Only</div>`;
         
-        for(var i = 0; i < Math.min(audioFormats.length, 3); i++) {
-            var aud = audioFormats[i];
-            var url = decipherUrl(aud.url);
-            var quality = aud.audioQuality.replace("AUDIO_QUALITY_", "");
+        audioFormats.slice(0, 3).forEach(format => {
+            let bitrate = format.bitrate ? Math.floor(format.bitrate/1000) + 'kbps' : '';
+            let size = format.size || 'Unknown size';
             
             container.innerHTML += `
-                <div class="download-item">
-                    <div class="file-info">
-                        <div class="format-title">
-                            ${quality}
-                            <span class="quality-badge" style="background:#4CAF50;">MP3</span>
+                <div class="download-card" onclick="downloadDirectFile('${format.url}', '${data.title}_audio.mp3')">
+                    <div class="format-info">
+                        <div class="format-name">
+                            Audio ${bitrate}
+                            <span class="quality-tag" style="background:#4CAF50;">MP3</span>
                         </div>
-                        <div class="format-details">
-                            ${aud.bitrate ? Math.floor(aud.bitrate/1000)+'kbps' : ''} • 
-                            ${formatFileSize(aud.contentLength)}
-                        </div>
+                        <div class="format-size">${size}</div>
                     </div>
-                    <button class="download-btn-direct" 
-                        onclick="directDownload('${url}', '${title}_audio.mp3')">
-                        ${downBtn.replace('24','18').replace('24','18')}
-                        Download
+                    <button class="download-btn-main" onclick="event.stopPropagation();downloadDirectFile('${format.url}', '${data.title}_audio.mp3')">
+                        📥 Download
                     </button>
                 </div>
             `;
-        }
+        });
     }
 
-    // Fallback external downloaders
+    // External downloaders backup
     container.innerHTML += `
         <br>
         <details style="margin:20px 0;">
-            <summary style="cursor:pointer;padding:10px;background:${d};border-radius:10px;">
-                🌐 External Downloaders (Backup)
+            <summary style="cursor:pointer;padding:12px;background:${d};border-radius:10px;font-weight:500;">
+                🌐 External Downloaders (Alternative)
             </summary>
             <div style="margin-top:10px;">
                 <button onclick="Android.oplink('https://en.savefrom.net/1-youtube-video-downloader-94/#url=https://youtube.com/watch?v=${videoId}')" 
-                    style="width:100%;padding:10px;margin:5px 0;border-radius:8px;border:none;
+                    style="width:100%;padding:12px;margin:6px 0;border-radius:8px;border:none;
                     background:${d};color:${c};font-weight:bold;cursor:pointer;">
-                    SaveFrom.net
+                    📥 SaveFrom.net
                 </button>
                 <button onclick="Android.oplink('https://www.y2mate.com/youtube/${videoId}')" 
-                    style="width:100%;padding:10px;margin:5px 0;border-radius:8px;border:none;
+                    style="width:100%;padding:12px;margin:6px 0;border-radius:8px;border:none;
                     background:${d};color:${c};font-weight:bold;cursor:pointer;">
-                    Y2Mate
+                    🎬 Y2Mate
+                </button>
+                <button onclick="Android.oplink('https://loader.to/en92/youtube-video-downloader.html?url=https://youtube.com/watch?v=${videoId}')" 
+                    style="width:100%;padding:12px;margin:6px 0;border-radius:8px;border:none;
+                    background:${d};color:${c};font-weight:bold;cursor:pointer;">
+                    💾 Loader.to
                 </button>
             </div>
         </details>
@@ -1435,76 +1247,122 @@ async function displayDirectDownloads(container, info, videoId) {
         <button onclick="history.back()" 
             style="width:100%;padding:14px;border-radius:10px;border:none;
             background:#f44;color:#fff;margin-top:15px;font-weight:bold;cursor:pointer;">
-            Close
+            ✖ Close
         </button>
     `;
 }
 
 /*****************************************************
- * DIRECT DOWNLOAD FUNCTION
+ * DIRECT FILE DOWNLOAD
  *****************************************************/
-function directDownload(url, filename) {
+function downloadDirectFile(url, filename) {
+    // Clean filename
+    filename = filename
+        .replace(/[|\\?*<":>+\[\]/]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 100);
+    
     try {
-        // Method 1: Try Android download manager first
+        // Method 1: Try Android download manager
         if(typeof Android !== 'undefined' && Android.downvid) {
             Android.downvid(filename, url, "video/mp4");
-            Android.showToast("Download started: " + filename);
+            if(Android.showToast) {
+                Android.showToast("📥 Download started: " + filename);
+            }
         } else {
-            // Method 2: Create download link
+            // Method 2: Browser download
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
             a.target = '_blank';
+            a.rel = 'noopener noreferrer';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             
-            // Show toast
-            showToast("Download started!");
+            showToastMessage("📥 Download started!");
         }
     } catch(error) {
         console.error("Download error:", error);
-        showToast("Download failed. Try external downloaders.");
+        // Fallback: open in new tab
+        window.open(url, '_blank');
+        showToastMessage("Opening download in new tab...");
     }
 }
 
 /*****************************************************
- * SHOW ERROR WITH FALLBACK OPTIONS
+ * SHOW EXTERNAL DOWNLOADERS
  *****************************************************/
-function showDownloadError(container, videoId, errorMsg) {
+function showExternalDownloaders(container, videoId, errorMsg) {
+    const c = typeof window.c !== 'undefined' ? window.c : "#3498db";
+    const dc = typeof window.dc !== 'undefined' ? window.dc : "#ffffff";
+    const d = typeof window.d !== 'undefined' ? window.d : "#f5f5f5";
+    
     container.innerHTML = `
         <div style="text-align:center;padding:30px;">
-            <div style="font-size:50px;margin-bottom:15px;">⚠️</div>
-            <h3 style="color:#f44;">Direct Download Failed</h3>
-            <p style="margin:15px 0;font-size:14px;opacity:0.8;">
-                ${errorMsg || "Could not get download streams"}
+            <div style="font-size:60px;margin-bottom:20px;">⚠️</div>
+            <h3 style="color:#f44;margin-bottom:10px;">Direct Download Unavailable</h3>
+            <p style="font-size:14px;opacity:0.8;margin-bottom:25px;">
+                ${errorMsg || "Could not get direct download links"}
             </p>
             
-            <div style="margin-top:25px;">
-                <h4 style="margin-bottom:15px;">Use External Downloaders:</h4>
+            <div style="text-align:left;">
+                <h4 style="margin-bottom:15px;font-size:15px;">🌐 Use External Downloaders:</h4>
                 
-                <button onclick="Android.oplink('https://en.savefrom.net/1-youtube-video-downloader-94/#url=https://youtube.com/watch?v=${videoId}')" 
-                    style="width:100%;padding:12px;margin:8px 0;border-radius:10px;border:none;
-                    background:${c};color:${dc};font-weight:bold;cursor:pointer;">
-                    📥 SaveFrom.net
-                </button>
+                <div style="background:${d};padding:15px;margin:10px 0;border-radius:12px;cursor:pointer;"
+                     onclick="Android.oplink('https://en.savefrom.net/1-youtube-video-downloader-94/#url=https://youtube.com/watch?v=${videoId}')">
+                    <div style="font-weight:bold;margin-bottom:5px;">📥 SaveFrom.net</div>
+                    <div style="font-size:12px;opacity:0.7;">Fast & reliable downloads</div>
+                </div>
                 
-                <button onclick="Android.oplink('https://www.y2mate.com/youtube/${videoId}')" 
-                    style="width:100%;padding:12px;margin:8px 0;border-radius:10px;border:none;
-                    background:${c};color:${dc};font-weight:bold;cursor:pointer;">
-                    🎬 Y2Mate
-                </button>
+                <div style="background:${d};padding:15px;margin:10px 0;border-radius:12px;cursor:pointer;"
+                     onclick="Android.oplink('https://www.y2mate.com/youtube/${videoId}')">
+                    <div style="font-weight:bold;margin-bottom:5px;">🎬 Y2Mate</div>
+                    <div style="font-size:12px;opacity:0.7;">Multiple quality options</div>
+                </div>
                 
-                <button onclick="Android.oplink('https://ssyoutube.com/watch?v=${videoId}')" 
-                    style="width:100%;padding:12px;margin:8px 0;border-radius:10px;border:none;
-                    background:${c};color:${dc};font-weight:bold;cursor:pointer;">
-                    ⬇️ SSYouTube
-                </button>
+                <div style="background:${d};padding:15px;margin:10px 0;border-radius:12px;cursor:pointer;"
+                     onclick="Android.oplink('https://ssyoutube.com/watch?v=${videoId}')">
+                    <div style="font-weight:bold;margin-bottom:5px;">⬇️ SSYouTube</div>
+                    <div style="font-size:12px;opacity:0.7;">Simple & quick</div>
+                </div>
+                
+                <div style="background:${d};padding:15px;margin:10px 0;border-radius:12px;cursor:pointer;"
+                     onclick="Android.oplink('https://loader.to/en92/youtube-video-downloader.html?url=https://youtube.com/watch?v=${videoId}')">
+                    <div style="font-weight:bold;margin-bottom:5px;">💾 Loader.to</div>
+                    <div style="font-size:12px;opacity:0.7;">Feature rich downloader</div>
+                </div>
+                
+                <div style="background:${d};padding:15px;margin:10px 0;border-radius:12px;cursor:pointer;"
+                     onclick="Android.oplink('https://yt5s.biz/enxj100/${videoId}')">
+                    <div style="font-weight:bold;margin-bottom:5px;">🎵 YT5s</div>
+                    <div style="font-size:12px;opacity:0.7;">MP3 & MP4 downloads</div>
+                </div>
             </div>
             
             <button onclick="history.back()" 
                 style="width:100%;padding:14px;border-radius:10px;border:none;
-                background:#f44;color:#fff;margin-top:20px;font-weight:bold;cursor:pointer;">
+                background:#f44;color:#fff;margin-top:25px;font-weight:bold;cursor:pointer;">
+                ✖ Close
+            </button>
+        </div>
+    `;
+}
+
+/*****************************************************
+ * SHOW ERROR
+ *****************************************************/
+function showError(container, videoId, errorMsg) {
+    container.innerHTML = `
+        <div style="text-align:center;padding:40px;">
+            <div style="font-size:60px;margin-bottom:20px;">❌</div>
+            <h3 style="color:#f44;">Error</h3>
+            <p style="margin-top:15px;font-size:14px;opacity:0.8;">
+                ${errorMsg}
+            </p>
+            <button onclick="history.back()" 
+                style="padding:12px 30px;border-radius:10px;border:none;
+                background:#f44;color:#fff;margin-top:25px;font-weight:bold;cursor:pointer;">
                 Close
             </button>
         </div>
@@ -1512,9 +1370,14 @@ function showDownloadError(container, videoId, errorMsg) {
 }
 
 /*****************************************************
- * SHOW TOAST MESSAGE
+ * TOAST MESSAGE
  *****************************************************/
-function showToast(message) {
+function showToastMessage(message) {
+    if(typeof Android !== 'undefined' && Android.showToast) {
+        Android.showToast(message);
+        return;
+    }
+    
     const toast = document.createElement('div');
     toast.textContent = message;
     toast.style.cssText = `
@@ -1522,12 +1385,13 @@ function showToast(message) {
         bottom: 80px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.85);
         color: white;
         padding: 12px 24px;
         border-radius: 25px;
         z-index: 999999999;
         font-size: 14px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     `;
     
     document.body.appendChild(toast);
@@ -1535,7 +1399,11 @@ function showToast(message) {
     setTimeout(() => {
         toast.style.transition = 'opacity 0.3s';
         toast.style.opacity = '0';
-        setTimeout(() => document.body.removeChild(toast), 300);
+        setTimeout(() => {
+            if(toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
     }, 3000);
 }
 
