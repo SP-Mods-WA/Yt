@@ -1,23 +1,22 @@
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.18.1)
 
-# Project name
-project("ytsec")
+project("ytproencrypt")
 
-# Add shared library
 add_library(
-    ytsec
-    SHARED
-    native-lib.cpp
+        ytproencrypt
+        SHARED
+        native-lib.cpp
 )
 
-# Find log library
 find_library(
-    log-lib
-    log
+        log-lib
+        log
 )
 
-# Link libraries
 target_link_libraries(
-    ytsec
-    ${log-lib}
+        ytproencrypt
+        ${log-lib}
 )
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
