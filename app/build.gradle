@@ -11,21 +11,21 @@ android {
         versionCode 1
         versionName "1.00"
         
-        // ✅ NDK Support එක add කරන්න
+        // ✅ NDK Support - JNI encryption සඳහා
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
         }
         
-        // ✅ CMake Configuration
+        // ✅ CMake Configuration - C++ 11/14 support
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++14"
+                cppFlags "-std=c++14 -frtti -fexceptions"
                 arguments "-DANDROID_STL=c++_shared"
             }
         }
     }
     
-    // ✅ CMake Path
+    // ✅ CMake Path - native code build කිරීමට
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
@@ -37,22 +37,88 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            
+            // ✅ Release build සඳහා අමතර optimization
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+        }
+        
+        debug {
+            debuggable true
+            jniDebuggable true
         }
     }
     
-    // ✅ ViewBinding Enable කරන්න - මෙතන add කරන්න! 👇
+    // ✅ Build Features
     buildFeatures {
         viewBinding true
     }
     
-    // ✅ Java 8 Support (Optional but recommended)
+    // ✅ Java 8 Support - Lambda expressions සහ අනෙකුත් features සඳහා
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    // ✅ Packaging Options - Duplicate files avoid කිරීමට
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+    }
+    
+    // ✅ Splits - APK size අඩු කිරීමට (Optional)
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            universalApk true
+        }
     }
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    // Add your other dependencies here
+    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // ✅ WebView enhancement
+    implementation 'androidx.webkit:webkit:1.7.0'
+    
+    // ✅ JSON processing
+    implementation 'org.json:json:20230227'
+    
+    // ✅ Network operations
+    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    
+    // ✅ Secure preferences (Optional)
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    
+    // ✅ Background tasks
+    implementation 'androidx.work:work-runtime:2.8.1'
+    
+    // ✅ Media playback
+    implementation 'androidx.media:media:1.6.0'
+    
+    // ✅ For PiP mode
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+}
+
+// ✅ APK naming convention
+android.applicationVariants.all { variant ->
+    variant.outputs.all { output ->
+        def project = "YTPro"
+        def SEP = "_"
+        def buildType = variant.buildType.name
+        def version = variant.versionName
+        def date = new Date()
+        def formattedDate = date.format('ddMMyy_HHmm')
+        
+        def newApkName = project + SEP + buildType + SEP + version + SEP + formattedDate + ".apk"
+        outputFileName = newFileName
+    }
 }
