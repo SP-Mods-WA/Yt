@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
   private boolean isPip = false;
   private boolean dL = false;
 
-  private YTProWebview web;
+  private WebView web;
   private OnBackInvokedCallback backCallback;
   
   private RelativeLayout offlineLayout;
@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
   // 🔐 Secret Key
   private static final String SECRET_KEY = "spmods";
   
-  // 🔐 ALL Encrypted URLs
+  // 🔐 Encrypted URLs
   private static final String ENC_YOUTUBE_BASE = "FhMZBB4RFQIRHAsHFh4VFxQfAh4dGw0GFg8=";
   private static final String ENC_INNERTUBE = "FhMZBB4RFQIRHAgeEB4LFhkHDxAPGhsOAx4SFRAcGhwCHh8SHxobBhAPHRgPGR4cFw8cDR4cFREWDxACGBYZFhwfAhseFQ==";
   private static final String ENC_BGPLAY = "FhMZBB4RFQIRHAgeEB4LFhkHDxAPGhsOAx4SFRAcGhwCHh8SHxobBhAPHRgPGR4cFw8cDR4cFREWDw4GGhYaFg8fAhseFQ==";
@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
   private static final String ENC_JS_BGPLAY = "FhMZBB4RFQIRHAseFh8VFxQfAh4dGx4bFhwfGg0GBhsCFh4VFhkHDw4GGhYaFg8fAhse";
   private static final String ENC_JS_INNERTUBE = "FhMZBB4RFQIRHAseFh8VFxQfAh4dGx4bFhwfGg0GBhsCFh4VFhkHDxACGBYZFhwfAhseFQ==";
 
+  // 🔓 XOR Decryption Method
   private String xorDecrypt(String encrypted, String key) {
     try {
       byte[] encryptedBytes = Base64.decode(encrypted, Base64.DEFAULT);
@@ -108,7 +109,7 @@ public class MainActivity extends Activity {
     web = findViewById(R.id.web);
     
     if (web == null) {
-        Log.e("MainActivity", "❌ WebView not found in layout!");
+        Log.e("MainActivity", "❌ WebView not found!");
         Toast.makeText(this, "Error: WebView not initialized", Toast.LENGTH_SHORT).show();
         return;
     }
@@ -148,6 +149,10 @@ public class MainActivity extends Activity {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         cookieManager.setAcceptThirdPartyCookies(web, true);
     }
+
+    
+
+
 
     web.setWebViewClient(new WebViewClient() {
       @Override
@@ -234,7 +239,7 @@ public class MainActivity extends Activity {
                 );
 
             } catch (Exception e) {
-                Log.e("CDN Error", "❌ Exception for " + modifiedUrl + ": " + e.getMessage());
+                Log.e("CDN Error", "❌ Exception: " + e.getMessage());
                 e.printStackTrace();
                 return super.shouldInterceptRequest(view, request);
             }
@@ -251,7 +256,7 @@ public class MainActivity extends Activity {
       @Override
       public void onPageFinished(WebView p1, String url) {
         if (web == null) {
-            Log.e("WebView", "❌ WebView is null in onPageFinished!");
+            Log.e("WebView", "❌ WebView is null!");
             return;
         }
         
@@ -294,11 +299,11 @@ public class MainActivity extends Activity {
             "    .then(() => loadScript('" + bgplayUrl + "', 'BG Play'))" +
             "    .then(() => loadScript('" + innertubeUrl + "', 'InnerTube'))" +
             "    .then(() => {" +
-            "      console.log('✅ All YTPRO scripts loaded successfully!');" +
+            "      console.log('✅ All YTPRO scripts loaded!');" +
             "      window.YTPRO_LOADED = true;" +
             "    })" +
             "    .catch((error) => {" +
-            "      console.error('❌ YTPRO script loading failed:', error);" +
+            "      console.error('❌ YTPRO loading failed:', error);" +
             "      window.YTPRO_LOADED = false;" +
             "    });" +
             "})();";
@@ -319,7 +324,7 @@ public class MainActivity extends Activity {
                             "if (typeof window.ytproDownVid === 'function') {" +
                             "  window.location.hash='download';" +
                             "} else {" +
-                            "  console.error('❌ ytproDownVid not available yet');" +
+                            "  console.error('❌ ytproDownVid not available');" +
                             "}",
                             null
                         );
@@ -382,9 +387,6 @@ public class MainActivity extends Activity {
       );
     }
   }
-
-
-
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -614,7 +616,7 @@ public class MainActivity extends Activity {
       subtitle = subtitlen;
       duration = dura;
       isPlaying = true;
-      mediaSession = true; 
+      mediaSession = true;
 
       Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
       intent.putExtra("icon", icon);
@@ -784,7 +786,6 @@ public class MainActivity extends Activity {
       }
     }
   }
-
 
   public void setReceiver() {
     broadcastReceiver = new BroadcastReceiver() {
@@ -1057,8 +1058,8 @@ public class MainActivity extends Activity {
                                 
                                 String currentVersion = getCurrentVersion();
                                 
-                                Log.d("UpdateChecker", "📱 Current Version: " + currentVersion);
-                                Log.d("UpdateChecker", "🆕 Latest Version: " + latestVersion);
+                                Log.d("UpdateChecker", "📱 Current: " + currentVersion);
+                                Log.d("UpdateChecker", "🆕 Latest: " + latestVersion);
                                 
                                 if (isNewerVersion(currentVersion, latestVersion)) {
                                     showUpdateDialog(latestVersion, downloadUrl, releaseNotes);
