@@ -8,14 +8,13 @@ android {
         applicationId "com.spmods.ytpro"
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode 1000
-        versionName "1.95"
+        versionCode 1
+        versionName "1.00"
     }
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -24,8 +23,6 @@ android {
 dependencies {
     // Add your dependencies here
 }
-
-
 
 
 
