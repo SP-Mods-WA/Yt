@@ -40,6 +40,11 @@ android {
         }
     }
     
+    // ✅ ViewBinding Enable කරන්න - මෙතන add කරන්න! 👇
+    buildFeatures {
+        viewBinding true
+    }
+    
     // ✅ Java 8 Support (Optional but recommended)
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -48,5 +53,6 @@ android {
 }
 
 dependencies {
-    // Add your dependencies here
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    // Add your other dependencies here
 }
