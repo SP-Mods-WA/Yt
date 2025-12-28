@@ -169,198 +169,239 @@ public class MainActivity extends Activity {
         }
     }
     
+            
     private void injectMainScript() {
-        Log.d("YTPro", "🔄 Injecting main script.js...");
-        
-        // Multiple CDN URLs for redundancy
-        String[] cdnUrls = {
-            "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js",
-            "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js",
-            "https://cdn.statically.io/gh/SP-Mods-WA/Yt/main/scripts/script.js",
-            "https://gitcdn.link/repo/SP-Mods-WA/Yt/main/scripts/script.js"
-        };
-        
-        StringBuilder jsBuilder = new StringBuilder();
-        jsBuilder.append("(function() {");
-        jsBuilder.append("  console.log('📥 Loading YTPRO scripts...');");
-        jsBuilder.append("  ");
-        jsBuilder.append("  // Check if already loaded");
-        jsBuilder.append("  if (window.YTProVer) {");
-        jsBuilder.append("    console.log('✅ YTPRO already loaded');");
-        jsBuilder.append("    return;");
-        jsBuilder.append("  }");
-        jsBuilder.append("  ");
-        jsBuilder.append("  // Function to load script");
-        jsBuilder.append("  function loadScript(url, name, callback) {");
-        jsBuilder.append("    console.log('🔄 Loading ' + name + ' from: ' + url);");
-        jsBuilder.append("    var script = document.createElement('script');");
-        jsBuilder.append("    script.src = url + '?v=' + Date.now();");
-        jsBuilder.append("    script.async = false;");
-        jsBuilder.append("    ");
-        jsBuilder.append("    script.onload = function() {");
-        jsBuilder.append("      console.log('✅ ' + name + ' loaded');");
-        jsBuilder.append("      if (callback) setTimeout(function() { callback(true); }, 100);");
-        jsBuilder.append("    };");
-        jsBuilder.append("    ");
-        jsBuilder.append("    script.onerror = function(e) {");
-        jsBuilder.append("      console.error('❌ Failed to load ' + name + ' from ' + url);");
-        jsBuilder.append("      if (callback) callback(false);");
-        jsBuilder.append("    };");
-        jsBuilder.append("    ");
-        jsBuilder.append("    document.body.appendChild(script);");
-        jsBuilder.append("  }");
-        jsBuilder.append("  ");
-        jsBuilder.append("  // Try multiple URLs");
-        jsBuilder.append("  var urls = [");
-        for (int i = 0; i < cdnUrls.length; i++) {
-            jsBuilder.append("    '").append(cdnUrls[i]).append("'");
-            if (i < cdnUrls.length - 1) jsBuilder.append(",");
-        }
-        jsBuilder.append("  ];");
-        jsBuilder.append("  ");
-        jsBuilder.append("  var currentIndex = 0;");
-        jsBuilder.append("  ");
-        jsBuilder.append("  function tryNextUrl() {");
-        jsBuilder.append("    if (currentIndex >= urls.length) {");
-        jsBuilder.append("      console.error('❌ All CDN URLs failed');");
-        jsBuilder.append("      loadViaFetch();");
-        jsBuilder.append("      return;");
-        jsBuilder.append("    }");
-        jsBuilder.append("    ");
-        jsBuilder.append("    var url = urls[currentIndex];");
-        jsBuilder.append("    loadScript(url, 'main', function(success) {");
-        jsBuilder.append("      if (success) {");
-        jsBuilder.append("        // Check if YTPRO initialized");
-        jsBuilder.append("        setTimeout(function() {");
-        jsBuilder.append("          if (window.YTProVer) {");
-        jsBuilder.append("            console.log('🎉 Main script loaded successfully');");
-        jsBuilder.append("            loadBgPlayScript();");
-        jsBuilder.append("          } else {");
-        jsBuilder.append("            console.log('⚠️ Script loaded but YTPRO not initialized');");
-        jsBuilder.append("            currentIndex++;");
-        jsBuilder.append("            tryNextUrl();");
-        jsBuilder.append("          }");
-        jsBuilder.append("        }, 500);");
-        jsBuilder.append("      } else {");
-        jsBuilder.append("        currentIndex++;");
-        jsBuilder.append("        tryNextUrl();");
-        jsBuilder.append("      }");
-        jsBuilder.append("    });");
-        jsBuilder.append("  }");
-        jsBuilder.append("  ");
-        jsBuilder.append("  function loadViaFetch() {");
-        jsBuilder.append("    console.log('🔄 Trying fetch method...');");
-        jsBuilder.append("    fetch('https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js?v=' + Date.now())");
-        jsBuilder.append("      .then(response => {");
-        jsBuilder.append("        if (!response.ok) throw new Error('HTTP ' + response.status);");
-        jsBuilder.append("        return response.text();");
-        jsBuilder.append("      })");
-        jsBuilder.append("      .then(code => {");
-        jsBuilder.append("        console.log('✅ Fetched script successfully');");
-        jsBuilder.append("        try {");
-        jsBuilder.append("          eval(code);");
-        jsBuilder.append("          console.log('✅ Script evaluated');");
-        jsBuilder.append("          setTimeout(function() {");
-        jsBuilder.append("            if (window.YTProVer) {");
-        jsBuilder.append("              console.log('🎉 YTPRO loaded via fetch');");
-        jsBuilder.append("              loadBgPlayScript();");
-        jsBuilder.append("            } else {");
-        jsBuilder.append("              console.log('⚠️ YTPRO not initialized after fetch');");
-        jsBuilder.append("              createFallback();");
-        jsBuilder.append("            }");
-        jsBuilder.append("          }, 300);");
-        jsBuilder.append("        } catch (e) {");
-        jsBuilder.append("          console.error('❌ Eval error:', e);");
-        jsBuilder.append("          createFallback();");
-        jsBuilder.append("        }");
-        jsBuilder.append("      })");
-        jsBuilder.append("      .catch(error => {");
-        jsBuilder.append("        console.error('❌ Fetch failed:', error);");
-        jsBuilder.append("        createFallback();");
-        jsBuilder.append("      });");
-        jsBuilder.append("  }");
-        jsBuilder.append("  ");
-        jsBuilder.append("  function loadBgPlayScript() {");
-        jsBuilder.append("    console.log('📥 Loading bgplay.js...');");
-        jsBuilder.append("    loadScript('https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js', 'bgplay', function(success) {");
-        jsBuilder.append("      if (success) {");
-        jsBuilder.append("        console.log('✅ BG Play script loaded');");
-        jsBuilder.append("        window.YTPRO_BGPLAY_LOADED = true;");
-        jsBuilder.append("        loadInnerTubeScript();");
-        jsBuilder.append("      } else {");
-        jsBuilder.append("        console.log('⚠️ BG Play failed, skipping...');");
-        jsBuilder.append("        loadInnerTubeScript();");
-        jsBuilder.append("      }");
-        jsBuilder.append("    });");
-        jsBuilder.append("  }");
-        jsBuilder.append("  ");
-        jsBuilder.append("  function loadInnerTubeScript() {");
-        jsBuilder.append("    console.log('📥 Loading innertube.js...');");
-        jsBuilder.append("    loadScript('https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js', 'innertube', function(success) {");
-        jsBuilder.append("      if (success) {");
-        jsBuilder.append("        console.log('✅ InnerTube script loaded');");
-        jsBuilder.append("        window.YTPRO_INNERTUBE_LOADED = true;");
-        jsBuilder.append("      } else {");
-        jsBuilder.append("        console.log('⚠️ InnerTube failed, skipping...');");
-        jsBuilder.append("      }");
-        jsBuilder.append("      ");
-        jsBuilder.append("      window.YTPRO_LOADED = true;");
-        jsBuilder.append("      console.log('🎉 All scripts loaded!');");
-        jsBuilder.append("      ");
-        jsBuilder.append("      // Initialize YTPRO");
-        jsBuilder.append("      if (typeof window.initYTPro === 'function') {");
-        jsBuilder.append("        window.initYTPro();");
-        jsBuilder.append("      }");
-        jsBuilder.append("    });");
-        jsBuilder.append("  }");
-        jsBuilder.append("  ");
-        jsBuilder.append("  function createFallback() {");
-        jsBuilder.append("    console.log('⚠️ Creating fallback YTPRO');");
-        jsBuilder.append("    window.YTProVer = '2.0-fallback';");
-        jsBuilder.append("    window.YTPRO_LOADED = true;");
-        jsBuilder.append("    console.log('✅ Fallback YTPRO created');");
-        jsBuilder.append("  }");
-        jsBuilder.append("  ");
-        jsBuilder.append("  // Start loading");
-        jsBuilder.append("  tryNextUrl();");
-        jsBuilder.append("})();");
-        
-        web.evaluateJavascript(jsBuilder.toString(), null);
-        
-        // Check after 3 seconds and retry if needed
-        new Handler().postDelayed(() -> {
-            checkScriptStatus();
-        }, 3000);
-    }
+    Log.d("YTPro", "🔄 Starting YTPRO script injection...");
     
-    private void checkScriptStatus() {
-        String checkScript = 
-            "(function() {" +
-            "  var status = {" +
-            "    ytpro: !!window.YTProVer," +
-            "    version: window.YTProVer || 'none'," +
-            "    bgplay: !!window.YTPRO_BGPLAY_LOADED," +
-            "    innertube: !!window.YTPRO_INNERTUBE_LOADED," +
-            "    loaded: !!window.YTPRO_LOADED" +
-            "  };" +
-            "  console.log('📊 YTPRO Status:', status);" +
-            "  if (!status.ytpro) {" +
-            "    console.log('⚠️ YTPRO not loaded, trying direct injection...');" +
-            "    // Try to inject directly" +
-            "    var script = document.createElement('script');" +
-            "    script.textContent = 'window.YTProVer = \\'2.0-direct\\'; window.YTPRO_LOADED = true; console.log(\\'✅ Direct injection successful\\');';" +
-            "    document.body.appendChild(script);" +
-            "  }" +
-            "  return JSON.stringify(status);" +
-            "})();";
-        
-        web.evaluateJavascript(checkScript, new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String value) {
-                Log.d("YTPro", "📊 Script Status: " + value);
+    // Create a single JavaScript that loads all scripts
+    String jsCode = 
+        "(function() {" +
+        "  console.log('🚀 YTPRO injection started');" +
+        "  " +
+        "  // Check if already loaded" +
+        "  if (window.YTPRO_LOADED) {" +
+        "    console.log('✅ YTPRO already loaded');" +
+        "    return;" +
+        "  }" +
+        "  " +
+        "  // Function to inject script directly" +
+        "  function injectScript(code) {" +
+        "    try {" +
+        "      var script = document.createElement('script');" +
+        "      script.textContent = code;" +
+        "      document.head.appendChild(script);" +
+        "      return true;" +
+        "    } catch (e) {" +
+        "      console.error('❌ Script injection failed:', e);" +
+        "      return false;" +
+        "    }" +
+        "  }" +
+        "  " +
+        "  // Function to fetch script content" +
+        "  function fetchScript(url, callback) {" +
+        "    console.log('📥 Fetching: ' + url);" +
+        "    " +
+        "    // Create a unique timestamp to avoid cache" +
+        "    var fetchUrl = url + '?t=' + Date.now() + '&r=' + Math.random();" +
+        "    " +
+        "    // Use XMLHttpRequest for better compatibility" +
+        "    var xhr = new XMLHttpRequest();" +
+        "    xhr.open('GET', fetchUrl, true);" +
+        "    xhr.onreadystatechange = function() {" +
+        "      if (xhr.readyState === 4) {" +
+        "        if (xhr.status === 200) {" +
+        "          console.log('✅ Fetched: ' + url);" +
+        "          callback(xhr.responseText, true);" +
+        "        } else {" +
+        "          console.error('❌ Failed to fetch ' + url + ': ' + xhr.status);" +
+        "          callback(null, false);" +
+        "        }" +
+        "      }" +
+        "    };" +
+        "    xhr.onerror = function() {" +
+        "      console.error('❌ Network error fetching: ' + url);" +
+        "      callback(null, false);" +
+        "    };" +
+        "    xhr.send();" +
+        "  }" +
+        "  " +
+        "  // List of scripts to load (in order)" +
+        "  var scripts = [" +
+        "    'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js'," +
+        "    'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js'," +
+        "    'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js'" +
+        "  ];" +
+        "  " +
+        "  var currentIndex = 0;" +
+        "  " +
+        "  function loadNextScript() {" +
+        "    if (currentIndex >= scripts.length) {" +
+        "      // All scripts loaded" +
+        "      window.YTPRO_LOADED = true;" +
+        "      console.log('🎉 All YTPRO scripts loaded successfully!');" +
+        "      " +
+        "      // Initialize YTPRO if function exists" +
+        "      setTimeout(function() {" +
+        "        if (typeof window.initYTPro === 'function') {" +
+        "          window.initYTPro();" +
+        "          console.log('✅ YTPRO initialized');" +
+        "        } else {" +
+        "          console.log('ℹ️ initYTPro function not found, checking for other init functions');" +
+        "          " +
+        "          // Try common initialization patterns" +
+        "          if (typeof window.YTPRO !== 'undefined' && typeof window.YTPRO.init === 'function') {" +
+        "            window.YTPRO.init();" +
+        "          } else if (typeof window.ytproInit === 'function') {" +
+        "            window.ytproInit();" +
+        "          }" +
+        "        }" +
+        "      }, 500);" +
+        "      return;" +
+        "    }" +
+        "    " +
+        "    var url = scripts[currentIndex];" +
+        "    " +
+        "    fetchScript(url, function(content, success) {" +
+        "      if (success && content) {" +
+        "        // Inject the script content directly" +
+        "        var injected = injectScript(content);" +
+        "        if (injected) {" +
+        "          console.log('✅ Injected: ' + url.split('/').pop());" +
+        "          " +
+        "          // Wait a bit before loading next script" +
+        "          setTimeout(function() {" +
+        "            currentIndex++;" +
+        "            loadNextScript();" +
+        "          }, 300);" +
+        "        } else {" +
+        "          // Try next URL or fallback" +
+        "          currentIndex++;" +
+        "          loadNextScript();" +
+        "        }" +
+        "      } else {" +
+        "        // Try alternative URL or CDN" +
+        "        console.log('🔄 Trying alternative for: ' + url.split('/').pop());" +
+        "        " +
+        "        // Try jsDelivr CDN as fallback" +
+        "        var cdnUrl = url.replace('raw.githubusercontent.com', 'cdn.jsdelivr.net/gh');" +
+        "        cdnUrl = cdnUrl.replace('/main/', '@main/');" +
+        "        " +
+        "        fetchScript(cdnUrl, function(cdnContent, cdnSuccess) {" +
+        "          if (cdnSuccess && cdnContent) {" +
+        "            var cdnInjected = injectScript(cdnContent);" +
+        "            if (cdnInjected) {" +
+        "              console.log('✅ Injected via CDN: ' + url.split('/').pop());" +
+        "              setTimeout(function() {" +
+        "                currentIndex++;" +
+        "                loadNextScript();" +
+        "              }, 300);" +
+        "            } else {" +
+        "              currentIndex++;" +
+        "              loadNextScript();" +
+        "            }" +
+        "          } else {" +
+        "            // Skip this script and continue" +
+        "            console.log('⚠️ Skipping: ' + url.split('/').pop());" +
+        "            currentIndex++;" +
+        "            loadNextScript();" +
+        "          }" +
+        "        });" +
+        "      }" +
+        "    });" +
+        "  }" +
+        "  " +
+        "  // Start loading scripts" +
+        "  loadNextScript();" +
+        "  " +
+        "  // Set up periodic check to see if YTPRO loaded" +
+        "  var checkAttempts = 0;" +
+        "  var maxAttempts = 30; // 30 seconds" +
+        "  var checkInterval = setInterval(function() {" +
+        "    checkAttempts++;" +
+        "    " +
+        "    // Check for various YTPRO indicators" +
+        "    var ytproLoaded = window.YTPRO_LOADED || " +
+        "                     window.YTProVer || " +
+        "                     (typeof window.YTPRO !== 'undefined') || " +
+        "                     (typeof window.ytproDownVid === 'function');" +
+        "    " +
+        "    if (ytproLoaded) {" +
+        "      clearInterval(checkInterval);" +
+        "      console.log('✅ YTPRO successfully detected after ' + checkAttempts + ' checks');" +
+        "    } else if (checkAttempts >= maxAttempts) {" +
+        "      clearInterval(checkInterval);" +
+        "      console.warn('⚠️ YTPRO not detected after ' + maxAttempts + ' checks');" +
+        "      " +
+        "      // Create minimal fallback functions" +
+        "      window.YTPRO_LOADED = true;" +
+        "      if (typeof window.ytproDownVid === 'undefined') {" +
+        "        window.ytproDownVid = function() {" +
+        "          console.log('📥 Download triggered (fallback)');" +
+        "          return true;" +
+        "        };" +
+        "      }" +
+        "    }" +
+        "  }, 1000);" +
+        "})();";
+    
+    // Execute the injection
+    web.evaluateJavascript(jsCode, null);
+    
+    // Additional safety: inject a simple version after 5 seconds
+    new Handler().postDelayed(() -> {
+        injectFallbackScript();
+    }, 5000);
+}
+
+private void injectFallbackScript() {
+    // Check if scripts loaded
+    String checkScript = 
+        "(function() {" +
+        "  var status = {" +
+        "    YTPRO_LOADED: !!window.YTPRO_LOADED," +
+        "    YTProVer: window.YTProVer || 'none'," +
+        "    ytproDownVid: typeof window.ytproDownVid," +
+        "    YTPRO: typeof window.YTPRO" +
+        "  };" +
+        "  console.log('📊 Current YTPRO Status:', status);" +
+        "  return JSON.stringify(status);" +
+        "})();";
+    
+    web.evaluateJavascript(checkScript, new ValueCallback<String>() {
+        @Override
+        public void onReceiveValue(String value) {
+            Log.d("YTPro", "📊 Injection Status: " + value);
+            
+            // If not loaded, inject a minimal version
+            if (value != null && !value.contains("\"YTPRO_LOADED\":true")) {
+                Log.w("YTPro", "⚠️ YTPRO not loaded, injecting fallback...");
+                
+                String fallbackJs = 
+                    "(function() {" +
+                    "  console.log('🔄 Injecting fallback YTPRO...');" +
+                    "  " +
+                    "  // Create minimal YTPRO object" +
+                    "  window.YTPRO = window.YTPRO || {};" +
+                    "  window.YTPRO_LOADED = true;" +
+                    "  window.YTProVer = '2.0-fallback';" +
+                    "  " +
+                    "  // Essential functions" +
+                    "  window.ytproDownVid = function() {" +
+                    "    console.log('📥 Download video (fallback)');" +
+                    "    // Trigger download by navigating to hash" +
+                    "    window.location.hash = '#download';" +
+                    "    return true;" +
+                    "  };" +
+                    "  " +
+                    "  console.log('✅ Fallback YTPRO created');" +
+                    "})();";
+                
+                web.evaluateJavascript(fallbackJs, null);
             }
-        });
-    }
+        }
+    });
+        }
+    
     
     private void triggerDownload() {
         new Handler().postDelayed(() -> {
@@ -935,3 +976,4 @@ public class MainActivity extends Activity {
         });
     }
 }
+
