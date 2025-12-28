@@ -28,6 +28,9 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends Activity {
@@ -563,11 +566,11 @@ public class MainActivity extends Activity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 web.loadUrl("https://m.youtube.com");
             } else {
-                Toast.makeText(this, R.string.grant_mic, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show();
             }
         } else if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                Toast.makeText(this, R.string.grant_storage, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Storage permission required", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -617,7 +620,11 @@ public class MainActivity extends Activity {
         public CustomWebClient() {}
 
         public Bitmap getDefaultVideoPoster() {
-            return BitmapFactory.decodeResource(getResources(), R.drawable.ic_video_poster);
+            // Create a simple bitmap if ic_video_poster doesn't exist
+            Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            canvas.drawColor(Color.DKGRAY);
+            return bitmap;
         }
 
         public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback viewCallback) {
@@ -717,7 +724,7 @@ public class MainActivity extends Activity {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
             
             request.setTitle(filename)
-                   .setDescription(getString(R.string.downloading))
+                   .setDescription("Downloading file")
                    .setMimeType(mtype)
                    .setAllowedOverMetered(true)
                    .setAllowedOverRoaming(true)
@@ -725,7 +732,7 @@ public class MainActivity extends Activity {
                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             
             dm.enqueue(request);
-            Toast.makeText(this, R.string.dl_started, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show();
             
         } catch (Exception e) {
             Log.e("Download", "Failed to download", e);
@@ -966,10 +973,10 @@ public class MainActivity extends Activity {
                     }
                     enterPictureInPictureMode(builder.build());
                 } catch (Exception e) {
-                    Toast.makeText(mContext, R.string.no_pip, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(mContext, "PiP not available", Toast.LENGTH_SHORT).show();
                 }
             } else {
-                Toast.makeText(mContext, R.string.no_pip, Toast.LENGTH_SHORT).show();
+                Toast.makeText(mContext, "PiP not available", Toast.LENGTH_SHORT).show();
             }
         }
         
