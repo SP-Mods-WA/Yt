@@ -10,6 +10,27 @@ android {
         targetSdkVersion 36
         versionCode 1
         versionName "1.00"
+        
+        // ✅ NDK Support එක add කරන්න
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
+        
+        // ✅ CMake Configuration
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++14"
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+    }
+    
+    // ✅ CMake Path
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
     }
 
     buildTypes {
@@ -18,13 +39,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    
+    // ✅ Java 8 Support (Optional but recommended)
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
     // Add your dependencies here
 }
-
-
-
-
-
