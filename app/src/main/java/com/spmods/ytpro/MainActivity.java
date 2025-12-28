@@ -383,8 +383,7 @@ public class MainActivity extends Activity {
     }
   }
 
-// CONTINUE IN PART 2
-// PART 2 - PLACE AFTER PART 1
+
 
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -786,8 +785,6 @@ public class MainActivity extends Activity {
     }
   }
 
-// CONTINUE IN PART 3
-// PART 3 - FINAL - PLACE AFTER PART 2
 
   public void setReceiver() {
     broadcastReceiver = new BroadcastReceiver() {
@@ -1156,4 +1153,4 @@ public class MainActivity extends Activity {
     });
   }
 
-} // END OF MainActivity CLASS
+} 
