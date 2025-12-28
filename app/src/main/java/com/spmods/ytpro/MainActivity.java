@@ -50,7 +50,6 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-        // WebView debugging enable
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
@@ -74,7 +73,6 @@ public class MainActivity extends Activity {
         web = findViewById(R.id.web);
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
        
-        // WebView settings
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -89,7 +87,6 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-        // Initial URL
         String url = "https://m.youtube.com/";
         Intent intent = getIntent();
         String action = intent.getAction();
@@ -106,29 +103,25 @@ public class MainActivity extends Activity {
         
         web.loadUrl(url);
         
-        // JavaScript Interface
         web.addJavascriptInterface(new WebAppInterface(this), "Android");
         
-        // WebChromeClient
         web.setWebChromeClient(new CustomWebClient());
         
-        // WebViewClient - SIMPLE VERSION
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                Log.d("YTPro", "🚀 Page started: " + url);
+                Log.d("YTPro", "🚀 Loading: " + url);
                 super.onPageStarted(view, url, favicon);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                Log.d("YTPro", "✅ Page finished: " + url);
+                Log.d("YTPro", "✅ Loaded: " + url);
                 super.onPageFinished(view, url);
                 
-                // Inject YTPro scripts AFTER page loads
-                injectYTProScripts();
+                // Inject main script.js FIRST
+                injectMainScript();
                 
-                // Handle download if needed
                 if (dL) {
                     triggerDownload();
                 }
@@ -148,7 +141,6 @@ public class MainActivity extends Activity {
             
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                // Open external links in browser
                 if (url.startsWith("http") && !url.contains("youtube.com") && !url.contains("youtu.be")) {
                     try {
                         Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
@@ -164,7 +156,6 @@ public class MainActivity extends Activity {
 
         setReceiver();
 
-        // Handle back navigation for Android 13+
         if (Build.VERSION.SDK_INT >= 33) {
             OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
             backCallback = () -> {
@@ -178,44 +169,178 @@ public class MainActivity extends Activity {
         }
     }
     
-    private void injectYTProScripts() {
-        Log.d("YTPro", "🔄 Injecting YTPro scripts...");
+    private void injectMainScript() {
+        Log.d("YTPro", "🔄 Injecting main script.js...");
         
-        // First, load the main script
-        loadScript("https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js", "main");
+        // Use direct CDN URL for main script.js
+        String scriptUrl = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js";
         
-        // Then load others with delay
-        new Handler().postDelayed(() -> {
-            loadScript("https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js", "bgplay");
-        }, 1500);
-        
-        new Handler().postDelayed(() -> {
-            loadScript("https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js", "innertube");
-        }, 3000);
-    }
-    
-    private void loadScript(String url, String name) {
         String jsCode = String.format(
             "(function() {" +
-            "  console.log('📥 Loading %s script...');" +
+            "  console.log('📥 Loading YTPro main script...');" +
+            "  " +
+            "  // First check if already loaded" +
+            "  if (window.YTProVer) {" +
+            "    console.log('✅ YTPRO already loaded');" +
+            "    return;" +
+            "  }" +
+            "  " +
+            "  // Create script element" +
             "  var script = document.createElement('script');" +
             "  script.src = '%s?v=' + Date.now();" +
             "  script.async = false;" +
+            "  " +
             "  script.onload = function() {" +
-            "    console.log('✅ %s script loaded successfully');" +
-            "    if (typeof window.YTPRO_LOADED === 'undefined') {" +
-            "      window.YTPRO_LOADED = {};" +
-            "    }" +
-            "    window.YTPRO_LOADED.%s = true;" +
-            "    checkAllScripts();" +
+            "    console.log('✅ Main script loaded');" +
+            "    window.YTPRO_MAIN_LOADED = true;" +
+            "    " +
+            "    // Now load bgplay.js" +
+            "    setTimeout(function() {" +
+            "      loadBgPlayScript();" +
+            "    }, 500);" +
             "  };" +
+            "  " +
             "  script.onerror = function(e) {" +
-            "    console.error('❌ Failed to load %s script:', e);" +
+            "    console.error('❌ Failed to load main script:', e);" +
+            "    " +
+            "    // Try fallback URL" +
+            "    setTimeout(function() {" +
+            "      console.log('🔄 Trying fallback URL...');" +
+            "      var fallbackScript = document.createElement('script');" +
+            "      fallbackScript.src = 'https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js?v=' + Date.now();" +
+            "      fallbackScript.async = false;" +
+            "      fallbackScript.onload = function() {" +
+            "        console.log('✅ Fallback script loaded');" +
+            "        window.YTPRO_MAIN_LOADED = true;" +
+            "        setTimeout(function() {" +
+            "          loadBgPlayScript();" +
+            "        }, 500);" +
+            "      };" +
+            "      document.body.appendChild(fallbackScript);" +
+            "    }, 1000);" +
             "  };" +
+            "  " +
             "  document.body.appendChild(script);" +
+            "  " +
+            "  function loadBgPlayScript() {" +
+            "    console.log('📥 Loading bgplay script...');" +
+            "    var bgScript = document.createElement('script');" +
+            "    bgScript.src = 'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js?v=' + Date.now();" +
+            "    bgScript.async = false;" +
+            "    bgScript.onload = function() {" +
+            "      console.log('✅ BG Play script loaded');" +
+            "      window.YTPRO_BGPLAY_LOADED = true;" +
+            "      " +
+            "      // Load innertube.js" +
+            "      setTimeout(function() {" +
+            "        loadInnerTubeScript();" +
+            "      }, 500);" +
+            "    };" +
+            "    document.body.appendChild(bgScript);" +
+            "  }" +
+            "  " +
+            "  function loadInnerTubeScript() {" +
+            "    console.log('📥 Loading InnerTube script...');" +
+            "    var innerScript = document.createElement('script');" +
+            "    innerScript.src = 'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js?v=' + Date.now();" +
+            "    innerScript.async = false;" +
+            "    innerScript.onload = function() {" +
+            "      console.log('✅ InnerTube script loaded');" +
+            "      window.YTPRO_INNERTUBE_LOADED = true;" +
+            "      window.YTPRO_LOADED = true;" +
+            "      console.log('🎉 All YTPRO scripts loaded!');" +
+            "      " +
+            "      // Initialize YTPRO if function exists" +
+            "      if (typeof window.initYTPro === 'function') {" +
+            "        window.initYTPro();" +
+            "      }" +
+            "    };" +
+            "    document.body.appendChild(innerScript);" +
+            "  }" +
             "})();",
-            name, url, name, name, name
+            scriptUrl
         );
+        
+        web.evaluateJavascript(jsCode, null);
+        
+        // Check script status after 5 seconds
+        new Handler().postDelayed(() -> {
+            checkScriptStatus();
+        }, 5000);
+    }
+    
+    private void checkScriptStatus() {
+        String jsCheck = 
+            "(function() {" +
+            "  var status = {" +
+            "    main: window.YTProVer !== undefined," +
+            "    bgplay: window.YTPRO_BGPLAY_LOADED === true," +
+            "    innertube: window.YTPRO_INNERTUBE_LOADED === true," +
+            "    loaded: window.YTPRO_LOADED === true" +
+            "  };" +
+            "  console.log('📊 YTPRO Status:', status);" +
+            "  return JSON.stringify(status);" +
+            "})();";
+        
+        web.evaluateJavascript(jsCheck, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                Log.d("YTPro", "📊 Script Status: " + value);
+                
+                // If not loaded, try alternative method
+                if (value != null && !value.contains("\"main\":true")) {
+                    Log.w("YTPro", "⚠️ Main script not loaded, trying alternative...");
+                    injectScriptAlternative();
+                }
+            }
+        });
+    }
+    
+    private void injectScriptAlternative() {
+        // Alternative injection method - direct fetch and eval
+        String jsCode = 
+            "(function() {" +
+            "  console.log('🔄 Trying alternative script loading...');" +
+            "  " +
+            "  // Function to fetch and eval script" +
+            "  function loadScriptByFetch(url, name) {" +
+            "    return fetch(url + '?v=' + Date.now())" +
+            "      .then(response => {" +
+            "        if (!response.ok) throw new Error('Failed to fetch');" +
+            "        return response.text();" +
+            "      })" +
+            "      .then(code => {" +
+            "        console.log('✅ Fetched ' + name);" +
+            "        eval(code);" +
+            "        return true;" +
+            "      })" +
+            "      .catch(error => {" +
+            "        console.error('❌ Failed to fetch ' + name + ':', error);" +
+            "        return false;" +
+            "      });" +
+            "  }" +
+            "  " +
+            "  // Load scripts in sequence" +
+            "  loadScriptByFetch('https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js', 'main')" +
+            "    .then(success => {" +
+            "      if (success) {" +
+            "        return loadScriptByFetch('https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js', 'bgplay');" +
+            "      }" +
+            "      return false;" +
+            "    })" +
+            "    .then(success => {" +
+            "      if (success) {" +
+            "        return loadScriptByFetch('https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js', 'innertube');" +
+            "      }" +
+            "      return false;" +
+            "    })" +
+            "    .then(success => {" +
+            "      if (success) {" +
+            "        console.log('🎉 All scripts loaded via fetch!');" +
+            "        window.YTPRO_LOADED = true;" +
+            "      }" +
+            "    });" +
+            "})();";
         
         web.evaluateJavascript(jsCode, null);
     }
@@ -227,12 +352,8 @@ public class MainActivity extends Activity {
                 "  console.log('⬇️ Triggering download...');" +
                 "  window.location.hash = '#download';" +
                 "} else {" +
-                "  console.log('⏳ Waiting for ytproDownVid...');" +
-                "  setTimeout(function() {" +
-                "    if (typeof window.ytproDownVid === 'function') {" +
-                "      window.location.hash = '#download';" +
-                "    }" +
-                "  }, 2000);" +
+                "  console.log('⏳ ytproDownVid not available yet');" +
+                "  console.log('Available functions:', Object.keys(window).filter(k => typeof window[k] === 'function'));" +
                 "}",
                 null
             );
@@ -251,7 +372,7 @@ public class MainActivity extends Activity {
             }
         } else if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                Toast.makeText(this, "Storage permission required for downloads", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Storage permission required", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -302,7 +423,6 @@ public class MainActivity extends Activity {
         
         @Override
         public Bitmap getDefaultVideoPoster() {
-            // Create a simple placeholder
             Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
             canvas.drawColor(Color.DKGRAY);
@@ -319,18 +439,15 @@ public class MainActivity extends Activity {
             mCustomView = view;
             mCustomViewCallback = callback;
             
-            // Add to decor view
             FrameLayout decor = (FrameLayout) getWindow().getDecorView();
             decor.addView(mCustomView, new FrameLayout.LayoutParams(-1, -1));
             
-            // Hide system UI
             getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN |
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             );
             
-            // Set orientation
             if (portrait) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
             } else {
@@ -342,14 +459,10 @@ public class MainActivity extends Activity {
         public void onHideCustomView() {
             if (mCustomView == null) return;
             
-            // Remove from decor view
             FrameLayout decor = (FrameLayout) getWindow().getDecorView();
             decor.removeView(mCustomView);
             
-            // Restore orientation
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-            
-            // Restore system UI
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
             
             mCustomViewCallback.onCustomViewHidden();
@@ -711,10 +824,8 @@ public class MainActivity extends Activity {
         
         isOffline = true;
         runOnUiThread(() -> {
-            // Hide WebView
             web.setVisibility(View.GONE);
             
-            // Create offline layout
             offlineLayout = new RelativeLayout(this);
             offlineLayout.setLayoutParams(new RelativeLayout.LayoutParams(
                 RelativeLayout.LayoutParams.MATCH_PARENT,
@@ -733,7 +844,6 @@ public class MainActivity extends Activity {
             params.addRule(RelativeLayout.CENTER_IN_PARENT);
             center.setLayoutParams(params);
             
-            // Icon
             TextView icon = new TextView(this);
             icon.setText("📡");
             icon.setTextSize(50);
@@ -741,7 +851,6 @@ public class MainActivity extends Activity {
             icon.setGravity(Gravity.CENTER);
             center.addView(icon);
             
-            // Title
             TextView title = new TextView(this);
             title.setText("No Internet");
             title.setTextSize(18);
@@ -756,7 +865,6 @@ public class MainActivity extends Activity {
             title.setLayoutParams(titleParams);
             center.addView(title);
             
-            // Message
             TextView message = new TextView(this);
             message.setText("Please check your connection");
             message.setTextSize(14);
@@ -768,7 +876,6 @@ public class MainActivity extends Activity {
             ));
             center.addView(message);
             
-            // Retry Button
             Button retry = new Button(this);
             retry.setText("RETRY");
             retry.setTextColor(Color.WHITE);
@@ -791,7 +898,6 @@ public class MainActivity extends Activity {
             center.addView(retry);
             offlineLayout.addView(center);
             
-            // Add to content view
             ViewGroup root = (ViewGroup) findViewById(android.R.id.content);
             root.addView(offlineLayout);
         });
