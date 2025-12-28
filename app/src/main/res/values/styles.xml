@@ -1,15 +1,27 @@
 <resources>
-         <style name="AppTheme"	parent="@android:style/Theme.Material.NoActionBar">
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
-		<item name="android:colorControlHighlight">@color/colorControlHighlight</item>
-		<item name="android:colorControlNormal">@color/colorControlNormal</item>
-		<item name="android:statusBarColor">@color/colorPrimary</item>
-                <item name="android:windowTranslucentStatus">false</item>
-		<item name="android:windowLightStatusBar">false</item>
-	</style>
-	<style name="NoStatusBar" parent="AppTheme">
-		<item name="android:windowFullscreen">true</item>
-	</style>
+    <!-- Existing AppTheme -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/colorPrimary</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="android:colorControlHighlight">@color/colorControlHighlight</item>
+        <item name="android:colorControlNormal">@color/colorControlNormal</item>
+        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    
+    <style name="NoStatusBar" parent="AppTheme">
+        <item name="android:windowFullscreen">true</item>
+    </style>
+    
+    <!-- ✅ NEW: Splash Theme -->
+    <style name="SplashTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowTranslucentStatus">false</item>
+    </style>
 </resources>
