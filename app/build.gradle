@@ -8,8 +8,8 @@ android {
         applicationId "com.spmods.ytpro"
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode 1
-        versionName "3.95"
+        versionCode 1000
+        versionName "1.95"
     }
 
     buildTypes {
@@ -24,6 +24,7 @@ android {
 dependencies {
     // Add your dependencies here
 }
+
 
 
 
