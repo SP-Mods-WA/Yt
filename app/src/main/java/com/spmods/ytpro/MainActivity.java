@@ -227,69 +227,69 @@ public class MainActivity extends Activity {
                 );
                 
                 // Enhanced script loader with FALLBACKS
-                String scriptLoader = 
-                    "(function() {" +
-                    "  console.log('🔄 YTPRO Script Loader Starting...');" +
-                    "  " +
-                    "  var scripts = [" +
-                    "    {name: 'script', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/script.js', fallback: '" + SCRIPT_URL + "'}," +
-                    "    {name: 'bgplay', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', fallback: '" + BGPLAY_URL + "'}," +
-                    "    {name: 'innertube', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', fallback: '" + INNERTUBE_URL + "'}" +
-                    "  ];" +
-                    "  " +
-                    "  function loadScript(scriptObj, retryCount) {" +
-                    "    return new Promise((resolve, reject) => {" +
-                    "      var url = retryCount > 0 ? scriptObj.fallback : scriptObj.url;" +
-                    "      var cacheBuster = '?v=' + Date.now();" +
-                    "      var finalUrl = url + cacheBuster;" +
-                    "      " +
-                    "      console.log('📥 Loading ' + scriptObj.name + ' from: ' + finalUrl);" +
-                    "      " +
-                    "      var script = document.createElement('script');" +
-                    "      script.src = finalUrl;" +
-                    "      script.async = false;" +
-                    "      " +
-                    "      script.onload = function() {" +
-                    "        console.log('✅ Loaded: ' + scriptObj.name);" +
-                    "        resolve();" +
-                    "      };" +
-                    "      " +
-                    "      script.onerror = function(e) {" +
-                    "        console.error('❌ Failed: ' + scriptObj.name, e);" +
-                    "        if (retryCount === 0 && scriptObj.fallback) {" +
-                    "          console.log('🔄 Trying fallback for ' + scriptObj.name);" +
-                    "          loadScript(scriptObj, 1).then(resolve).catch(reject);" +
-                    "        } else {" +
-                    "          reject();" +
-                    "        }" +
-                    "      };" +
-                    "      " +
-                    "      document.body.appendChild(script);" +
-                    "    });" +
-                    "  }" +
-                    "  " +
-                    "  // Load scripts sequentially
-                    "  async function loadAllScripts() {" +
-                    "    for (var i = 0; i < scripts.length; i++) {" +
-                    "      try {" +
-                    "        await loadScript(scripts[i], 0);" +
-                    "      } catch (e) {" +
-                    "        console.error('💥 All sources failed for: ' + scripts[i].name);" +
-                    "      }" +
-                    "    }" +
-                    "    " +
-                    "    console.log('🎉 All scripts attempted to load');" +
-                    "    window.YTPRO_LOADED = true;" +
-                    "    " +
-                    "    // Initialize YTPRO if function exists
-                    "    if (typeof window.initYTPro === 'function') {" +
-                    "      window.initYTPro();" +
-                    "    }" +
-                    "  }" +
-                    "  " +
-                    "  // Start loading
-                    "  loadAllScripts();" +
-                    "})();";
+              String scriptLoader = 
+    "(function() {" +
+    "  console.log('🔄 YTPRO Script Loader Starting...');" +
+    "  " +
+    "  var scripts = [" +
+    "    {name: 'script', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/script.js', fallback: '" + SCRIPT_URL + "'}," +
+    "    {name: 'bgplay', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', fallback: '" + BGPLAY_URL + "'}," +
+    "    {name: 'innertube', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', fallback: '" + INNERTUBE_URL + "'}" +
+    "  ];" +
+    "  " +
+    "  function loadScript(scriptObj, retryCount) {" +
+    "    return new Promise((resolve, reject) => {" +
+    "      var url = retryCount > 0 ? scriptObj.fallback : scriptObj.url;" +
+    "      var cacheBuster = '?v=' + Date.now();" +
+    "      var finalUrl = url + cacheBuster;" +
+    "      " +
+    "      console.log('📥 Loading ' + scriptObj.name + ' from: ' + finalUrl);" +
+    "      " +
+    "      var script = document.createElement('script');" +
+    "      script.src = finalUrl;" +
+    "      script.async = false;" +
+    "      " +
+    "      script.onload = function() {" +
+    "        console.log('✅ Loaded: ' + scriptObj.name);" +
+    "        resolve();" +
+    "      };" +
+    "      " +
+    "      script.onerror = function(e) {" +
+    "        console.error('❌ Failed: ' + scriptObj.name, e);" +
+    "        if (retryCount === 0 && scriptObj.fallback) {" +
+    "          console.log('🔄 Trying fallback for ' + scriptObj.name);" +
+    "          loadScript(scriptObj, 1).then(resolve).catch(reject);" +
+    "        } else {" +
+    "          reject();" +
+    "        }" +
+    "      };" +
+    "      " +
+    "      document.body.appendChild(script);" +
+    "    });" +
+    "  }" +
+    "  " +
+    "  // Load scripts sequentially" +
+    "  async function loadAllScripts() {" +
+    "    for (var i = 0; i < scripts.length; i++) {" +
+    "      try {" +
+    "        await loadScript(scripts[i], 0);" +
+    "      } catch (e) {" +
+    "        console.error('💥 All sources failed for: ' + scripts[i].name);" +
+    "      }" +
+    "    }" +
+    "    " +
+    "    console.log('🎉 All scripts attempted to load');" +
+    "    window.YTPRO_LOADED = true;" +
+    "    " +
+    "    // Initialize YTPRO if function exists" +
+    "    if (typeof window.initYTPro === 'function') {" +
+    "      window.initYTPro();" +
+    "    }" +
+    "  }" +
+    "  " +
+    "  // Start loading" +
+    "  loadAllScripts();" +
+    "})();";
                 
                 web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
                     @Override
@@ -1008,3 +1008,4 @@ public class MainActivity extends Activity {
         }, 2000);
     }
 }
+
