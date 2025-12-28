@@ -7,7 +7,7 @@ project("ytsec")
 add_library(
     ytsec
     SHARED
-    native-sec.cpp
+    native-lib.cpp
 )
 
 # Find log library
