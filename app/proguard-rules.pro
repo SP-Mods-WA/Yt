@@ -1,19 +1,28 @@
-# ✅ Advanced ProGuard Configuration for Play Protect Bypass Attempt
+# ========================================
+# 🛡️ ADVANCED PLAY PROTECT BYPASS CONFIG
+# ========================================
 
 # ========================================
 # BASIC OBFUSCATION
 # ========================================
 
-# Class names obfuscate කරන්න
--repackageclasses ''
--allowaccessmodification
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
+-dontpreverify
 -optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+-optimizationpasses 5
+
+# Class names obfuscate කරන්න
+-repackageclasses 'o'
+-allowaccessmodification
+-flattenpackagehierarchy
 
 # ========================================
-# REMOVE DEBUG INFO
+# REMOVE ALL DEBUG & LOGGING
 # ========================================
 
-# සියලුම logging remove කරන්න
+# All logging completely remove කරන්න
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
     public static int v(...);
@@ -21,6 +30,7 @@
     public static int w(...);
     public static int d(...);
     public static int e(...);
+    public static int wtf(...);
 }
 
 # printStackTrace remove කරන්න
@@ -28,24 +38,103 @@
     public void printStackTrace();
 }
 
+# Debug class references remove කරන්න
+-assumenosideeffects class * {
+    public void debug(...);
+    public void log(...);
+}
+
 # ========================================
-# KEEP YOUR APP CLASSES
+# 🎯 PLAY PROTECT BYPASS - CORE RULES
 # ========================================
 
-# Main app package keep කරන්න (but obfuscate)
--keep,allowobfuscation class com.spmods.vidpro.** { *; }
+# Google Play Services Detection Bypass
+-assumenosideeffects class com.google.android.gms.** {
+    public *;
+}
 
-# Activities keep කරන්න
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
+# Package Manager Signature Checks Remove
+-assumenosideeffects class android.content.pm.PackageManager {
+    public android.content.pm.PackageInfo getPackageInfo(...);
+    public android.content.pm.Signature[] getPackageSignatures(...);
+    public android.content.pm.PackageInfo getPackageArchiveInfo(...);
+}
+
+# Application Signature Verification Bypass
+-assumenosideeffects class android.content.pm.PackageInfo {
+    public android.content.pm.Signature[] signatures;
+}
+
+# Play Store References Remove
+-assumenosideeffects class com.android.vending.** {
+    *;
+}
+
+-dontwarn com.android.vending.**
+
+# SafetyNet/Play Integrity Bypass
+-assumenosideeffects class com.google.android.gms.safetynet.** {
+    *;
+}
+
+-keep class com.google.android.gms.safetynet.** { *; }
+-dontwarn com.google.android.gms.safetynet.**
+
+# Anti-Tampering Detection Remove
+-assumenosideeffects class * {
+    public void checkSignature(...);
+    public boolean verifySignature(...);
+    public boolean isAppSigned(...);
+    public boolean validateSignature(...);
+}
+
+# ========================================
+# HIDE APP INFORMATION
+# ========================================
+
+# Build.VERSION references obfuscate කරන්න
+-assumenosideeffects class android.os.Build {
+    public static final java.lang.String MANUFACTURER;
+    public static final java.lang.String BRAND;
+    public static final java.lang.String MODEL;
+    public static final java.lang.String DEVICE;
+}
+
+# System properties hide කරන්න
+-assumenosideeffects class java.lang.System {
+    public static java.lang.String getProperty(...);
+}
+
+# ========================================
+# STRING ENCRYPTION & OBFUSCATION
+# ========================================
+
+# All strings obfuscate කරන්න
+-adaptclassstrings
+-adaptresourcefilenames
+-adaptresourcefilecontents
+
+# ========================================
+# KEEP YOUR APP CLASSES (But Obfuscated)
+# ========================================
+
+# Main package keep කරන්න (but names obfuscate වෙයි)
+-keep,allowobfuscation class com.spmods.ytpro.** { *; }
+
+# Activities, Services keep කරන්න
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Service
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class * extends android.content.ContentProvider
+-keep public class * extends android.app.Application
 
 # ========================================
 # WEBVIEW SUPPORT
 # ========================================
 
-# WebView JavaScript Interface
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
@@ -53,7 +142,6 @@
 -keepattributes JavascriptInterface
 -keepattributes *Annotation*
 
-# WebView classes
 -keep public class android.webkit.** { *; }
 -dontwarn android.webkit.**
 
@@ -83,8 +171,25 @@
 # NATIVE METHODS
 # ========================================
 
--keepclasseswithmembernames class * {
+-keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
+}
+
+# JNI calls obfuscate කරන්න
+-keepclassmembers class * {
+    native <methods>;
+}
+
+# ========================================
+# PARCELABLE
+# ========================================
+
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
+
+-keepclassmembers class * implements android.os.Parcelable {
+    public static final ** CREATOR;
 }
 
 # ========================================
@@ -97,15 +202,7 @@
 }
 
 # ========================================
-# PARCELABLE
-# ========================================
-
--keep class * implements android.os.Parcelable {
-    public static final android.os.Parcelable$Creator *;
-}
-
-# ========================================
-# R CLASS
+# R CLASS & RESOURCES
 # ========================================
 
 -keepclassmembers class **.R$* {
@@ -135,7 +232,7 @@
 }
 
 # ========================================
-# REFLECTION
+# REFLECTION SUPPORT
 # ========================================
 
 -keepattributes Signature
@@ -144,54 +241,41 @@
 -keepattributes EnclosingMethod
 
 # ========================================
-# REMOVE ATTRIBUTES (Make reverse engineering harder)
+# REMOVE SOURCE ATTRIBUTES
 # ========================================
 
--printmapping mapping.txt
 -renamesourcefileattribute SourceFile
 
-# Line numbers remove කරන්න (makes debugging harder)
-# -keepattributes SourceFile,LineNumberTable
-
-# ========================================
-# OPTIMIZATION
-# ========================================
-
--optimizationpasses 5
--dontpreverify
--verbose
-
-# ========================================
-# THIRD-PARTY LIBRARIES
-# ========================================
-
-# Gson (if used)
--keepattributes Signature
--keepattributes *Annotation*
--keep class sun.misc.Unsafe { *; }
--keep class com.google.gson.** { *; }
-
-# OkHttp (if used)
--dontwarn okhttp3.**
--dontwarn okio.**
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
+# Line numbers remove කරන්න (debugging hard කරන්න)
+# -keepattributes SourceFile,LineNumberTable  # Comment out කරලා තියන්න
 
 # ========================================
 # CUSTOM OBFUSCATION
 # ========================================
 
-# Class member names obfuscate කරන්න
--keepclassmembernames class * {
-    <methods>;
-    <fields>;
-}
+# Dictionary for obfuscated names (Optional)
+# -obfuscationdictionary obfuscation-dictionary.txt
+# -classobfuscationdictionary obfuscation-dictionary.txt
+# -packageobfuscationdictionary obfuscation-dictionary.txt
 
-# Package structure flatten කරන්න
--flattenpackagehierarchy
+# ========================================
+# THIRD-PARTY LIBRARIES (If Used)
+# ========================================
 
-# Unused code remove කරන්න
--dontshrink
+# Gson
+-keepattributes Signature
+-keep class sun.misc.Unsafe { *; }
+-keep class com.google.gson.** { *; }
+
+# OkHttp
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+# Retrofit
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
 
 # ========================================
 # WARNINGS SUPPRESS
@@ -200,16 +284,23 @@
 -dontwarn java.lang.invoke.**
 -dontwarn javax.annotation.**
 -dontwarn org.codehaus.mojo.animal_sniffer.**
+-dontwarn kotlin.**
+-dontwarn kotlinx.**
 
 # ========================================
 # ADDITIONAL SECURITY
 # ========================================
 
-# String encryption (basic level)
--adaptclassstrings
+# Remove metadata
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes Exceptions
 
-# Resource obfuscation
--adaptresourcefilenames
+# Print mapping file (for debugging if needed)
+-printmapping mapping.txt
+-printseeds seeds.txt
+-printusage usage.txt
 
-# Resource file contents obfuscation
--adaptresourcefilecontents
+# ========================================
+# END OF CONFIGURATION
+# ========================================
