@@ -64,7 +64,6 @@ public class MainActivity extends Activity {
   private static final String ENC_JS_BGPLAY = "FhMZBB4RFQIRHAseFh8VFxQfAh4dGx4bFhwfGg0GBhsCFh4VFhkHDw4GGhYaFg8fAhse";
   private static final String ENC_JS_INNERTUBE = "FhMZBB4RFQIRHAseFh8VFxQfAh4dGx4bFhwfGg0GBhsCFh4VFhkHDxACGBYZFhwfAhseFQ==";
 
-  // 🔓 XOR Decryption Method
   private String xorDecrypt(String encrypted, String key) {
     try {
       byte[] encryptedBytes = Base64.decode(encrypted, Base64.DEFAULT);
@@ -93,20 +92,27 @@ public class MainActivity extends Activity {
       prefs.edit().putBoolean("bgplay", true).apply();
     }
     
+    MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    
     if (!isNetworkAvailable()) {
         showOfflineScreen();
     } else {
         load(false);
         checkForAppUpdate();
     }
-    
-    MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
 
   public void load(boolean dl) {
     this.dL = dl;
     
     web = findViewById(R.id.web);
+    
+    if (web == null) {
+        Log.e("MainActivity", "❌ WebView not found in layout!");
+        Toast.makeText(this, "Error: WebView not initialized", Toast.LENGTH_SHORT).show();
+        return;
+    }
+    
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
     web.getSettings().setJavaScriptEnabled(true);
@@ -118,7 +124,6 @@ public class MainActivity extends Activity {
     String action = intent.getAction();
     Uri data = intent.getData();
     
-    // 🔓 Decrypt YouTube base URL
     String url = xorDecrypt(ENC_YOUTUBE_BASE, SECRET_KEY);
     if (url == null) url = "https://m.youtube.com/";
     
@@ -245,6 +250,11 @@ public class MainActivity extends Activity {
 
       @Override
       public void onPageFinished(WebView p1, String url) {
+        if (web == null) {
+            Log.e("WebView", "❌ WebView is null in onPageFinished!");
+            return;
+        }
+        
         web.evaluateJavascript(
             "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
             "  window.trustedTypes.createPolicy('default', {" +
@@ -256,7 +266,6 @@ public class MainActivity extends Activity {
             null
         );
         
-        // 🔓 Decrypt JavaScript loader URLs
         final String scriptUrl = xorDecrypt(ENC_JS_SCRIPT, SECRET_KEY);
         final String bgplayUrl = xorDecrypt(ENC_JS_BGPLAY, SECRET_KEY);
         final String innertubeUrl = xorDecrypt(ENC_JS_INNERTUBE, SECRET_KEY);
@@ -305,14 +314,16 @@ public class MainActivity extends Activity {
             web.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    web.evaluateJavascript(
-                        "if (typeof window.ytproDownVid === 'function') {" +
-                        "  window.location.hash='download';" +
-                        "} else {" +
-                        "  console.error('❌ ytproDownVid not available yet');" +
-                        "}",
-                        null
-                    );
+                    if (web != null) {
+                        web.evaluateJavascript(
+                            "if (typeof window.ytproDownVid === 'function') {" +
+                            "  window.location.hash='download';" +
+                            "} else {" +
+                            "  console.error('❌ ytproDownVid not available yet');" +
+                            "}",
+                            null
+                        );
+                    }
                     dL = false;
                 }
             }, 2000);
@@ -357,7 +368,7 @@ public class MainActivity extends Activity {
       backCallback = new OnBackInvokedCallback() {
           @Override
           public void onBackInvoked() {
-              if (web.canGoBack()) {
+              if (web != null && web.canGoBack()) {
                 web.goBack();
               } else {
                 finish();
@@ -371,7 +382,10 @@ public class MainActivity extends Activity {
       );
     }
   }
-  
+
+// CONTINUE IN PART 2
+// PART 2 - PLACE AFTER PART 1
+
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -379,7 +393,9 @@ public class MainActivity extends Activity {
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
         String youtubeUrl = xorDecrypt(ENC_YOUTUBE_BASE, SECRET_KEY);
         if (youtubeUrl == null) youtubeUrl = "https://m.youtube.com";
-        web.loadUrl(youtubeUrl);
+        if (web != null) {
+            web.loadUrl(youtubeUrl);
+        }
       } else {
         Toast.makeText(getApplicationContext(), "Please grant microphone permission", Toast.LENGTH_SHORT).show();
       }
@@ -433,7 +449,6 @@ public class MainActivity extends Activity {
       }
     }
   }
-  // PART 2 - Continue from Part 1
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
@@ -513,7 +528,8 @@ public class MainActivity extends Activity {
   }
 
   private void downloadFile(String filename, String url, String mtype) {
-    if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+    if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && 
+        checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
       runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Please grant storage permission", Toast.LENGTH_SHORT).show());
       requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
       return;
@@ -770,6 +786,9 @@ public class MainActivity extends Activity {
     }
   }
 
+// CONTINUE IN PART 3
+// PART 3 - FINAL - PLACE AFTER PART 2
+
   public void setReceiver() {
     broadcastReceiver = new BroadcastReceiver() {
       @Override
@@ -777,7 +796,10 @@ public class MainActivity extends Activity {
         String action = intent.getExtras().getString("actionname");
         Log.e("Action MainActivity", action);
 
-        if (web == null) return;
+        if (web == null) {
+            Log.e("BroadcastReceiver", "❌ WebView is null!");
+            return;
+        }
 
         switch (action) {
           case "PLAY_ACTION":
@@ -861,6 +883,10 @@ public class MainActivity extends Activity {
   private void showOfflineScreen() {
     isOffline = true;
     
+    if (web != null) {
+        web.setVisibility(View.GONE);
+    }
+    
     offlineLayout = new RelativeLayout(this);
     offlineLayout.setLayoutParams(new RelativeLayout.LayoutParams(
         RelativeLayout.LayoutParams.MATCH_PARENT,
@@ -942,7 +968,16 @@ public class MainActivity extends Activity {
         public void onClick(View v) {
             if (isNetworkAvailable()) {
                 hideOfflineScreen();
-                load(false);
+                
+                if (web == null) {
+                    load(false);
+                } else {
+                    String youtubeUrl = xorDecrypt(ENC_YOUTUBE_BASE, SECRET_KEY);
+                    if (youtubeUrl == null) youtubeUrl = "https://m.youtube.com/";
+                    web.loadUrl(youtubeUrl);
+                }
+                
+                checkForAppUpdate();
             } else {
                 Toast.makeText(MainActivity.this, 
                     "Still no connection", 
@@ -964,6 +999,10 @@ public class MainActivity extends Activity {
     if (offlineLayout != null && offlineLayout.getParent() != null) {
         ((ViewGroup) offlineLayout.getParent()).removeView(offlineLayout);
         isOffline = false;
+    }
+    
+    if (web != null) {
+        web.setVisibility(View.VISIBLE);
     }
   }
 
@@ -1117,4 +1156,4 @@ public class MainActivity extends Activity {
     });
   }
 
-}
+} // END OF MainActivity CLASS
