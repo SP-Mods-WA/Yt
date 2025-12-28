@@ -6,9 +6,10 @@
 	android:layout_height="match_parent"
 	android:orientation="vertical"
 	android:fitsSystemWindows="true">
-	<com.spmods.ytpro.YTProWebview
+	<WebView
 		android:id="@+id/web"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"/>
 </LinearLayout>
+
 
