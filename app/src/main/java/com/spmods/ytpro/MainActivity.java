@@ -104,7 +104,8 @@ public class MainActivity extends Activity {
   }
 
   public void load(boolean dl) {
-
+    this.dL = dl;
+    
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
@@ -300,7 +301,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (dl) {
+        if (dL) {
             web.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -326,22 +327,6 @@ public class MainActivity extends Activity {
         super.onPageFinished(p1, url);
       }
 
-      @Override
-      public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-          if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
-              errorCode == WebViewClient.ERROR_CONNECT || 
-              errorCode == WebViewClient.ERROR_TIMEOUT) {
-              
-              runOnUiThread(new Runnable() {
-                  @Override
-                  public void run() {
-                      showOfflineScreen();
-                  }
-              });
-          }
-          super.onReceivedError(view, errorCode, description, failingUrl);
-      }
-      
       @Override
       public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -386,28 +371,28 @@ public class MainActivity extends Activity {
       );
     }
   }
+  
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     if (requestCode == 101) {
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-        // 🔓 Decrypt YouTube URL
         String youtubeUrl = xorDecrypt(ENC_YOUTUBE_BASE, SECRET_KEY);
         if (youtubeUrl == null) youtubeUrl = "https://m.youtube.com";
         web.loadUrl(youtubeUrl);
       } else {
-        Toast.makeText(getApplicationContext(), getString(R.string.grant_mic), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getApplicationContext(), "Please grant microphone permission", Toast.LENGTH_SHORT).show();
       }
     } else if (requestCode == 1) {
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
-        Toast.makeText(getApplicationContext(), getString(R.string.grant_storage), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getApplicationContext(), "Please grant storage permission", Toast.LENGTH_SHORT).show();
       }
     }
   }
 
   @Override
   public void onBackPressed() {
-    if (web.canGoBack()) {
+    if (web != null && web.canGoBack()) {
       web.goBack();
     } else {
       finish();
@@ -416,24 +401,22 @@ public class MainActivity extends Activity {
 
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    web.loadUrl(isInPictureInPictureMode ?
-      "javascript:PIPlayer();" :
-      "javascript:removePIP();", null);
-      
-    if(isInPictureInPictureMode){
-        isPip = true;
-    } else {
-        isPip = false;
+    if (web != null) {
+      web.loadUrl(isInPictureInPictureMode ?
+        "javascript:PIPlayer();" :
+        "javascript:removePIP();", null);
     }
+      
+    isPip = isInPictureInPictureMode;
   }
 
   @Override
   protected void onUserLeaveHint() {
     super.onUserLeaveHint();
    
-    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch")) {
-      
-      if(isPlaying){
+    if (android.os.Build.VERSION.SDK_INT >= 26 && web != null) {
+      String currentUrl = web.getUrl();
+      if (currentUrl != null && currentUrl.contains("watch") && isPlaying) {
         try {
           PictureInPictureParams params;
           isPip = true;
@@ -450,6 +433,7 @@ public class MainActivity extends Activity {
       }
     }
   }
+  // PART 2 - Continue from Part 1
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
@@ -511,7 +495,9 @@ public class MainActivity extends Activity {
         android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
 
       this.mCustomViewCallback = null;
-      web.clearFocus();
+      if (web != null) {
+        web.clearFocus();
+      }
     }
 
     @Override
@@ -528,8 +514,9 @@ public class MainActivity extends Activity {
 
   private void downloadFile(String filename, String url, String mtype) {
     if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
-      runOnUiThread(() -> Toast.makeText(getApplicationContext(), R.string.grant_storage, Toast.LENGTH_SHORT).show());
+      runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Please grant storage permission", Toast.LENGTH_SHORT).show());
       requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+      return;
     }
     try {
       String encodedFileName = URLEncoder.encode(filename, "UTF-8").replaceAll("\\+", "%20");
@@ -545,9 +532,9 @@ public class MainActivity extends Activity {
         .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE |
           DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
       downloadManager.enqueue(request);
-      Toast.makeText(this, getString(R.string.dl_started), Toast.LENGTH_SHORT).show();
-    } catch (Exception ignored) {
-      Toast.makeText(this, ignored.toString(), Toast.LENGTH_SHORT).show();
+      Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show();
+    } catch (Exception e) {
+      Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
     }
   }
 
@@ -559,7 +546,7 @@ public class MainActivity extends Activity {
 
     @JavascriptInterface
     public void showToast(String txt) {
-      Toast.makeText(getApplicationContext(), txt + "", Toast.LENGTH_SHORT).show();
+      Toast.makeText(getApplicationContext(), txt, Toast.LENGTH_SHORT).show();
     }
 
     @JavascriptInterface
@@ -593,7 +580,7 @@ public class MainActivity extends Activity {
       PackageManager manager = getApplicationContext().getPackageManager();
       try {
         PackageInfo info = manager.getPackageInfo(getApplicationContext().getPackageName(), PackageManager.GET_ACTIVITIES);
-        return info.versionName + "";
+        return info.versionName;
       } catch (PackageManager.NameNotFoundException e) {
         return "1.0";
       }
@@ -695,7 +682,11 @@ public class MainActivity extends Activity {
     public void getSNlM0e(String cookies) {
       new Thread(() -> {
         String response = GeminiWrapper.getSNlM0e(cookies);
-        runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null));
+        runOnUiThread(() -> {
+          if (web != null) {
+            web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null);
+          }
+        });
       }).start();
     }
 
@@ -703,14 +694,18 @@ public class MainActivity extends Activity {
     public void GeminiClient(String url, String headers, String body) {
       new Thread(() -> {
         JSONObject response = GeminiWrapper.getStream(url, headers, body);
-        runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null));
+        runOnUiThread(() -> {
+          if (web != null) {
+            web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null);
+          }
+        });
       }).start();
     }
 
     @JavascriptInterface
     public String getAllCookies(String url) {
       String cookies = CookieManager.getInstance().getCookie(url);
-      return cookies;
+      return cookies != null ? cookies : "";
     }
 
     @JavascriptInterface
@@ -770,7 +765,7 @@ public class MainActivity extends Activity {
           e.printStackTrace();
         }
       } else {
-        Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getApplicationContext(), "PIP not supported", Toast.LENGTH_SHORT).show();
       }
     }
   }
@@ -781,6 +776,8 @@ public class MainActivity extends Activity {
       public void onReceive(Context context, Intent intent) {
         String action = intent.getExtras().getString("actionname");
         Log.e("Action MainActivity", action);
+
+        if (web == null) return;
 
         switch (action) {
           case "PLAY_ACTION":
@@ -824,29 +821,17 @@ public class MainActivity extends Activity {
     Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
     stopService(intent);
 
-    if (broadcastReceiver != null) unregisterReceiver(broadcastReceiver);
+    if (broadcastReceiver != null) {
+      try {
+        unregisterReceiver(broadcastReceiver);
+      } catch (IllegalArgumentException e) {
+        // Already unregistered
+      }
+    }
 
     if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
       getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
-  }
-  private void checkScriptStatus() {
-    web.evaluateJavascript(
-        "(function() {" +
-        "  return JSON.stringify({" +
-        "    loaded: window.YTPRO_LOADED || false," +
-        "    hasMainScript: typeof YTProVer !== 'undefined'," +
-        "    hasInnerTube: typeof window.getDownloadStreams !== 'undefined'," +
-        "    hasBgPlay: typeof window.initBgPlay !== 'undefined'" +
-        "  });" +
-        "})();",
-        new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String value) {
-                Log.d("YTPRO Status", "📊 Script Status: " + value);
-            }
-        }
-    );
   }
 
   private boolean isNetworkAvailable() {
@@ -996,7 +981,6 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         try {
-                            // 🔓 Decrypt API URL
                             String apiUrl = xorDecrypt(ENC_API_URL, SECRET_KEY);
                             
                             if (apiUrl == null) {
@@ -1134,4 +1118,3 @@ public class MainActivity extends Activity {
   }
 
 }
-
