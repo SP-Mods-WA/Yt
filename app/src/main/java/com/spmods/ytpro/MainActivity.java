@@ -20,7 +20,6 @@ import android.content.SharedPreferences;
 import android.webkit.CookieManager;
 import android.media.AudioManager;
 import java.net.*;
-import javax.net.ssl.*;
 import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
@@ -28,10 +27,6 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.X509Certificate;
-import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends Activity {
 
@@ -54,77 +49,17 @@ public class MainActivity extends Activity {
     private RelativeLayout offlineLayout;
     private boolean isOffline = false;
     
-    // Native encryption library
-    static {
-        System.loadLibrary("ytproencrypt");
-    }
-    
-    // Native method declarations
-    public native String encryptStringNative(String input);
-    public native String decryptStringNative(String input);
-    public native String getEncryptedEndpoint(int endpointType);
-    public native String encryptCookies(String cookies);
-    public native String generateDownloadHash(String videoId, String quality);
-    
-    // SSL/TLS Socket Factory for CDN connections
-    private class TLSSocketFactory extends SSLSocketFactory {
-        private SSLSocketFactory internalSSLSocketFactory;
-
-        public TLSSocketFactory() throws KeyManagementException, NoSuchAlgorithmException {
-            SSLContext context = SSLContext.getInstance("TLS");
-            context.init(null, null, null);
-            internalSSLSocketFactory = context.getSocketFactory();
-        }
-
-        @Override
-        public String[] getDefaultCipherSuites() {
-            return internalSSLSocketFactory.getDefaultCipherSuites();
-        }
-
-        @Override
-        public String[] getSupportedCipherSuites() {
-            return internalSSLSocketFactory.getSupportedCipherSuites();
-        }
-
-        @Override
-        public Socket createSocket(Socket s, String host, int port, boolean autoClose) throws IOException {
-            return enableTLSOnSocket(internalSSLSocketFactory.createSocket(s, host, port, autoClose));
-        }
-
-        @Override
-        public Socket createSocket(String host, int port) throws IOException, UnknownHostException {
-            return enableTLSOnSocket(internalSSLSocketFactory.createSocket(host, port));
-        }
-
-        @Override
-        public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws IOException, UnknownHostException {
-            return enableTLSOnSocket(internalSSLSocketFactory.createSocket(host, port, localHost, localPort));
-        }
-
-        @Override
-        public Socket createSocket(InetAddress host, int port) throws IOException {
-            return enableTLSOnSocket(internalSSLSocketFactory.createSocket(host, port));
-        }
-
-        @Override
-        public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort) throws IOException {
-            return enableTLSOnSocket(internalSSLSocketFactory.createSocket(address, port, localAddress, localPort));
-        }
-
-        private Socket enableTLSOnSocket(Socket socket) {
-            if (socket instanceof SSLSocket) {
-                ((SSLSocket) socket).setEnabledProtocols(new String[]{"TLSv1.2", "TLSv1.3"});
-            }
-            return socket;
-        }
-    }
+    // Script URLs - Direct GitHub URLs
+    private static final String SCRIPT_JS_URL = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js";
+    private static final String BGPLAY_JS_URL = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js";
+    private static final String INNERTUBE_JS_URL = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-        // Enable WebView debugging for development
+        // Enable WebView debugging
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
@@ -139,32 +74,35 @@ public class MainActivity extends Activity {
             showOfflineScreen();
         } else {
             load(false);
-            checkForAppUpdate();
         }
         
-        MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     public void load(boolean dl) {
         web = findViewById(R.id.web);
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
        
-        web.getSettings().setJavaScriptEnabled(true);
-        web.getSettings().setSupportZoom(true);
-        web.getSettings().setBuiltInZoomControls(true);
-        web.getSettings().setDisplayZoomControls(false);
-        web.getSettings().setDomStorageEnabled(true);
-        web.getSettings().setDatabaseEnabled(true);
-        web.getSettings().setAllowFileAccess(true);
-        web.getSettings().setAllowContentAccess(true);
-        web.getSettings().setLoadWithOverviewMode(true);
-        web.getSettings().setUseWideViewPort(true);
-        web.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+        // WebView settings
+        WebSettings settings = web.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
+        // Initial URL
+        String url = "https://m.youtube.com/";
         Intent intent = getIntent();
         String action = intent.getAction();
         Uri data = intent.getData();
-        String url = "https://m.youtube.com/";
         
         if (Intent.ACTION_VIEW.equals(action) && data != null) {
             url = data.toString();
@@ -176,376 +114,66 @@ public class MainActivity extends Activity {
         }
         
         web.loadUrl(url);
+        
+        // JavaScript Interface
         web.addJavascriptInterface(new WebAppInterface(this), "Android");
+        
+        // WebChromeClient
         web.setWebChromeClient(new CustomWebClient());
-        web.getSettings().setMediaPlaybackRequiresUserGesture(false);
-        web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(web, true);
-
+        
+        // WebViewClient with simplified CDN handling
         web.setWebViewClient(new WebViewClient() {
             @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                String method = "GET";
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    method = request.getMethod();
-                }
-                
-                Log.d("WebView", "🌐 " + method + " Request: " + url);
-
-                // Handle CDN requests
-                if (url.contains("youtube.com/ytpro_cdn/")) {
-                    return handleCDNRequest(url);
-                }
-                
-                // Handle encrypted requests
-                if (url.startsWith("ytpro://enc/")) {
-                    return handleEncryptedRequest(url.substring(12));
-                }
-
-                return super.shouldInterceptRequest(view, request);
-            }
-            
-            private WebResourceResponse handleCDNRequest(String originalUrl) {
-                try {
-                    String modifiedUrl = null;
-                    String userAgent = "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.163 Mobile Safari/537.36";
-                    
-                    // ESM.sh requests
-                    if (originalUrl.contains("youtube.com/ytpro_cdn/esm/")) {
-                        modifiedUrl = originalUrl.replace("youtube.com/ytpro_cdn/esm/", "https://esm.sh/");
-                        Log.d("CDN", "📦 ESM.sh: " + modifiedUrl);
-                        
-                    // jsDelivr requests
-                    } else if (originalUrl.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
-                        String path = originalUrl.substring(originalUrl.indexOf("npm/ytpro/") + 10);
-                        
-                        // Direct mapping for known files
-                        if (path.contains("script.js")) {
-                            modifiedUrl = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js";
-                        } else if (path.contains("bgplay.js")) {
-                            modifiedUrl = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js";
-                        } else if (path.contains("innertube.js")) {
-                            modifiedUrl = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js";
-                        } else {
-                            // Generic fallback
-                            modifiedUrl = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/" + path;
-                        }
-                        Log.d("CDN", "📦 jsDelivr: " + modifiedUrl);
-                    }
-                    
-                    if (modifiedUrl == null || modifiedUrl.isEmpty()) {
-                        Log.e("CDN", "❌ Could not map URL: " + originalUrl);
-                        return null;
-                    }
-                    
-                    // Add cache busting
-                    if (!modifiedUrl.contains("?")) {
-                        modifiedUrl += "?t=" + System.currentTimeMillis();
-                    }
-                    
-                    return fetchResource(modifiedUrl, userAgent);
-                    
-                } catch (Exception e) {
-                    Log.e("CDN", "❌ Error handling CDN request: " + e.getMessage());
-                    return null;
-                }
-            }
-            
-            private WebResourceResponse fetchResource(String urlString, String userAgent) {
-                HttpURLConnection connection = null;
-                try {
-                    URL url = new URL(urlString);
-                    
-                    if (urlString.startsWith("https://")) {
-                        HttpsURLConnection httpsConn = (HttpsURLConnection) url.openConnection();
-                        
-                        // Setup SSL
-                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
-                            SSLContext sslContext = SSLContext.getInstance("TLS");
-                            sslContext.init(null, new TrustManager[]{new X509TrustManager() {
-                                @Override
-                                public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
-                                @Override
-                                public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
-                                @Override
-                                public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[]{}; }
-                            }}, new java.security.SecureRandom());
-                            httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
-                            httpsConn.setHostnameVerifier((hostname, session) -> true);
-                        }
-                        
-                        connection = httpsConn;
-                    } else {
-                        connection = (HttpURLConnection) url.openConnection();
-                    }
-                    
-                    // Set connection properties
-                    connection.setRequestMethod("GET");
-                    connection.setConnectTimeout(15000);
-                    connection.setReadTimeout(15000);
-                    connection.setRequestProperty("User-Agent", userAgent);
-                    connection.setRequestProperty("Accept", "*/*");
-                    connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
-                    connection.setRequestProperty("Cache-Control", "no-cache");
-                    connection.setInstanceFollowRedirects(true);
-                    
-                    // Connect
-                    connection.connect();
-                    
-                    int responseCode = connection.getResponseCode();
-                    Log.d("CDN Fetch", "📡 " + responseCode + " from " + urlString);
-                    
-                    // Handle redirects
-                    if (responseCode >= 300 && responseCode < 400) {
-                        String redirectUrl = connection.getHeaderField("Location");
-                        if (redirectUrl != null && !redirectUrl.isEmpty()) {
-                            connection.disconnect();
-                            return fetchResource(redirectUrl, userAgent);
-                        }
-                    }
-                    
-                    if (responseCode != 200) {
-                        Log.e("CDN Fetch", "❌ Bad response: " + responseCode);
-                        connection.disconnect();
-                        return null;
-                    }
-                    
-                    // Determine content type
-                    String contentType = connection.getContentType();
-                    if (contentType == null || contentType.isEmpty()) {
-                        if (urlString.endsWith(".js")) {
-                            contentType = "application/javascript";
-                        } else if (urlString.endsWith(".css")) {
-                            contentType = "text/css";
-                        } else {
-                            contentType = "text/plain";
-                        }
-                    }
-                    
-                    // Clean content type
-                    if (contentType.contains(";")) {
-                        contentType = contentType.split(";")[0].trim();
-                    }
-                    
-                    // Create response headers
-                    Map<String, String> headers = new HashMap<>();
-                    headers.put("Access-Control-Allow-Origin", "*");
-                    headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-                    headers.put("Access-Control-Allow-Headers", "*");
-                    headers.put("Content-Type", contentType + "; charset=utf-8");
-                    headers.put("Cross-Origin-Resource-Policy", "cross-origin");
-                    
-                    return new WebResourceResponse(
-                        contentType,
-                        "utf-8",
-                        responseCode,
-                        "OK",
-                        headers,
-                        connection.getInputStream()
-                    );
-                    
-                } catch (Exception e) {
-                    Log.e("CDN Fetch", "❌ Fetch failed: " + e.getMessage());
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
-                    return null;
-                }
-            }
-            
-            private WebResourceResponse handleEncryptedRequest(String encryptedData) {
-                try {
-                    // Decrypt the request data
-                    String decryptedUrl = decryptStringNative(encryptedData);
-                    Log.d("Encrypted", "🔓 Decrypted: " + decryptedUrl);
-                    
-                    // Fetch the resource
-                    return fetchResource(decryptedUrl, "YTPro/1.0");
-                } catch (Exception e) {
-                    Log.e("Encrypted", "❌ Failed to handle encrypted request", e);
-                    return null;
-                }
-            }
-            
-            @Override
-            public void onPageStarted(WebView p1, String p2, Bitmap p3) {
-                Log.d("Page", "🚀 Loading: " + p2);
-                super.onPageStarted(p1, p2, p3);
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                Log.d("Page", "🚀 Loading: " + url);
+                super.onPageStarted(view, url, favicon);
             }
 
             @Override
-            public void onPageFinished(WebView p1, String url) {
-                Log.d("Page", "✅ Loaded: " + url);
+            public void onPageFinished(WebView view, String url) {
+                Log.d("Page", "✅ Finished: " + url);
+                super.onPageFinished(view, url);
                 
-                // Inject TrustedTypes policy
-                web.evaluateJavascript(
-                    "if (window.trustedTypes && window.trustedTypes.createPolicy) {" +
-                    "  window.trustedTypes.createPolicy('default', {" +
-                    "    createHTML: s => s," +
-                    "    createScriptURL: s => s," +
-                    "    createScript: s => s" +
-                    "  });" +
-                    "}",
-                    null
-                );
+                // Inject YTPro scripts
+                injectYTProScripts();
                 
-                // Enhanced script loader with multiple fallbacks
-                String scriptLoader = 
-                    "(function() {" +
-                    "  console.log('🚀 YTPro Script Loader Starting...');" +
-                    "  " +
-                    "  var scripts = [" +
-                    "    {name: 'main', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/script.js'}," +
-                    "    {name: 'bgplay', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js'}," +
-                    "    {name: 'innertube', url: 'https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js'}" +
-                    "  ];" +
-                    "  " +
-                    "  var fallbacks = {" +
-                    "    'main': 'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/script.js'," +
-                    "    'bgplay': 'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/bgplay.js'," +
-                    "    'innertube': 'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js'" +
-                    "  };" +
-                    "  " +
-                    "  function loadScript(src, name, retryCount) {" +
-                    "    return new Promise((resolve, reject) => {" +
-                    "      var cacheBuster = '?v=' + Date.now();" +
-                    "      var finalSrc = src + cacheBuster;" +
-                    "      console.log('📥 Loading ' + name + ' from: ' + finalSrc);" +
-                    "      " +
-                    "      var script = document.createElement('script');" +
-                    "      script.src = finalSrc;" +
-                    "      script.async = false;" +
-                    "      script.onload = function() {" +
-                    "        console.log('✅ Success: ' + name);" +
-                    "        resolve();" +
-                    "      };" +
-                    "      script.onerror = function(e) {" +
-                    "        console.error('❌ Failed: ' + name, e);" +
-                    "        if (retryCount < 2) {" +
-                    "          console.log('🔄 Retrying ' + name + ' (' + (retryCount + 1) + ')');" +
-                    "          setTimeout(function() {" +
-                    "            loadScript(src, name, retryCount + 1).then(resolve).catch(reject);" +
-                    "          }, 1000);" +
-                    "        } else {" +
-                    "          reject();" +
-                    "        }" +
-                    "      };" +
-                    "      document.body.appendChild(script);" +
-                    "    });" +
-                    "  }" +
-                    "  " +
-                    "  function loadWithFallback(scriptObj, index) {" +
-                    "    if (index >= scripts.length) {" +
-                    "      console.log('🎉 All scripts loaded!');" +
-                    "      window.YTPRO_LOADED = true;" +
-                    "      if (typeof window.initYTPro === 'function') {" +
-                    "        window.initYTPro();" +
-                    "      }" +
-                    "      return;" +
-                    "    }" +
-                    "    " +
-                    "    var current = scripts[index];" +
-                    "    loadScript(current.url, current.name, 0)" +
-                    "      .then(function() {" +
-                    "        loadWithFallback(scriptObj, index + 1);" +
-                    "      })" +
-                    "      .catch(function() {" +
-                    "        console.warn('⚠️ Using fallback for ' + current.name);" +
-                    "        loadScript(fallbacks[current.name], current.name + '_fb', 0)" +
-                    "          .then(function() {" +
-                    "            loadWithFallback(scriptObj, index + 1);" +
-                    "          })" +
-                    "          .catch(function() {" +
-                    "            console.error('💥 All sources failed for ' + current.name);" +
-                    "            loadWithFallback(scriptObj, index + 1);" +
-                    "          });" +
-                    "      });" +
-                    "  }" +
-                    "  " +
-                    "  // Start loading" +
-                    "  loadWithFallback(scripts, 0);" +
-                    "})();";
-                
-                web.evaluateJavascript(scriptLoader, null);
-                
-                // Handle download trigger
-                if (dl) {
-                    web.postDelayed(() -> {
-                        web.evaluateJavascript(
-                            "if (window.YTPRO_LOADED && typeof window.ytproDownVid === 'function') {" +
-                            "  console.log('⬇️ Triggering download...');" +
-                            "  window.location.hash = '#download';" +
-                            "} else {" +
-                            "  console.log('⏳ Waiting for YTPRO...');" +
-                            "  var check = setInterval(function() {" +
-                            "    if (window.YTPRO_LOADED && typeof window.ytproDownVid === 'function') {" +
-                            "      clearInterval(check);" +
-                            "      window.location.hash = '#download';" +
-                            "    }" +
-                            "  }, 1000);" +
-                            "}",
-                            null
-                        );
-                        dL = false;
-                    }, 2000);
+                // Handle download if needed
+                if (dL) {
+                    triggerDownload();
                 }
-
-                // Clean up media session
-                if (!url.contains("/watch") && !url.contains("/shorts") && isPlaying) {
-                    stopMediaSession();
-                }
-
-                super.onPageFinished(p1, url);
-            }
-            
-            private void stopMediaSession() {
-                isPlaying = false;
-                mediaSession = false;
-                stopService(new Intent(getApplicationContext(), ForegroundService.class));
             }
             
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                Log.e("WebError", "Code: " + errorCode + " | " + description + " | " + failingUrl);
+                Log.e("WebError", errorCode + ": " + description + " - " + failingUrl);
                 
-                if (!isOffline && (errorCode == ERROR_HOST_LOOKUP || errorCode == ERROR_CONNECT)) {
+                if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+                    errorCode == WebViewClient.ERROR_CONNECT) {
                     runOnUiThread(() -> showOfflineScreen());
                 }
+                
                 super.onReceivedError(view, errorCode, description, failingUrl);
             }
             
             @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    Log.e("WebError", "Advanced: " + error.getErrorCode() + " | " + error.getDescription());
-                    
-                    if (request.isForMainFrame()) {
-                        int errorCode = error.getErrorCode();
-                        if (!isOffline && (errorCode == ERROR_HOST_LOOKUP || errorCode == ERROR_CONNECT)) {
-                            runOnUiThread(() -> showOfflineScreen());
-                        }
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                // Open external links in browser
+                if (url.startsWith("http") && !url.contains("youtube.com") && !url.contains("youtu.be")) {
+                    try {
+                        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        startActivity(i);
+                        return true;
+                    } catch (Exception e) {
+                        return false;
                     }
                 }
-                super.onReceivedError(view, request, error);
-            }
-            
-            @Override
-            public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    Log.w("HTTP", errorResponse.getStatusCode() + " for " + request.getUrl());
-                }
-                super.onReceivedHttpError(view, request, errorResponse);
+                return false;
             }
         });
 
         setReceiver();
 
-        // Handle back navigation
+        // Handle back navigation for Android 13+
         if (Build.VERSION.SDK_INT >= 33) {
             OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
             backCallback = () -> {
@@ -558,19 +186,83 @@ public class MainActivity extends Activity {
             dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
         }
     }
+    
+    private void injectYTProScripts() {
+        Log.d("YTPro", "Injecting scripts...");
+        
+        // Load scripts one by one with delays
+        new Handler().postDelayed(() -> {
+            loadScript(SCRIPT_JS_URL, "main");
+        }, 1000);
+        
+        new Handler().postDelayed(() -> {
+            loadScript(BGPLAY_JS_URL, "bgplay");
+        }, 2000);
+        
+        new Handler().postDelayed(() -> {
+            loadScript(INNERTUBE_JS_URL, "innertube");
+        }, 3000);
+    }
+    
+    private void loadScript(String url, String name) {
+        String jsCode = String.format(
+            "(function() {" +
+            "  console.log('📥 Loading %s script...');" +
+            "  var script = document.createElement('script');" +
+            "  script.src = '%s?v=' + Date.now();" +
+            "  script.async = false;" +
+            "  script.onload = function() {" +
+            "    console.log('✅ %s script loaded');" +
+            "    if (typeof window.YTPRO_LOADED === 'undefined') {" +
+            "      window.YTPRO_LOADED = {};" +
+            "    }" +
+            "    window.YTPRO_LOADED.%s = true;" +
+            "    checkAllScriptsLoaded();" +
+            "  };" +
+            "  script.onerror = function(e) {" +
+            "    console.error('❌ Failed to load %s script:', e);" +
+            "    retryLoad('%s', '%s');" +
+            "  };" +
+            "  document.body.appendChild(script);" +
+            "})();",
+            name, url, name, name, name, url, name
+        );
+        
+        web.evaluateJavascript(jsCode, null);
+    }
+    
+    private void triggerDownload() {
+        new Handler().postDelayed(() -> {
+            web.evaluateJavascript(
+                "if (typeof window.ytproDownVid === 'function') {" +
+                "  console.log('⬇️ Triggering download...');" +
+                "  window.location.hash = '#download';" +
+                "} else {" +
+                "  console.log('⏳ ytproDownVid not ready yet');" +
+                "  setTimeout(function() {" +
+                "    if (typeof window.ytproDownVid === 'function') {" +
+                "      window.location.hash = '#download';" +
+                "    }" +
+                "  }, 2000);" +
+                "}",
+                null
+            );
+            dL = false;
+        }, 4000);
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 101) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                web.loadUrl("https://m.youtube.com");
+                web.reload();
             } else {
                 Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show();
             }
         } else if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                Toast.makeText(this, "Storage permission required", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Storage permission required for downloads", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -586,7 +278,11 @@ public class MainActivity extends Activity {
 
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-        web.evaluateJavascript(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();", null);
+        if (isInPictureInPictureMode) {
+            web.evaluateJavascript("if(typeof PIPlayer === 'function') PIPlayer();", null);
+        } else {
+            web.evaluateJavascript("if(typeof removePIP === 'function') removePIP();", null);
+        }
         isPip = isInPictureInPictureMode;
     }
 
@@ -595,7 +291,7 @@ public class MainActivity extends Activity {
         super.onUserLeaveHint();
        
         if (Build.VERSION.SDK_INT >= 26 && web != null && web.getUrl() != null && 
-            web.getUrl().contains("watch") && isPlaying) {
+            web.getUrl().contains("/watch") && isPlaying) {
             try {
                 PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
                 if (portrait) {
@@ -614,48 +310,31 @@ public class MainActivity extends Activity {
     public class CustomWebClient extends WebChromeClient {
         private View mCustomView;
         private WebChromeClient.CustomViewCallback mCustomViewCallback;
-        private int mOriginalOrientation;
-        private int mOriginalSystemUiVisibility;
         
-        public CustomWebClient() {}
-
+        @Override
         public Bitmap getDefaultVideoPoster() {
-            // Create a simple bitmap if ic_video_poster doesn't exist
+            // Create a simple placeholder
             Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
             canvas.drawColor(Color.DKGRAY);
+            Paint paint = new Paint();
+            paint.setColor(Color.WHITE);
+            paint.setTextSize(20);
+            canvas.drawText("YT", 35, 50, paint);
             return bitmap;
         }
 
-        public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback viewCallback) {
+        @Override
+        public void onShowCustomView(View view, CustomViewCallback callback) {
             if (mCustomView != null) {
-                onHideCustomView();
+                callback.onCustomViewHidden();
                 return;
             }
             
-            mOriginalOrientation = getRequestedOrientation();
-            mOriginalSystemUiVisibility = getWindow().getDecorView().getSystemUiVisibility();
+            mCustomView = view;
+            mCustomViewCallback = callback;
             
-            // Set orientation based on video
-            int newOrientation = portrait ? 
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : 
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
-            if (isPip) newOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
-            
-            setRequestedOrientation(newOrientation);
-            
-            // Handle cutout mode for modern devices
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                WindowManager.LayoutParams params = getWindow().getAttributes();
-                params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-                getWindow().setAttributes(params);
-                getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-            }
-            
-            mCustomView = paramView;
-            mCustomViewCallback = viewCallback;
-            
-            // Add custom view
+            // Add to decor view
             FrameLayout decor = (FrameLayout) getWindow().getDecorView();
             decor.addView(mCustomView, new FrameLayout.LayoutParams(-1, -1));
             
@@ -665,36 +344,37 @@ public class MainActivity extends Activity {
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             );
+            
+            // Set orientation
+            if (portrait) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            } else {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            }
         }
         
+        @Override
         public void onHideCustomView() {
             if (mCustomView == null) return;
             
-            // Restore window properties
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                WindowManager.LayoutParams params = getWindow().getAttributes();
-                params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
-                getWindow().setAttributes(params);
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-            }
-            
-            // Remove custom view
+            // Remove from decor view
             FrameLayout decor = (FrameLayout) getWindow().getDecorView();
             decor.removeView(mCustomView);
             
-            // Restore system UI
-            getWindow().getDecorView().setSystemUiVisibility(mOriginalSystemUiVisibility);
-            setRequestedOrientation(mOriginalOrientation);
+            // Restore orientation
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
             
-            mCustomView = null;
+            // Restore system UI
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+            
             mCustomViewCallback.onCustomViewHidden();
+            mCustomView = null;
             mCustomViewCallback = null;
-            web.clearFocus();
         }
         
         @Override
         public void onPermissionRequest(final PermissionRequest request) {
-            if (Build.VERSION.SDK_INT > 22 && request.getOrigin().toString().contains("youtube.com")) {
+            if (request.getOrigin().toString().contains("youtube.com")) {
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_DENIED) {
                     requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
                 } else {
@@ -705,16 +385,17 @@ public class MainActivity extends Activity {
         
         @Override
         public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-            Log.d("WebConsole", consoleMessage.message() + " at " + consoleMessage.sourceId() + ":" + consoleMessage.lineNumber());
+            Log.d("WebConsole", consoleMessage.message());
             return true;
         }
     }
 
-    private void downloadFile(String filename, String url, String mtype) {
-        if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && 
-            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
-            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-            return;
+    private void downloadFile(String filename, String url, String mimeType) {
+        if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                return;
+            }
         }
         
         try {
@@ -724,19 +405,19 @@ public class MainActivity extends Activity {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
             
             request.setTitle(filename)
-                   .setDescription("Downloading file")
-                   .setMimeType(mtype)
+                   .setDescription("Downloading video")
+                   .setMimeType(mimeType)
                    .setAllowedOverMetered(true)
                    .setAllowedOverRoaming(true)
                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, encodedName)
                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             
             dm.enqueue(request);
-            Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Download started: " + filename, Toast.LENGTH_SHORT).show();
             
         } catch (Exception e) {
-            Log.e("Download", "Failed to download", e);
-            Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e("Download", "Error: " + e.getMessage());
+            Toast.makeText(this, "Download failed", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -763,22 +444,6 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void downvid(String name, String url, String m) {
             downloadFile(name, url, m);
-        }
-        
-        @JavascriptInterface
-        public void secureDownload(String encryptedData) {
-            try {
-                String decrypted = decryptStringNative(encryptedData);
-                JSONObject data = new JSONObject(decrypted);
-                downloadFile(
-                    data.getString("filename"),
-                    data.getString("url"),
-                    data.getString("mimeType")
-                );
-            } catch (Exception e) {
-                Log.e("SecureDL", "Failed", e);
-                Toast.makeText(mContext, "Secure download failed", Toast.LENGTH_SHORT).show();
-            }
         }
         
         @JavascriptInterface
@@ -821,8 +486,8 @@ public class MainActivity extends Activity {
             mediaSession = true;
 
             Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
-            intent.putExtra("icon", encryptStringNative(icon));
-            intent.putExtra("title", encryptStringNative(title));
+            intent.putExtra("icon", icon);
+            intent.putExtra("title", title);
             intent.putExtra("subtitle", subtitle);
             intent.putExtra("duration", duration);
             intent.putExtra("currentPosition", 0);
@@ -839,8 +504,8 @@ public class MainActivity extends Activity {
             isPlaying = true;
 
             sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-                .putExtra("icon", encryptStringNative(icon))
-                .putExtra("title", encryptStringNative(title))
+                .putExtra("icon", icon)
+                .putExtra("title", title)
                 .putExtra("subtitle", subtitle)
                 .putExtra("duration", duration)
                 .putExtra("currentPosition", 0)
@@ -858,8 +523,8 @@ public class MainActivity extends Activity {
         public void bgPause(long ct) {
             isPlaying = false;
             sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-                .putExtra("icon", encryptStringNative(icon))
-                .putExtra("title", encryptStringNative(title))
+                .putExtra("icon", icon)
+                .putExtra("title", title)
                 .putExtra("subtitle", subtitle)
                 .putExtra("duration", duration)
                 .putExtra("currentPosition", ct)
@@ -870,8 +535,8 @@ public class MainActivity extends Activity {
         public void bgPlay(long ct) {
             isPlaying = true;
             sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-                .putExtra("icon", encryptStringNative(icon))
-                .putExtra("title", encryptStringNative(title))
+                .putExtra("icon", icon)
+                .putExtra("title", title)
                 .putExtra("subtitle", subtitle)
                 .putExtra("duration", duration)
                 .putExtra("currentPosition", ct)
@@ -882,8 +547,8 @@ public class MainActivity extends Activity {
         public void bgBuffer(long ct) {
             isPlaying = true;
             sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-                .putExtra("icon", encryptStringNative(icon))
-                .putExtra("title", encryptStringNative(title))
+                .putExtra("icon", icon)
+                .putExtra("title", title)
                 .putExtra("subtitle", subtitle)
                 .putExtra("duration", duration)
                 .putExtra("currentPosition", ct)
@@ -894,8 +559,7 @@ public class MainActivity extends Activity {
         public void getSNlM0e(String cookies) {
             new Thread(() -> {
                 String response = GeminiWrapper.getSNlM0e(cookies);
-                String encrypted = encryptStringNative(response);
-                runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + encrypted + "`)", null));
+                runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null));
             }).start();
         }
         
@@ -903,14 +567,6 @@ public class MainActivity extends Activity {
         public void GeminiClient(String url, String headers, String body) {
             new Thread(() -> {
                 JSONObject response = GeminiWrapper.getStream(url, headers, body);
-                try {
-                    if (response.has("url")) {
-                        String encryptedUrl = encryptStringNative(response.getString("url"));
-                        response.put("url", encryptedUrl);
-                    }
-                } catch (JSONException e) {
-                    Log.e("Gemini", "Encryption error", e);
-                }
                 runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null));
             }).start();
         }
@@ -919,12 +575,6 @@ public class MainActivity extends Activity {
         public String getAllCookies(String url) {
             String cookies = CookieManager.getInstance().getCookie(url);
             return cookies != null ? cookies : "";
-        }
-        
-        @JavascriptInterface
-        public String getSecureCookies(String url) {
-            String cookies = CookieManager.getInstance().getCookie(url);
-            return encryptCookies(cookies != null ? cookies : "");
         }
         
         @JavascriptInterface
@@ -981,26 +631,6 @@ public class MainActivity extends Activity {
         }
         
         @JavascriptInterface
-        public String encryptData(String data) {
-            return encryptStringNative(data);
-        }
-        
-        @JavascriptInterface
-        public String decryptData(String encrypted) {
-            return decryptStringNative(encrypted);
-        }
-        
-        @JavascriptInterface
-        public String generateSecureHash(String videoId, String quality) {
-            return generateDownloadHash(videoId, quality);
-        }
-        
-        @JavascriptInterface
-        public String getSecureEndpoint(int type) {
-            return getEncryptedEndpoint(type);
-        }
-        
-        @JavascriptInterface
         public void log(String message) {
             Log.d("JSLog", message);
         }
@@ -1017,21 +647,21 @@ public class MainActivity extends Activity {
                 
                 switch (action) {
                     case "PLAY_ACTION":
-                        web.evaluateJavascript("playVideo();", null);
+                        web.evaluateJavascript("if(typeof playVideo === 'function') playVideo();", null);
                         break;
                     case "PAUSE_ACTION":
-                        web.evaluateJavascript("pauseVideo();", null);
+                        web.evaluateJavascript("if(typeof pauseVideo === 'function') pauseVideo();", null);
                         break;
                     case "NEXT_ACTION":
-                        web.evaluateJavascript("playNext();", null);
+                        web.evaluateJavascript("if(typeof playNext === 'function') playNext();", null);
                         break;
                     case "PREV_ACTION":
-                        web.evaluateJavascript("playPrev();", null);
+                        web.evaluateJavascript("if(typeof playPrev === 'function') playPrev();", null);
                         break;
                     case "SEEKTO":
                         String pos = intent.getStringExtra("pos");
                         if (pos != null) {
-                            web.evaluateJavascript("seekTo('" + pos + "');", null);
+                            web.evaluateJavascript("if(typeof seekTo === 'function') seekTo('" + pos + "');", null);
                         }
                         break;
                 }
@@ -1039,11 +669,7 @@ public class MainActivity extends Activity {
         };
 
         IntentFilter filter = new IntentFilter("TRACKS_TRACKS");
-        if (Build.VERSION.SDK_INT >= 34 && getApplicationInfo().targetSdkVersion >= 34) {
-            registerReceiver(broadcastReceiver, filter, RECEIVER_EXPORTED);
-        } else {
-            registerReceiver(broadcastReceiver, filter);
-        }
+        registerReceiver(broadcastReceiver, filter);
     }
 
     @Override
@@ -1057,8 +683,8 @@ public class MainActivity extends Activity {
         super.onResume();
         if (isOffline && isNetworkAvailable()) {
             hideOfflineScreen();
-            if (web == null) {
-                load(false);
+            if (web != null) {
+                web.reload();
             }
         }
     }
@@ -1066,7 +692,9 @@ public class MainActivity extends Activity {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        stopService(new Intent(this, ForegroundService.class));
+        if (isPlaying) {
+            stopService(new Intent(this, ForegroundService.class));
+        }
         
         if (broadcastReceiver != null) {
             unregisterReceiver(broadcastReceiver);
@@ -1074,10 +702,6 @@ public class MainActivity extends Activity {
         
         if (Build.VERSION.SDK_INT >= 33 && backCallback != null) {
             getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
-        }
-        
-        if (web != null) {
-            web.destroy();
         }
     }
 
@@ -1098,16 +722,20 @@ public class MainActivity extends Activity {
     }
 
     private void showOfflineScreen() {
-        if (isOffline) return;
+        if (isOffline || web == null) return;
         
         isOffline = true;
         runOnUiThread(() -> {
+            // Hide WebView
+            web.setVisibility(View.GONE);
+            
+            // Create offline layout
             offlineLayout = new RelativeLayout(this);
             offlineLayout.setLayoutParams(new RelativeLayout.LayoutParams(
                 RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.MATCH_PARENT
             ));
-            offlineLayout.setBackgroundColor(Color.parseColor("#0F0F0F"));
+            offlineLayout.setBackgroundColor(Color.BLACK);
             
             LinearLayout center = new LinearLayout(this);
             center.setOrientation(LinearLayout.VERTICAL);
@@ -1123,14 +751,15 @@ public class MainActivity extends Activity {
             // Icon
             TextView icon = new TextView(this);
             icon.setText("📡");
-            icon.setTextSize(80);
+            icon.setTextSize(50);
+            icon.setTextColor(Color.WHITE);
             icon.setGravity(Gravity.CENTER);
             center.addView(icon);
             
             // Title
             TextView title = new TextView(this);
-            title.setText("No Internet Connection");
-            title.setTextSize(20);
+            title.setText("No Internet");
+            title.setTextSize(18);
             title.setTextColor(Color.WHITE);
             title.setTypeface(null, Typeface.BOLD);
             title.setGravity(Gravity.CENTER);
@@ -1138,43 +767,37 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             );
-            titleParams.setMargins(0, dpToPx(20), 0, dpToPx(10));
+            titleParams.setMargins(0, 20, 0, 10);
             title.setLayoutParams(titleParams);
             center.addView(title);
             
             // Message
             TextView message = new TextView(this);
-            message.setText("Check your Wi-Fi or mobile data connection.");
+            message.setText("Please check your connection");
             message.setTextSize(14);
-            message.setTextColor(Color.parseColor("#AAAAAA"));
+            message.setTextColor(Color.LTGRAY);
             message.setGravity(Gravity.CENTER);
             message.setLayoutParams(new LinearLayout.LayoutParams(
-                dpToPx(250),
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ));
             center.addView(message);
             
             // Retry Button
             Button retry = new Button(this);
-            retry.setText("Try Again");
+            retry.setText("RETRY");
             retry.setTextColor(Color.WHITE);
-            retry.setAllCaps(false);
-            retry.setBackgroundColor(Color.parseColor("#FF0000"));
+            retry.setBackgroundColor(Color.RED);
             LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                dpToPx(150),
-                dpToPx(45)
+                200, 50
             );
-            btnParams.setMargins(0, dpToPx(30), 0, 0);
+            btnParams.setMargins(0, 30, 0, 0);
             retry.setLayoutParams(btnParams);
             
             retry.setOnClickListener(v -> {
                 if (isNetworkAvailable()) {
                     hideOfflineScreen();
-                    if (web == null) {
-                        load(false);
-                    } else {
-                        web.reload();
-                    }
+                    web.reload();
                 } else {
                     Toast.makeText(this, "Still offline", Toast.LENGTH_SHORT).show();
                 }
@@ -1183,7 +806,8 @@ public class MainActivity extends Activity {
             center.addView(retry);
             offlineLayout.addView(center);
             
-            ViewGroup root = (ViewGroup) getWindow().getDecorView().findViewById(android.R.id.content);
+            // Add to content view
+            ViewGroup root = (ViewGroup) findViewById(android.R.id.content);
             root.addView(offlineLayout);
         });
     }
@@ -1193,22 +817,10 @@ public class MainActivity extends Activity {
         
         isOffline = false;
         runOnUiThread(() -> {
-            ViewGroup root = (ViewGroup) getWindow().getDecorView().findViewById(android.R.id.content);
+            web.setVisibility(View.VISIBLE);
+            ViewGroup root = (ViewGroup) findViewById(android.R.id.content);
             root.removeView(offlineLayout);
             offlineLayout = null;
         });
-    }
-
-    private int dpToPx(int dp) {
-        return Math.round(dp * getResources().getDisplayMetrics().density);
-    }
-
-    private void checkForAppUpdate() {
-        new Handler().postDelayed(() -> {
-            if (isNetworkAvailable()) {
-                // Update checker implementation
-                Log.d("Update", "Checking for updates...");
-            }
-        }, 2000);
     }
 }
