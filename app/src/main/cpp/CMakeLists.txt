@@ -1,19 +1,23 @@
 cmake_minimum_required(VERSION 3.22.1)
 
-project("ytpro")
+# Project name
+project("ytsec")
 
+# Add shared library
 add_library(
-        ytpro-native
-        SHARED
-        native-lib.cpp
+    ytsec
+    SHARED
+    native-sec.cpp
 )
 
+# Find log library
 find_library(
-        log-lib
-        log
+    log-lib
+    log
 )
 
+# Link libraries
 target_link_libraries(
-        ytpro-native
-        ${log-lib}
+    ytsec
+    ${log-lib}
 )
