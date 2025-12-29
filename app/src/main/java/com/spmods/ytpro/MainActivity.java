@@ -44,6 +44,10 @@ public class MainActivity extends Activity {
 
   private YTProWebview web;
   private OnBackInvokedCallback backCallback;
+  
+  private RelativeLayout offlineLayout;
+  private boolean isOffline = false;
+
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -56,9 +60,14 @@ public class MainActivity extends Activity {
     if (!prefs.contains("bgplay")) {
       prefs.edit().putBoolean("bgplay", true).apply();
     }
+    
+    if (!isNetworkAvailable()) {
+        showOfflineScreen();
+    } else {
 
     load(false);
-
+    checkForAppUpdate();
+}
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
   }
@@ -101,87 +110,99 @@ public class MainActivity extends Activity {
 
     web.setWebViewClient(new WebViewClient() {
     @Override
-    public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            String url = request.getUrl().toString();
+public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+    String url = request.getUrl().toString();
+    
+    Log.d("WebView", "🌐 Requesting: " + url);
 
-            if (url.contains("youtube.com/ytpro_cdn/")) {
+    if (url.contains("youtube.com/ytpro_cdn/")) {
+        String modifiedUrl = null;
 
+        if (url.contains("youtube.com/ytpro_cdn/esm")) {
+            modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
+            Log.d("CDN", "✅ ESM Redirect: " + modifiedUrl);
+            
+        } else if (url.contains("youtube.com/ytpro_cdn/npm/ytpro")) {
+    // GitHub links වලට redirect කරන්න
+    if (url.contains("innertube.js")) {
+        modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js";
+    } else if (url.contains("bgplay.js")) {
+        modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
+    } else if (url.contains("script.js")) {
+        modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
+    }
+    Log.d("CDN", "✅ GitHub Redirect: " + modifiedUrl);
+}
+        
+        // ✅ NULL check
+        if (modifiedUrl == null) {
+            Log.e("CDN", "❌ modifiedUrl is NULL for: " + url);
+            return super.shouldInterceptRequest(view, request);
+        }
+        
+        try {
+            URL newUrl = new URL(modifiedUrl);
+            HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
 
-                String modifiedUrl = null;
+            // ✅ Better headers
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
+            connection.setRequestProperty("Accept", "*/*");
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("Pragma", "no-cache");
+            
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            connection.setRequestMethod("GET");
+            connection.connect();
 
-                if (url.contains("youtube.com/ytpro_cdn/esm")) {
-                    modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
-                } else if (url.contains("youtube.com/ytpro_cdn/npm")) {
-                    modifiedUrl = url.replace("youtube.com/ytpro_cdn", "cdn.jsdelivr.net");
-                }
-                try {
-                    URL newUrl = new URL(modifiedUrl);
-                    HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
-
-                    connection.setUseCaches(false);
-                    connection.setDefaultUseCaches(false);
-                    connection.addRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
-                    connection.addRequestProperty("Pragma", "no-cache");
-                    connection.addRequestProperty("Expires", "0");
-                    connection.setRequestProperty("User-Agent", "YTPRO");
-                    connection.setRequestProperty("Accept", "**");
-
-                    connection.setConnectTimeout(10000);
-                    connection.setReadTimeout(10000);
-
-                    connection.setRequestMethod("GET");
-
-                    connection.connect();
-
-                    String mimeType = connection.getContentType();
-                    String encoding = connection.getContentEncoding();
-                    if (encoding == null) encoding = "utf-8";
-                    String contentType = connection.getContentType();
-                    if (contentType == null) {
-                        contentType = "application/javascript";
-                    }
-
-                        Map < String, String > headers = new HashMap < > ();
-                        headers.put("Access-Control-Allow-Origin", "*");
-                        headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-                        headers.put("Access-Control-Allow-Headers", "*");
-                        headers.put("Content-Type", contentType);
-
-                        headers.put("Access-Control-Allow-Credentials", "true");
-                        headers.put("Cross-Origin-Resource-Policy", "cross-origin");
-
-                        if (request.getMethod().equals("OPTIONS")) {
-                            return new WebResourceResponse(
-                                "text/plain",
-                                "UTF-8",
-                                204,
-                                "No Content",
-                                headers,
-                                null
-                            );
-                        }
-
-
-
-                        return new WebResourceResponse(
-                            mimeType,
-                            encoding,
-                            connection.getResponseCode(),
-                            "OK",
-                            headers,
-                            connection.getInputStream()
-                        );
-
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        return super.shouldInterceptRequest(view, request);
-                    }
-
-                }
-
+            int responseCode = connection.getResponseCode();
+            Log.d("CDN", "📡 Response: " + responseCode + " for " + modifiedUrl);
+            
+            if (responseCode != 200) {
+                Log.e("CDN", "❌ Failed: " + responseCode);
                 return super.shouldInterceptRequest(view, request);
-      }
+            }
+
+            String contentType = connection.getContentType();
+            if (contentType == null || contentType.isEmpty()) {
+                if (modifiedUrl.endsWith(".js")) {
+                    contentType = "application/javascript";
+                } else {
+                    contentType = "text/plain";
+                }
+            }
+            
+            String encoding = connection.getContentEncoding();
+            if (encoding == null) encoding = "utf-8";
+
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            headers.put("Access-Control-Allow-Headers", "*");
+            headers.put("Content-Type", contentType + "; charset=utf-8");
+            headers.put("Cross-Origin-Resource-Policy", "cross-origin");
+
+            return new WebResourceResponse(
+                "application/javascript",
+                "utf-8",
+                connection.getResponseCode(),
+                "OK",
+                headers,
+                connection.getInputStream()
+            );
+
+        } catch (Exception e) {
+            Log.e("CDN Error", "❌ Exception for " + modifiedUrl + ": " + e.getMessage());
+            e.printStackTrace();
+            return super.shouldInterceptRequest(view, request);
+        }
+    }
+
+    return super.shouldInterceptRequest(view, request);
+}
+      
+      
+      
       @Override
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
 
@@ -190,28 +211,130 @@ public class MainActivity extends Activity {
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-
-        web.evaluateJavascript("if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {window.trustedTypes.createPolicy('default', {createHTML: (string) => string,createScriptURL: string => string, createScript: string => string, });}",null);
-        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro'; document.body.appendChild(script);  })();",null);
-        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js'; document.body.appendChild(script);  })();",null);
-        web.evaluateJavascript("(function () { var script = document.createElement('script');script.type='module';script.src='https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js'; document.body.appendChild(script);  })();",null);
-
-        if (dl) {
-
-          //Will Patch this later
-
-          //web.loadUrl("javascript:(function () {window.location.hash='download';})();");
-          //dL=false;                
+    
+    // ✅ Setup TrustedTypes first
+    web.evaluateJavascript(
+        "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
+        "  window.trustedTypes.createPolicy('default', {" +
+        "    createHTML: (string) => string," +
+        "    createScriptURL: string => string," +
+        "    createScript: string => string" +
+        "  });" +
+        "}",
+        null
+    );
+    
+    // ✅ Load scripts sequentially with proper error handling
+    String scriptLoader = 
+        "(function() {" +
+        "  console.log('🔄 Starting YTPRO script loader...');" +
+        
+        // Function to load script with error handling
+        "  function loadScript(src, name) {" +
+        "    return new Promise((resolve, reject) => {" +
+        "      console.log('📥 Loading ' + name + ': ' + src);" +
+        "      var script = document.createElement('script');" +
+        "      script.src = src;" +
+        "      script.async = false;" +
+        "      script.onload = function() {" +
+        "        console.log('✅ Loaded ' + name);" +
+        "        resolve();" +
+        "      };" +
+        "      script.onerror = function(e) {" +
+        "        console.error('❌ Failed to load ' + name + ':', e);" +
+        "        reject(new Error('Failed to load ' + name));" +
+        "      };" +
+        "      document.body.appendChild(script);" +
+        "    });" +
+        "  }" +
+        
+        // ✅ Load scripts in sequence
+        "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main Script')" +
+        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG Play'))" +
+        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'InnerTube'))" +
+        "    .then(() => {" +
+        "      console.log('✅ All YTPRO scripts loaded successfully!');" +
+        "      window.YTPRO_LOADED = true;" +
+        "    })" +
+        "    .catch((error) => {" +
+        "      console.error('❌ YTPRO script loading failed:', error);" +
+        "      window.YTPRO_LOADED = false;" +
+        "    });" +
+        "})();";
+    
+    web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
+        @Override
+        public void onReceiveValue(String value) {
+            Log.d("WebView", "📜 Script loader injected");
         }
+    });
 
-        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-          isPlaying = false;
-          mediaSession= false;
-          stopService(new Intent(getApplicationContext(), ForegroundService.class));
+    // ✅ Check if download hash is present
+    if (dl) {
+        web.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                web.evaluateJavascript(
+                    "if (typeof window.ytproDownVid === 'function') {" +
+                    "  window.location.hash='download';" +
+                    "} else {" +
+                    "  console.error('❌ ytproDownVid not available yet');" +
+                    "}",
+                    null
+                );
+                dL = false;
+            }
+        }, 2000);
+    }
+
+    // ✅ Stop media session when leaving video pages
+    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+        isPlaying = false;
+        mediaSession = false;
+        stopService(new Intent(getApplicationContext(), ForegroundService.class));
+    }
+
+    super.onPageFinished(p1, url);
+}
+
+
+@Override
+    public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+        if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+            errorCode == WebViewClient.ERROR_CONNECT || 
+            errorCode == WebViewClient.ERROR_TIMEOUT) {
+            
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    showOfflineScreen();
+                }
+            });
         }
-
-        super.onPageFinished(p1, url);
-      }
+        super.onReceivedError(view, errorCode, description, failingUrl);
+    }
+    
+    @Override
+    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (request.isForMainFrame()) {
+                int errorCode = error.getErrorCode();
+                if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+                    errorCode == WebViewClient.ERROR_CONNECT || 
+                    errorCode == WebViewClient.ERROR_TIMEOUT) {
+                    
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            showOfflineScreen();
+                        }
+                    });
+                }
+            }
+        }
+        super.onReceivedError(view, request, error);
+    }
+      
     });
 
     setReceiver();
@@ -722,8 +845,189 @@ public class MainActivity extends Activity {
     }
   }
 
+
+
+private void checkScriptStatus() {
+    web.evaluateJavascript(
+        "(function() {" +
+        "  return JSON.stringify({" +
+        "    loaded: window.YTPRO_LOADED || false," +
+        "    hasMainScript: typeof YTProVer !== 'undefined'," +
+        "    hasInnerTube: typeof window.getDownloadStreams !== 'undefined'," +
+        "    hasBgPlay: typeof window.initBgPlay !== 'undefined'" +
+        "  });" +
+        "})();",
+        new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                Log.d("YTPRO Status", "📊 Script Status: " + value);
+            }
+        }
+    );
 }
 
+private boolean isNetworkAvailable() {
+    ConnectivityManager connectivityManager = 
+        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+    
+    if (connectivityManager != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Network network = connectivityManager.getActiveNetwork();
+            if (network == null) return false;
+            
+            NetworkCapabilities capabilities = 
+                connectivityManager.getNetworkCapabilities(network);
+            return capabilities != null && (
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            );
+        } else {
+            NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+            return networkInfo != null && networkInfo.isConnected();
+        }
+    }
+    return false;
+}
+
+private void showOfflineScreen() {
+    isOffline = true;
+    
+    // Create main layout
+    offlineLayout = new RelativeLayout(this);
+    offlineLayout.setLayoutParams(new RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.MATCH_PARENT,
+        RelativeLayout.LayoutParams.MATCH_PARENT
+    ));
+    offlineLayout.setBackgroundColor(Color.parseColor("#0F0F0F"));
+    
+    // Create center container
+    LinearLayout centerLayout = new LinearLayout(this);
+    RelativeLayout.LayoutParams centerParams = new RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.WRAP_CONTENT,
+        RelativeLayout.LayoutParams.WRAP_CONTENT
+    );
+    centerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+    centerLayout.setLayoutParams(centerParams);
+    centerLayout.setOrientation(LinearLayout.VERTICAL);
+    centerLayout.setGravity(Gravity.CENTER);
+    
+    // Icon (using emoji as fallback)
+    TextView iconView = new TextView(this);
+    iconView.setText("📡");
+    iconView.setTextSize(80);
+    LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    iconParams.bottomMargin = dpToPx(24);
+    iconView.setLayoutParams(iconParams);
+    iconView.setGravity(Gravity.CENTER);
+    centerLayout.addView(iconView);
+    
+    // Title
+    TextView titleView = new TextView(this);
+    titleView.setText("No internet connection");
+    titleView.setTextSize(20);
+    titleView.setTextColor(Color.WHITE);
+    titleView.setTypeface(null, Typeface.BOLD);
+    LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    titleParams.bottomMargin = dpToPx(8);
+    titleView.setLayoutParams(titleParams);
+    centerLayout.addView(titleView);
+    
+    // Message
+    TextView messageView = new TextView(this);
+    messageView.setText("Check your Wi-Fi or mobile data\nconnection.");
+    messageView.setTextSize(14);
+    messageView.setTextColor(Color.parseColor("#AAAAAA"));
+    messageView.setGravity(Gravity.CENTER);
+    LinearLayout.LayoutParams msgParams = new LinearLayout.LayoutParams(
+        dpToPx(280),
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    msgParams.bottomMargin = dpToPx(32);
+    messageView.setLayoutParams(msgParams);
+    centerLayout.addView(messageView);
+    
+    // Retry Button
+    Button retryButton = new Button(this);
+    retryButton.setText("Try again.");
+    retryButton.setTextColor(Color.WHITE);
+    retryButton.setTextSize(16);
+    retryButton.setTypeface(null, Typeface.BOLD);
+    retryButton.setAllCaps(false);
+    
+    // Button styling
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        retryButton.setBackgroundTintList(
+            android.content.res.ColorStateList.valueOf(Color.parseColor("#FF0000"))
+        );
+    } else {
+        retryButton.setBackgroundColor(Color.parseColor("#FF0000"));
+    }
+    
+    LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+        dpToPx(200),
+        dpToPx(50)
+    );
+    retryButton.setLayoutParams(btnParams);
+    
+    // Retry button click
+    retryButton.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (isNetworkAvailable()) {
+                hideOfflineScreen();
+                load(false);
+            } else {
+                Toast.makeText(MainActivity.this, 
+                    "Still no connection.", 
+                    Toast.LENGTH_SHORT).show();
+            }
+        }
+    });
+    
+    centerLayout.addView(retryButton);
+    offlineLayout.addView(centerLayout);
+    
+    // Add to main view
+    addContentView(offlineLayout, new ViewGroup.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT
+    ));
+}
+
+private void hideOfflineScreen() {
+    if (offlineLayout != null && offlineLayout.getParent() != null) {
+        ((ViewGroup) offlineLayout.getParent()).removeView(offlineLayout);
+        isOffline = false;
+    }
+}
+
+private int dpToPx(int dp) {
+    float density = getResources().getDisplayMetrics().density;
+    return Math.round(dp * density);
+}
+
+private void checkForAppUpdate() {
+    // 2 seconds delay එකකින් check කරන්න (app load වෙන්න වෙලාව දෙන්න)
+    new android.os.Handler().postDelayed(new Runnable() {
+        @Override
+        public void run() {
+            if (isNetworkAvailable()) {
+                UpdateChecker updateChecker = new UpdateChecker(MainActivity.this);
+                updateChecker.checkForUpdate();
+            }
+        }
+    }, 2000);
+}
+
+
+}
 
 
 
