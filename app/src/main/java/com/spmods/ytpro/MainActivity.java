@@ -585,13 +585,15 @@ public class MainActivity extends Activity {
     }
     
     @Override
-    public void onConsoleMessage(ConsoleMessage consoleMessage) {
-        Log.d("WebView Console", consoleMessage.message() + " -- From line "
-                + consoleMessage.lineNumber() + " of "
-                + consoleMessage.sourceId());
-        super.onConsoleMessage(consoleMessage);
-    }
+      public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+    Log.d("WebView Console", consoleMessage.message() + " -- From line "
+            + consoleMessage.lineNumber() + " of "
+            + consoleMessage.sourceId());
+    return super.onConsoleMessage(consoleMessage);
+}
+
   }
+  
 
   private void downloadFile(String filename, String url, String mtype) {
     if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && 
@@ -1104,3 +1106,7 @@ public class MainActivity extends Activity {
       );
   }
 }
+
+
+
+
