@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 4.9.9
+Version: 1.0.0
 URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -934,48 +934,141 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 }
 
 /*Video Downloader*/
+/*Video Downloader - Direct Download Method*/
 async function ytproDownVid(){
-var ytproDown=document.createElement("div");
-var ytproDownDiv=document.createElement("div");
-ytproDownDiv.setAttribute("id","downytprodiv");
-ytproDown.setAttribute("id","outerdownytprodiv");
-ytproDown.setAttribute("style",`
-height:100%;width:100%;position:fixed;top:0;left:0;
-display:flex;justify-content:center;
-background:rgba(0,0,0,0.4);
-z-index:99999999999999;
-`);
-ytproDown.addEventListener("click",
-function(ev){
-if(ev.target != ytproDownDiv && !(ytproDownDiv.contains(ev.target)) ){
-history.back();
+    var ytproDown=document.createElement("div");
+    var ytproDownDiv=document.createElement("div");
+    ytproDownDiv.setAttribute("id","downytprodiv");
+    ytproDown.setAttribute("id","outerdownytprodiv");
+    ytproDown.setAttribute("style",`
+    height:100%;width:100%;position:fixed;top:0;left:0;
+    display:flex;justify-content:center;
+    background:rgba(0,0,0,0.4);
+    z-index:99999999999999;
+    `);
+    ytproDown.addEventListener("click",
+    function(ev){
+        if(ev.target != ytproDownDiv && !(ytproDownDiv.contains(ev.target)) ){
+            history.back();
+        }
+    });
+
+    ytproDownDiv.setAttribute("style",`
+    height:50%;width:85%;overflow:auto;background:${isD ? "#212121" : "#f1f1f1"};
+    position:absolute;bottom:20px;
+    z-index:99999999999999;padding:20px;text-align:center;border-radius:25px;text-align:center;
+    `);
+
+    document.body.appendChild(ytproDown);
+    ytproDown.appendChild(ytproDownDiv);
+
+    var id="";
+    if(window.location.pathname.indexOf("shorts") > -1){
+        id=window.location.pathname.substr(8,window.location.pathname.length);
+    }
+    else{
+        id=new URLSearchParams(window.location.search).get("v");
+    }
+
+    ytproDownDiv.innerHTML="Loading...";
+
+    try {
+        // Fetch video info directly
+        const response = await fetch(`https://www.youtube.com/watch?v=${id}`);
+        const html = await response.text();
+        
+        // Extract ytInitialPlayerResponse
+        const match = html.match(/var ytInitialPlayerResponse = ({.+?});/);
+        if (!match) {
+            ytproDownDiv.innerHTML = "Error: Could not fetch video data";
+            return;
+        }
+        
+        const data = JSON.parse(match[1]);
+        const formats = data.streamingData?.formats || [];
+        const adaptiveFormats = data.streamingData?.adaptiveFormats || [];
+        const videoTitle = data.videoDetails?.title || "video";
+        
+        // Build download UI
+        let html_content = `<h3 style="margin-bottom:15px;">Download ${videoTitle}</h3>`;
+        
+        // Combined formats (video + audio)
+        if (formats.length > 0) {
+            html_content += `<h4 style="text-align:left;margin:10px 0;">Combined (Video + Audio)</h4>`;
+            formats.forEach(format => {
+                const quality = format.qualityLabel || format.quality || "Unknown";
+                const size = format.contentLength ? formatFileSize(format.contentLength) : "";
+                const ext = format.mimeType?.includes("mp4") ? ".mp4" : ".webm";
+                
+                html_content += `
+                <button onclick="directDownload('${format.url}', '${videoTitle}${ext}')" 
+                        style="display:block;width:100%;margin:5px 0;padding:10px;
+                        background:${d};border-radius:10px;text-align:left;">
+                    📹 ${quality} ${ext} ${size}
+                </button>`;
+            });
+        }
+        
+        // Adaptive formats
+        html_content += `<h4 style="text-align:left;margin:10px 0;">Video Only</h4>`;
+        const videoFormats = adaptiveFormats.filter(f => f.mimeType?.includes("video"));
+        videoFormats.forEach(format => {
+            const quality = format.qualityLabel || format.height + "p" || "Unknown";
+            const fps = format.fps ? ` ${format.fps}fps` : "";
+            const size = format.contentLength ? formatFileSize(format.contentLength) : "";
+            const codec = format.mimeType?.split(";")[0].split("/")[1] || "unknown";
+            
+            html_content += `
+            <button onclick="directDownload('${format.url}', '${videoTitle}_${quality}.${codec}')" 
+                    style="display:block;width:100%;margin:5px 0;padding:10px;
+                    background:${d};border-radius:10px;text-align:left;">
+                🎬 ${quality}${fps} ${codec} ${size}
+            </button>`;
+        });
+        
+        html_content += `<h4 style="text-align:left;margin:10px 0;">Audio Only</h4>`;
+        const audioFormats = adaptiveFormats.filter(f => f.mimeType?.includes("audio"));
+        audioFormats.forEach(format => {
+            const bitrate = format.bitrate ? Math.round(format.bitrate / 1000) + "kbps" : "";
+            const size = format.contentLength ? formatFileSize(format.contentLength) : "";
+            const codec = format.mimeType?.split(";")[0].split("/")[1] || "unknown";
+            
+            html_content += `
+            <button onclick="directDownload('${format.url}', '${videoTitle}.${codec}')" 
+                    style="display:block;width:100%;margin:5px 0;padding:10px;
+                    background:${d};border-radius:10px;text-align:left;">
+                🎵 ${bitrate} ${codec} ${size}
+            </button>`;
+        });
+        
+        ytproDownDiv.innerHTML = html_content;
+        
+    } catch (error) {
+        console.error("Download error:", error);
+        ytproDownDiv.innerHTML = `Error: ${error.message}<br><br>
+        <button onclick="history.back()" style="padding:10px;background:${c};color:${dc};border-radius:10px;">Close</button>`;
+    }
 }
-});
 
-ytproDownDiv.setAttribute("style",`
-height:50%;width:85%;overflow:auto;background:${isD ? "#212121" : "#f1f1f1"};
-position:absolute;bottom:20px;
-z-index:99999999999999;padding:20px;text-align:center;border-radius:25px;text-align:center;
-`);
-
-document.body.appendChild(ytproDown);
-ytproDown.appendChild(ytproDownDiv);
-
-var id="";
-
-if(window.location.pathname.indexOf("shorts") > -1){
-id=window.location.pathname.substr(8,window.location.pathname.length);
+// Direct download function
+function directDownload(url, filename) {
+    try {
+        // Use Android download manager
+        const ext = filename.split('.').pop();
+        let mimeType = "video/mp4";
+        
+        if (ext === "webm") mimeType = "video/webm";
+        else if (ext === "mp4a" || ext === "m4a") mimeType = "audio/mp4";
+        else if (ext === "opus") mimeType = "audio/opus";
+        
+        Android.downvid(filename, url, mimeType);
+        Android.showToast("Download started: " + filename);
+        
+    } catch (error) {
+        console.error("Download failed:", error);
+        Android.showToast("Download failed: " + error.message);
+    }
 }
-else{
-id=new URLSearchParams(window.location.search).get("v");
-}
-
-ytproDownDiv.innerHTML="Loading...";
-
-window.getDownloadStreams();
-
-}
-
 
 
 
