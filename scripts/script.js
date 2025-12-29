@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.1
+Version: 1.0.2
 URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -934,7 +934,7 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 }
 
 /*Video Downloader*/
-/*Video Downloader - Direct Download Method - Fixed*/
+/*Video Downloader - Using InnerTube API*/
 async function ytproDownVid(){
     var ytproDown=document.createElement("div");
     var ytproDownDiv=document.createElement("div");
@@ -970,125 +970,132 @@ async function ytproDownVid(){
         id=new URLSearchParams(window.location.search).get("v");
     }
 
-    ytproDownDiv.innerHTML="Loading...";
+    ytproDownDiv.innerHTML="⏳ Loading...";
 
     try {
-        // Fetch video info directly
-        const response = await fetch(`https://www.youtube.com/watch?v=${id}`);
-        const html = await response.text();
+        // Get API key from page
+        const apiKey = (document.cookie.match(/INNERTUBE_API_KEY=([^;]+)/) || [])[1] || "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
         
-        // Try multiple patterns to extract player response
-        let data = null;
+        // Prepare InnerTube request
+        const payload = {
+            videoId: id,
+            context: {
+                client: {
+                    clientName: "MWEB",
+                    clientVersion: "2.20231219.01.00"
+                }
+            }
+        };
         
-        // Pattern 1: var ytInitialPlayerResponse
-        let match = html.match(/var ytInitialPlayerResponse\s*=\s*({.+?});/);
-        if (!match) {
-            // Pattern 2: ytInitialPlayerResponse =
-            match = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
-        }
-        if (!match) {
-            // Pattern 3: from script tag
-            match = html.match(/"player":\s*({.+?})\s*,\s*"playerResponse"/);
-        }
+        // Fetch from InnerTube API
+        const response = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
         
-        if (!match) {
+        const data = await response.json();
+        
+        // Check for errors
+        if (data.playabilityStatus?.status !== "OK") {
+            const reason = data.playabilityStatus?.reason || "Video unavailable";
             ytproDownDiv.innerHTML = `
             <div style="padding:20px;color:${c};">
-                <h3>Error: Could not fetch video data</h3>
-                <p style="margin-top:10px;font-size:14px;">Video might be private, age-restricted, or unavailable.</p>
+                <h3>❌ ${reason}</h3>
                 <button onclick="history.back()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;">Close</button>
             </div>`;
             return;
         }
         
-        data = JSON.parse(match[1]);
+        const formats = data.streamingData?.formats || [];
+        const adaptiveFormats = data.streamingData?.adaptiveFormats || [];
+        const videoTitle = (data.videoDetails?.title || "video").replace(/[|\\?*<":>+\[\]/']/g, '_');
         
-        // Check if streaming data exists
-        if (!data.streamingData) {
+        if (formats.length === 0 && adaptiveFormats.length === 0) {
             ytproDownDiv.innerHTML = `
             <div style="padding:20px;color:${c};">
-                <h3>No download links available</h3>
-                <p style="margin-top:10px;font-size:14px;">This video might be restricted or unavailable in your region.</p>
+                <h3>⚠️ No formats available</h3>
+                <p style="margin-top:10px;">This video cannot be downloaded.</p>
                 <button onclick="history.back()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;">Close</button>
             </div>`;
             return;
         }
-        
-        const formats = data.streamingData.formats || [];
-        const adaptiveFormats = data.streamingData.adaptiveFormats || [];
-        const videoTitle = (data.videoDetails?.title || "video").replace(/[|\\?*<":>+\[\]/']/g, '');
         
         // Build download UI
-        let html_content = `<h3 style="margin-bottom:15px;color:${c};">📥 ${videoTitle}</h3>`;
+        let html_content = `<h3 style="margin-bottom:15px;color:${c};font-size:16px;word-wrap:break-word;">📥 ${videoTitle}</h3>`;
         
         // Combined formats (video + audio)
         if (formats.length > 0) {
-            html_content += `<h4 style="text-align:left;margin:10px 0;color:${c};">🎬 Combined (Video + Audio)</h4>`;
-            formats.forEach((format, index) => {
+            html_content += `<h4 style="text-align:left;margin:15px 0 10px 0;color:${c};font-size:14px;">🎬 Video + Audio</h4>`;
+            formats.forEach((format) => {
                 const quality = format.qualityLabel || format.quality || "Unknown";
-                const size = format.contentLength ? formatFileSize(format.contentLength) : "Size unknown";
-                const ext = format.mimeType?.includes("mp4") ? "mp4" : "webm";
-                const url = format.url || "";
+                const size = format.contentLength ? formatFileSize(format.contentLength) : "";
+                const mimeType = format.mimeType || "";
+                const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+                const url = format.url;
                 
                 if (url) {
+                    const escapedUrl = url.replace(/`/g, '\\`');
                     html_content += `
-                    <button onclick="directDownload(\`${url}\`, '${videoTitle}.${ext}', '${ext}')" 
-                            style="display:block;width:100%;margin:5px 0;padding:12px;
+                    <button onclick="downloadFile('${escapedUrl}', '${videoTitle}.${ext}')" 
+                            style="display:block;width:100%;margin:5px 0;padding:10px;
                             background:${d};border-radius:10px;text-align:left;border:0;color:${c};
-                            font-size:14px;cursor:pointer;">
-                        📹 ${quality} • ${ext} • ${size}
+                            font-size:13px;cursor:pointer;">
+                        📹 ${quality} ${size ? '• ' + size : ''}
                     </button>`;
                 }
             });
         }
         
-        // Video Only formats
-        const videoFormats = adaptiveFormats.filter(f => f.mimeType?.includes("video"));
+        // Video Only
+        const videoFormats = adaptiveFormats.filter(f => (f.mimeType || "").includes("video"));
         if (videoFormats.length > 0) {
-            html_content += `<h4 style="text-align:left;margin:10px 0;margin-top:20px;color:${c};">🎥 Video Only (No Audio)</h4>`;
-            videoFormats.slice(0, 5).forEach((format, index) => {
-                const quality = format.qualityLabel || (format.height + "p") || "Unknown";
+            html_content += `<h4 style="text-align:left;margin:15px 0 10px 0;color:${c};font-size:14px;">🎥 Video Only</h4>`;
+            videoFormats.slice(0, 5).forEach((format) => {
+                const quality = format.qualityLabel || (format.height ? format.height + "p" : "Unknown");
                 const fps = format.fps ? ` ${format.fps}fps` : "";
-                const size = format.contentLength ? formatFileSize(format.contentLength) : "Size unknown";
-                const codec = format.mimeType?.split(";")[0].split("/")[1] || "video";
-                const url = format.url || "";
+                const size = format.contentLength ? formatFileSize(format.contentLength) : "";
+                const mimeType = format.mimeType || "";
+                const ext = mimeType.split("/")[1]?.split(";")[0] || "mp4";
+                const url = format.url;
                 
                 if (url) {
+                    const escapedUrl = url.replace(/`/g, '\\`');
                     html_content += `
-                    <button onclick="directDownload(\`${url}\`, '${videoTitle}_${quality}.${codec}', '${codec}')" 
-                            style="display:block;width:100%;margin:5px 0;padding:12px;
+                    <button onclick="downloadFile('${escapedUrl}', '${videoTitle}_${quality}.${ext}')" 
+                            style="display:block;width:100%;margin:5px 0;padding:10px;
                             background:${d};border-radius:10px;text-align:left;border:0;color:${c};
-                            font-size:14px;cursor:pointer;">
-                        🎬 ${quality}${fps} • ${codec} • ${size}
+                            font-size:13px;cursor:pointer;">
+                        🎬 ${quality}${fps} ${size ? '• ' + size : ''}
                     </button>`;
                 }
             });
         }
         
-        // Audio Only formats
-        const audioFormats = adaptiveFormats.filter(f => f.mimeType?.includes("audio"));
+        // Audio Only
+        const audioFormats = adaptiveFormats.filter(f => (f.mimeType || "").includes("audio"));
         if (audioFormats.length > 0) {
-            html_content += `<h4 style="text-align:left;margin:10px 0;margin-top:20px;color:${c};">🎵 Audio Only</h4>`;
-            audioFormats.slice(0, 3).forEach((format, index) => {
-                const bitrate = format.bitrate ? Math.round(format.bitrate / 1000) + "kbps" : "Unknown";
-                const size = format.contentLength ? formatFileSize(format.contentLength) : "Size unknown";
-                const codec = format.mimeType?.split(";")[0].split("/")[1] || "audio";
-                const url = format.url || "";
+            html_content += `<h4 style="text-align:left;margin:15px 0 10px 0;color:${c};font-size:14px;">🎵 Audio Only</h4>`;
+            audioFormats.slice(0, 3).forEach((format) => {
+                const bitrate = format.bitrate ? Math.round(format.bitrate / 1000) + "kbps" : "";
+                const size = format.contentLength ? formatFileSize(format.contentLength) : "";
+                const mimeType = format.mimeType || "";
+                const ext = mimeType.includes("mp4") ? "m4a" : "webm";
+                const url = format.url;
                 
                 if (url) {
+                    const escapedUrl = url.replace(/`/g, '\\`');
                     html_content += `
-                    <button onclick="directDownload(\`${url}\`, '${videoTitle}.${codec}', '${codec}')" 
-                            style="display:block;width:100%;margin:5px 0;padding:12px;
+                    <button onclick="downloadFile('${escapedUrl}', '${videoTitle}.${ext}')" 
+                            style="display:block;width:100%;margin:5px 0;padding:10px;
                             background:${d};border-radius:10px;text-align:left;border:0;color:${c};
-                            font-size:14px;cursor:pointer;">
-                        🎵 ${bitrate} • ${codec} • ${size}
+                            font-size:13px;cursor:pointer;">
+                        🎵 ${bitrate} ${size ? '• ' + size : ''}
                     </button>`;
                 }
             });
-        }
-        
-        if (formats.length === 0 && videoFormats.length === 0 && audioFormats.length === 0) {
-            html_content += `<p style="margin-top:20px;color:${c};">No download formats available</p>`;
         }
         
         ytproDownDiv.innerHTML = html_content;
@@ -1097,29 +1104,27 @@ async function ytproDownVid(){
         console.error("Download error:", error);
         ytproDownDiv.innerHTML = `
         <div style="padding:20px;color:${c};">
-            <h3>❌ Download Error</h3>
-            <p style="margin-top:10px;font-size:14px;">${error.message}</p>
+            <h3>❌ Error</h3>
+            <p style="margin-top:10px;font-size:13px;">${error.message}</p>
             <button onclick="history.back()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;">Close</button>
         </div>`;
     }
 }
 
-// Direct download function
-window.directDownload = function(url, filename, ext) {
+// Simple download function
+window.downloadFile = function(url, filename) {
     try {
+        const ext = filename.split('.').pop().toLowerCase();
         let mimeType = "video/mp4";
         
         if (ext === "webm") mimeType = "video/webm";
-        else if (ext === "mp4") mimeType = "video/mp4";
-        else if (ext === "m4a" || ext === "mp4a") mimeType = "audio/mp4";
+        else if (ext === "m4a") mimeType = "audio/mp4";
         else if (ext === "opus") mimeType = "audio/opus";
-        else if (ext === "webm" && filename.includes("audio")) mimeType = "audio/webm";
         
         Android.downvid(filename, url, mimeType);
         Android.showToast("Download started!");
         
     } catch (error) {
-        console.error("Download failed:", error);
         Android.showToast("Download failed!");
     }
 }
