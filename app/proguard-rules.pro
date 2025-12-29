@@ -1,43 +1,21 @@
-# JNI/Native code protection
--keepclasseswithmembernames class * {
-    native <methods>;
-}
+# Add project specific ProGuard rules here.
+# You can control the set of applied configuration files using the
+# proguardFiles setting in build.gradle.
+#
+# For more details, see
+#   http://developer.android.com/guide/developing/tools/proguard.html
 
--keepclassmembers class * {
-    @android.webkit.JavascriptInterface <methods>;
-}
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
 
-# Keep JavaScriptInterface methods
--keepclassmembers class com.spmods.ytpro.MainActivity$WebAppInterface {
-    @android.webkit.JavascriptInterface <methods>;
-}
+# Uncomment this to preserve the line number information for
+# debugging stack traces.
+#-keepattributes SourceFile,LineNumberTable
 
-# Keep native methods
--keepclasseswithmembers class com.spmods.ytpro.MainActivity {
-    native <methods>;
-}
-
-# Keep all classes in package (for debugging, remove for release)
--keep class com.spmods.ytpro.** { *; }
-
-# WebView JavaScript Interface
--keepclassmembers class * extends android.webkit.WebChromeClient {
-    public void *;
-}
-
-# Keep application class
--keep public class com.spmods.ytpro.MainActivity {
-    public *;
-}
-
-# Keep JavaScript interface
--keep public class com.spmods.ytpro.MainActivity$WebAppInterface {
-    public *;
-}
-
-# Remove logging in release (Optional)
--assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-    public static *** i(...);
-}
+# If you keep the line number information, uncomment this to
+# hide the original source file name.
+#-renamesourcefileattribute SourceFile
