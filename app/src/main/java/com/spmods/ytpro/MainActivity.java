@@ -25,6 +25,8 @@ import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
+
+
 public class MainActivity extends Activity {
 
   private boolean portrait = false;
@@ -103,25 +105,14 @@ public class MainActivity extends Activity {
             String url = request.getUrl().toString();
 
             if (url.contains("youtube.com/ytpro_cdn/")) {
+
+
                 String modifiedUrl = null;
 
                 if (url.contains("youtube.com/ytpro_cdn/esm")) {
                     modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
                 } else if (url.contains("youtube.com/ytpro_cdn/npm")) {
-                    // ✅ SP-Mods GitHub CDN URLs
-                    if (url.contains("innertube.js")) {
-                        modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js";
-                    } else if (url.contains("bgplay.js")) {
-                        modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
-                    } else if (url.contains("script.js")) {
-                        modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
-                    } else if (url.contains("/npm/ytpro")) {
-                        // General ytpro files
-                        String filePath = url.substring(url.indexOf("ytpro/") + 6);
-                        modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/" + filePath;
-                    } else {
-                        modifiedUrl = url.replace("youtube.com/ytpro_cdn", "cdn.jsdelivr.net");
-                    }
+                    modifiedUrl = url.replace("youtube.com/ytpro_cdn", "cdn.jsdelivr.net");
                 }
                 try {
                     URL newUrl = new URL(modifiedUrl);
@@ -170,6 +161,8 @@ public class MainActivity extends Activity {
                             );
                         }
 
+
+
                         return new WebResourceResponse(
                             mimeType,
                             encoding,
@@ -179,32 +172,36 @@ public class MainActivity extends Activity {
                             connection.getInputStream()
                         );
 
+
                     } catch (Exception e) {
                         e.printStackTrace();
                         return super.shouldInterceptRequest(view, request);
                     }
+
                 }
 
                 return super.shouldInterceptRequest(view, request);
       }
-      
       @Override
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
+
         super.onPageStarted(p1, p2, p3);
       }
 
       @Override
       public void onPageFinished(WebView p1, String url) {
+
         web.evaluateJavascript("if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {window.trustedTypes.createPolicy('default', {createHTML: (string) => string,createScriptURL: string => string, createScript: string => string, });}",null);
-        
-        // ✅ SP-Mods GitHub CDN URLs
-        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js'; document.body.appendChild(script);  })();",null);
-        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js'; document.body.appendChild(script);  })();",null);
-        web.evaluateJavascript("(function () { var script = document.createElement('script');script.type='module';script.src='https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js'; document.body.appendChild(script);  })();",null);
+        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro'; document.body.appendChild(script);  })();",null);
+        web.evaluateJavascript("(function () { var script = document.createElement('script'); script.src='https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js'; document.body.appendChild(script);  })();",null);
+        web.evaluateJavascript("(function () { var script = document.createElement('script');script.type='module';script.src='https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js'; document.body.appendChild(script);  })();",null);
 
         if (dl) {
-          web.evaluateJavascript("(function () {window.location.hash='download';})();",null);
-          dL=false;                
+
+          //Will Patch this later
+
+          //web.loadUrl("javascript:(function () {window.location.hash='download';})();");
+          //dL=false;                
         }
 
         if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
@@ -219,7 +216,10 @@ public class MainActivity extends Activity {
 
     setReceiver();
 
+
+
     if (android.os.Build.VERSION.SDK_INT >= 33) {
+    
       OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
         
         backCallback = new OnBackInvokedCallback() {
@@ -255,7 +255,6 @@ public class MainActivity extends Activity {
       }
     }
   }
-  
   @Override
   public void onBackPressed() {
     if (web.canGoBack()) {
@@ -276,6 +275,7 @@ public class MainActivity extends Activity {
       }else{
           isPip=false;
       }
+
   }
 
   @Override
@@ -283,7 +283,9 @@ public class MainActivity extends Activity {
     super.onUserLeaveHint();
    
     if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch")) {
+      
          if(isPlaying){
+      
            try {
             PictureInPictureParams params;
             isPip=true;
@@ -298,6 +300,7 @@ public class MainActivity extends Activity {
              e.printStackTrace();
            }
         }
+
       } else {
          //Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show();
       }
@@ -312,6 +315,7 @@ public class MainActivity extends Activity {
     public CustomWebClient() {}
 
     public Bitmap getDefaultVideoPoster() {
+
       if (MainActivity.this == null) {
         return null;
       }
@@ -319,6 +323,7 @@ public class MainActivity extends Activity {
     }
 
     public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback viewCallback) {
+
       this.mOriginalOrientation = portrait ?
         android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT :
         android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
@@ -346,13 +351,16 @@ public class MainActivity extends Activity {
       ((FrameLayout) MainActivity.this.getWindow().getDecorView()).addView(this.mCustomView, new FrameLayout.LayoutParams(-1, -1));
       MainActivity.this.getWindow().getDecorView().setSystemUiVisibility(3846);
     }
-    
     public void onHideCustomView() {
+
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+
         WindowManager.LayoutParams params = getWindow().getAttributes();
         params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
         MainActivity.this.getWindow().setAttributes(params);
+
       }
 
       ((FrameLayout) MainActivity.this.getWindow().getDecorView()).removeView(this.mCustomView);
@@ -382,6 +390,7 @@ public class MainActivity extends Activity {
   }
 
   private void downloadFile(String filename, String url, String mtype) {
+
     if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
       runOnUiThread(() -> Toast.makeText(getApplicationContext(), R.string.grant_storage, Toast.LENGTH_SHORT).show());
       requestPermissions(new String[] {
@@ -454,12 +463,13 @@ public class MainActivity extends Activity {
       } catch (PackageManager.NameNotFoundException e) {
         return "1.0";
       }
+
     }
-    
     @JavascriptInterface
     public void setBgPlay(boolean bgplay) {
       SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
       prefs.edit().putBoolean("bgplay", bgplay).apply();
+
     }
 
     @JavascriptInterface
@@ -472,6 +482,8 @@ public class MainActivity extends Activity {
       mediaSession=true; 
 
       Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
+
+      // Add extras to the Intent
       intent.putExtra("icon", icon);
       intent.putExtra("title", title);
       intent.putExtra("subtitle", subtitle);
@@ -480,10 +492,12 @@ public class MainActivity extends Activity {
       intent.putExtra("action", "play");
 
       startService(intent);
+
     }
 
     @JavascriptInterface
     public void bgUpdate(String iconn, String titlen, String subtitlen, long dura) {
+
       icon = iconn;
       title = titlen;
       subtitle = subtitlen;
@@ -498,18 +512,21 @@ public class MainActivity extends Activity {
         .putExtra("currentPosition", 0)
         .putExtra("action", "pause")
       );
+
     }
-    
     @JavascriptInterface
     public void bgStop() {
       isPlaying = false;
       mediaSession=false;
+
       stopService(new Intent(getApplicationContext(), ForegroundService.class));
+
     }
-    
     @JavascriptInterface
     public void bgPause(long ct) {
+
        isPlaying=false;
+      
       getApplicationContext().sendBroadcast(new Intent("UPDATE_NOTIFICATION")
         .putExtra("icon", icon)
         .putExtra("title", title)
@@ -518,11 +535,13 @@ public class MainActivity extends Activity {
         .putExtra("currentPosition", ct)
         .putExtra("action", "pause")
       );
+
     }
-    
     @JavascriptInterface
     public void bgPlay(long ct) {
+ 
         isPlaying=true;
+      
       getApplicationContext().sendBroadcast(new Intent("UPDATE_NOTIFICATION")
         .putExtra("icon", icon)
         .putExtra("title", title)
@@ -531,11 +550,13 @@ public class MainActivity extends Activity {
         .putExtra("currentPosition", ct)
         .putExtra("action", "play")
       );
+
     }
-    
     @JavascriptInterface
     public void bgBuffer(long ct) {
+      
         isPlaying=true;
+      
       getApplicationContext().sendBroadcast(new Intent("UPDATE_NOTIFICATION")
         .putExtra("icon", icon)
         .putExtra("title", title)
@@ -544,69 +565,82 @@ public class MainActivity extends Activity {
         .putExtra("currentPosition", ct)
         .putExtra("action", "buffer")
       );
+
     }
-    
     @JavascriptInterface
     public void getSNlM0e(String cookies) {
+
       new Thread(() -> {
         String response = GeminiWrapper.getSNlM0e(cookies);
         runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null));
       }).start();
+
     }
-    
     @JavascriptInterface
     public void GeminiClient(String url, String headers, String body) {
+
       new Thread(() -> {
         JSONObject response = GeminiWrapper.getStream(url, headers, body);
         runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null));
       }).start();
+
     }
-    
     @JavascriptInterface
     public String getAllCookies(String url) {
       String cookies = CookieManager.getInstance().getCookie(url);
       return cookies;
     }
-    
     @JavascriptInterface
     public float getVolume() {
-      int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-      int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-      return (float) currentVolume / maxVolume;
+        
+     int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+     int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+
+     return (float) currentVolume / maxVolume;
+
     }
-    
     @JavascriptInterface
     public void setVolume(float volume) {
       int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
       int targetVolume = (int) (max * volume);
-      audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0);
+
+     audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0);
     }
-    
     @JavascriptInterface
     public float getBrightness() {
-      float brightnessPercent;
-      try {
-        int sysBrightness = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS);
+        
+       float brightnessPercent;
+        
+       try {
+        int sysBrightness = Settings.System.getInt(
+            getContentResolver(),
+            Settings.System.SCREEN_BRIGHTNESS
+        );
         brightnessPercent = (sysBrightness / 255f) * 100f;
-      } catch (Settings.SettingNotFoundException e) {
+       } catch (Settings.SettingNotFoundException e) {
         brightnessPercent = 50f; // fallback
-      }
-      return brightnessPercent;
+       }
+       
+       return brightnessPercent;
+
     }
-    
     @JavascriptInterface
-    public void setBrightness(final float brightnessValue) {
+    public void setBrightness(final float brightnessValue){
+      
       runOnUiThread(new Runnable() {
         @Override
         public void run() {
-          final float brightness = Math.max(0f, Math.min(brightnessValue, 1f));
-          WindowManager.LayoutParams layout = getWindow().getAttributes();
-          layout.screenBrightness = brightness;
-          getWindow().setAttributes(layout);
-        }
+           final float brightness = Math.max(0f, Math.min(brightnessValue, 1f));
+
+           WindowManager.LayoutParams layout = getWindow().getAttributes();
+           layout.screenBrightness = brightness;
+           getWindow().setAttributes(layout);
+           
+         }
       });     
-    }
     
+    
+    }
     @JavascriptInterface
     public void pipvid(String x) {
       if (android.os.Build.VERSION.SDK_INT >= 26) {
@@ -621,8 +655,9 @@ public class MainActivity extends Activity {
         } catch (IllegalStateException e) {
           e.printStackTrace();
         }
+
       } else {
-        Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show();
+          Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show();
       }
     }
   }
@@ -632,6 +667,7 @@ public class MainActivity extends Activity {
       @Override
       public void onReceive(Context context, Intent intent) {
         String action = intent.getExtras().getString("actionname");
+
         Log.e("Action MainActivity", action);
 
         switch (action) {
@@ -651,8 +687,10 @@ public class MainActivity extends Activity {
           break;
         case "SEEKTO":
           web.evaluateJavascript("seekTo('" + intent.getExtras().getString("pos") + "');",null);
+
           break;
         }
+
       }
     };
 
@@ -672,13 +710,31 @@ public class MainActivity extends Activity {
   @Override
   public void onDestroy() {
     super.onDestroy();
-    Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
-    stopService(intent);
+
+      Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
+
+      stopService(intent);
 
     if (broadcastReceiver != null) unregisterReceiver(broadcastReceiver);
 
     if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
-      getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
   }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
