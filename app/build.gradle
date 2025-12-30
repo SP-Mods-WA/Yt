@@ -9,7 +9,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 1
-        versionName "3.95"
+        versionName "1.0"
     }
 
     buildTypes {
@@ -23,6 +23,7 @@ android {
 dependencies {
     // Add your dependencies here
 }
+
 
 
 
