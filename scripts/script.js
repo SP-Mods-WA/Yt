@@ -1,7 +1,7 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
 Version: 1.0.9
-URI: https://www.spmods.download
+URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
 
