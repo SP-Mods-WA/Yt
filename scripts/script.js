@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.8
+Version: 1.0.9
 URI: https://www.spmods.download
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -746,12 +746,12 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 </svg>
 </button>
 <br>
-<!--button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channell
+<button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channell
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${isD ? "#ccc" : "#444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 2l6 6-6 6"/>
 </svg>
 
-</button-->
+</button>
 <br>
 <!--div>Developer Mode <span onclick="sttCnf(this,'devMode');" style="${sttCnf(0,0,"devMode")}" ><b style="${sttCnf(0,1,"devMode")}"></b></span></div-->
 <br><br>
