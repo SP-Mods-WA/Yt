@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.4
+Version: 1.0.5
 URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -934,6 +934,7 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 }
 
 /*Video Downloader*/
+/*Video Downloader - Load innertube.js dynamically*/
 async function ytproDownVid(){
     var ytproDown=document.createElement("div");
     var ytproDownDiv=document.createElement("div");
@@ -961,45 +962,50 @@ async function ytproDownVid(){
     document.body.appendChild(ytproDown);
     ytproDown.appendChild(ytproDownDiv);
 
-    var id="";
+    ytproDownDiv.innerHTML="⏳ Loading download script...";
 
-    if(window.location.pathname.indexOf("shorts") > -1){
-        id=window.location.pathname.substr(8,window.location.pathname.length);
-    }
-    else{
-        id=new URLSearchParams(window.location.search).get("v");
-    }
-
-    ytproDownDiv.innerHTML="Loading...";
-
-    // Load the innertube.js script if not already loaded
-    if (typeof window.getDownloadStreams === 'undefined') {
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.textContent = `
-            import {BG} from 'https://youtube.com/ytpro_cdn/esm/bgutils-js@3.2.0/es2022/bgutils-js.bundle.mjs';
-            import "https://youtube.com/ytpro_cdn/esm/acorn@8.15.0/es2022/acorn.mjs";
-            import Jinter from 'https://youtube.com/ytpro_cdn/esm/jintr@3.3.1/es2022/jintr.bundle.mjs';
-            import {Player,Innertube, ProtoUtils, UniversalCache, Utils } from 'https://youtube.com/ytpro_cdn/npm/youtubei.js@13.4.0/bundle/browser.min.js';
-            
-            // Your innertube.js code here...
-            ${await fetch('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js').then(r => r.text())}
-        `;
-        document.body.appendChild(script);
-        
-        // Wait for script to load
-        await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-
-    // Call the download function
     try {
+        // Check if innertube.js already loaded
+        if (typeof window.getDownloadStreams === 'undefined') {
+            // Load innertube.js
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.src = 'https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js';
+            document.body.appendChild(script);
+            
+            // Wait for script to load
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Failed to load download script'));
+                
+                // Timeout after 10 seconds
+                setTimeout(() => reject(new Error('Script load timeout')), 10000);
+            });
+            
+            // Additional wait for functions to be available
+            let attempts = 0;
+            while (typeof window.getDownloadStreams === 'undefined' && attempts < 20) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                attempts++;
+            }
+            
+            if (typeof window.getDownloadStreams === 'undefined') {
+                throw new Error('Download function not available');
+            }
+        }
+        
+        ytproDownDiv.innerHTML="⏳ Loading video info...";
+        
+        // Call the download function
         await window.getDownloadStreams();
+        
     } catch (error) {
         console.error("Download error:", error);
         ytproDownDiv.innerHTML = `
         <div style="padding:20px;color:${c};">
             <h3>❌ Download Error</h3>
             <p style="margin-top:10px;font-size:14px;">${error.message}</p>
+            <p style="margin-top:10px;font-size:12px;opacity:0.7;">Please try again or check your connection.</p>
             <button onclick="history.back()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;">Close</button>
         </div>`;
     }
