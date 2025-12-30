@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.3
+Version: 1.0.4
 URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -934,195 +934,76 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 }
 
 /*Video Downloader*/
-/* DIRECT YouTube Downloader - No External Sites */
-async function ytproDownVid() {
+async function ytproDownVid(){
+    var ytproDown=document.createElement("div");
+    var ytproDownDiv=document.createElement("div");
+    ytproDownDiv.setAttribute("id","downytprodiv");
+    ytproDown.setAttribute("id","outerdownytprodiv");
+    ytproDown.setAttribute("style",`
+    height:100%;width:100%;position:fixed;top:0;left:0;
+    display:flex;justify-content:center;
+    background:rgba(0,0,0,0.4);
+    z-index:99999999999999;
+    `);
+    ytproDown.addEventListener("click",
+    function(ev){
+        if(ev.target != ytproDownDiv && !(ytproDownDiv.contains(ev.target)) ){
+            history.back();
+        }
+    });
+
+    ytproDownDiv.setAttribute("style",`
+    height:50%;width:85%;overflow:auto;background:${isD ? "#212121" : "#f1f1f1"};
+    position:absolute;bottom:20px;
+    z-index:99999999999999;padding:20px;text-align:center;border-radius:25px;text-align:center;
+    `);
+
+    document.body.appendChild(ytproDown);
+    ytproDown.appendChild(ytproDownDiv);
+
+    var id="";
+
+    if(window.location.pathname.indexOf("shorts") > -1){
+        id=window.location.pathname.substr(8,window.location.pathname.length);
+    }
+    else{
+        id=new URLSearchParams(window.location.search).get("v");
+    }
+
+    ytproDownDiv.innerHTML="Loading...";
+
+    // Load the innertube.js script if not already loaded
+    if (typeof window.getDownloadStreams === 'undefined') {
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.textContent = `
+            import {BG} from 'https://youtube.com/ytpro_cdn/esm/bgutils-js@3.2.0/es2022/bgutils-js.bundle.mjs';
+            import "https://youtube.com/ytpro_cdn/esm/acorn@8.15.0/es2022/acorn.mjs";
+            import Jinter from 'https://youtube.com/ytpro_cdn/esm/jintr@3.3.1/es2022/jintr.bundle.mjs';
+            import {Player,Innertube, ProtoUtils, UniversalCache, Utils } from 'https://youtube.com/ytpro_cdn/npm/youtubei.js@13.4.0/bundle/browser.min.js';
+            
+            // Your innertube.js code here...
+            ${await fetch('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js').then(r => r.text())}
+        `;
+        document.body.appendChild(script);
+        
+        // Wait for script to load
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // Call the download function
     try {
-        // Get video ID
-        let videoId = '';
-        if (window.location.href.includes('youtube.com/shorts/')) {
-            videoId = window.location.href.split('/shorts/')[1]?.split('?')[0];
-        } else {
-            const urlParams = new URLSearchParams(window.location.search);
-            videoId = urlParams.get('v');
-        }
-
-        if (!videoId) {
-            alert('❌ කරුණාකර YouTube වීඩියෝවක් open කරන්න!');
-            return;
-        }
-
-        // Get video title
-        const videoTitle = document.querySelector('h1.ytd-watch-metadata, ytd-video-primary-info-renderer h1, .title yt-formatted-string')?.textContent || 
-                          'YouTube_Video';
-        const safeTitle = videoTitle.replace(/[^\w\s]/gi, '').substring(0, 40);
-
-        // Create popup
-        const popup = document.createElement('div');
-        popup.id = 'directDownloadPopup';
-        popup.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999999;
-        `;
-
-        const content = document.createElement('div');
-        content.style.cssText = `
-            background: #1a1a1a;
-            padding: 25px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 85vh;
-            overflow-y: auto;
-            color: white;
-            border: 2px solid #ff0000;
-        `;
-
-        content.innerHTML = `
-            <h2 style="color:#ff0000; margin-bottom:10px;">⬇️ DIRECT DOWNLOAD</h2>
-            <p style="color:#ccc; margin-bottom:20px; word-break:break-word;">
-                <strong>ගීතය:</strong> ${videoTitle}<br>
-                <strong>ID:</strong> ${videoId}
-            </p>
-            
-            <div style="margin: 20px 0;">
-                <h3 style="color:white; margin-bottom:15px;">🎵 Quality Options:</h3>
-                
-                <!-- MP3 Audio -->
-                <button onclick="directDownload('${videoId}', 'mp3', '${safeTitle}')" 
-                        style="width:100%; padding:15px; margin:8px 0; 
-                               background:#4CAF50; color:white; border:none; 
-                               border-radius:10px; font-size:16px; cursor:pointer;">
-                    🔊 MP3 Audio (High Quality)
-                </button>
-                
-                <!-- MP4 720p -->
-                <button onclick="directDownload('${videoId}', '720p', '${safeTitle}')" 
-                        style="width:100%; padding:15px; margin:8px 0; 
-                               background:#2196F3; color:white; border:none; 
-                               border-radius:10px; font-size:16px; cursor:pointer;">
-                    📹 MP4 Video (720p HD)
-                </button>
-                
-                <!-- MP4 360p -->
-                <button onclick="directDownload('${videoId}', '360p', '${safeTitle}')" 
-                        style="width:100%; padding:15px; margin:8px 0; 
-                               background:#FF9800; color:white; border:none; 
-                               border-radius:10px; font-size:16px; cursor:pointer;">
-                    📹 MP4 Video (360p - Smaller)
-                </button>
-            </div>
-            
-            <div style="margin-top:25px; padding-top:15px; border-top:1px solid #444;">
-                <p style="color:#888; font-size:12px;">
-                    ඉක්මනින් download කරගන්න! බ්‍රවුසරයෙන්ම වැඩ කරයි.
-                </p>
-            </div>
-            
-            <button onclick="closePopup()" 
-                    style="margin-top:20px; padding:12px 25px; 
-                           background:#ff0000; color:white; border:none; 
-                           border-radius:10px; cursor:pointer; width:100%;">
-                ✖ Close
-            </button>
-        `;
-
-        popup.appendChild(content);
-        document.body.appendChild(popup);
-
-        // Close function
-        window.closePopup = function() {
-            const popup = document.getElementById('directDownloadPopup');
-            if (popup) popup.remove();
-        };
-
-        // Direct download function
-        window.directDownload = function(vid, quality, title) {
-            try {
-                // YouTube download API URL pattern
-                let downloadUrl = '';
-                
-                if (quality === 'mp3') {
-                    downloadUrl = `https://yt-mp3s.me/api/button/mp3/${vid}`;
-                } else {
-                    downloadUrl = `https://yt-mp3s.me/api/button/videos/${vid}`;
-                }
-                
-                // Create hidden iframe for download
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = downloadUrl;
-                document.body.appendChild(iframe);
-                
-                // Also try alternative method
-                setTimeout(() => {
-                    const altUrl = `https://api.vevioz.com/api/button/${quality}/${vid}`;
-                    window.open(altUrl, '_blank');
-                }, 500);
-                
-                alert(`✅ Download started: ${title}.${quality === 'mp3' ? 'mp3' : 'mp4'}`);
-                
-            } catch (error) {
-                console.error('Download error:', error);
-                alert('⚠️ Trying alternative method...');
-                
-                // Fallback to external service
-                window.open(`https://yt5s.com/en20/download/youtube/${vid}`, '_blank');
-            }
-        };
-
+        await window.getDownloadStreams();
     } catch (error) {
-        console.error('Popup error:', error);
-        alert('❌ Error! Please try again or use: yt5s.com');
+        console.error("Download error:", error);
+        ytproDownDiv.innerHTML = `
+        <div style="padding:20px;color:${c};">
+            <h3>❌ Download Error</h3>
+            <p style="margin-top:10px;font-size:14px;">${error.message}</p>
+            <button onclick="history.back()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;">Close</button>
+        </div>`;
     }
 }
-
-// Add download button to YouTube page
-function addYoutubeDownloadButton() {
-    if (!document.getElementById('myDirectDownloadBtn')) {
-        const btn = document.createElement('button');
-        btn.id = 'myDirectDownloadBtn';
-        btn.innerHTML = '⬇️ DIRECT DOWNLOAD';
-        btn.style.cssText = `
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            background: linear-gradient(45deg, #ff0000, #ff4444);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 50px;
-            border: none;
-            cursor: pointer;
-            z-index: 99999;
-            font-weight: bold;
-            font-size: 14px;
-            box-shadow: 0 4px 15px rgba(255,0,0,0.4);
-            transition: all 0.3s;
-        `;
-        
-        btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
-        btn.onmouseout = () => btn.style.transform = 'scale(1)';
-        btn.onclick = ytproDownVid;
-        
-        document.body.appendChild(btn);
-        console.log('✅ Direct Download button added!');
-    }
-}
-
-// Auto-add when on YouTube
-if (window.location.hostname.includes('youtube.com')) {
-    setTimeout(addYoutubeDownloadButton, 2000);
-}
-
-console.log('🚀 DIRECT YouTube Downloader loaded!');
-console.log('Use: ytproDownVid() OR wait for red button');
 
 
 
