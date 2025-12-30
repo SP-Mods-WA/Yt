@@ -1,7 +1,7 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.7
-URI: https://github.com/prateek-chaubey/YTPRO
+Version: 1.0.8
+URI: https://www.spmods.download
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
 
@@ -27,7 +27,7 @@ window.location.href=`javascript:(function () { var script = document.createElem
 if(!YTProVer){
 
 /*Few Stupid Inits*/
-var YTProVer="1.2";
+var YTProVer="1.0";
 var ytoldV="";
 var isF=false;   //what is this for?
 var isAp=false; // oh it's for bg play 
@@ -740,18 +740,18 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 </svg>
 </button>
 <br>
-<button onclick="Android.oplink('https://github.com/prateek-chaubey/YTPRO/issues')">Report Bugs
+<button onclick="Android.oplink('spmodsofficial@gmail.com')">Report Bugs
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="${isD ? "#ccc" : "#444"}" viewBox="0 0 16 16">
 <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
 </svg>
 </button>
 <br>
-<button style="font-weight:bolder;" onclick="Android.oplink('https://github.com/sponsors/prateek-chaubey');">Become a Sponsor
+<!--button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channell
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${isD ? "#ccc" : "#444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 2l6 6-6 6"/>
 </svg>
 
-</button>
+</button-->
 <br>
 <!--div>Developer Mode <span onclick="sttCnf(this,'devMode');" style="${sttCnf(0,0,"devMode")}" ><b style="${sttCnf(0,1,"devMode")}"></b></span></div-->
 <br><br>
@@ -2600,12 +2600,12 @@ Latest Version ${YTProVer} of YTPRO is available , update the YTPRO to get lates
 - Optimized the UI of both Download and Settings menu<br>
 - Added new UI icons based on the latest YouTube's UI<br>
 - Fixed bugs and improved functionality<br>
-- for the full list <u onclick="Android.oplink('https://github.com/prateek-chaubey/YTPRO/releases');" >click here</u>
+- for the full list <u onclick="Android.oplink('https://www.spmods.download');" >click here</u>
 <br>
 <br>
 <div style="display:flex;">
 <!--<button style="border:0;border-radius:10px;height:30px;width:150px;background:;" onclick="this.parentElement.parentElement.parentElement.remove();">Cancel</button>-->
-<button style="border:0;border-radius:10px;height:30px;width:150px;background:rgba(255,50,50,.7);float:right;" onclick="Android.downvid('YTPRO.zip','https://nightly.link/prateek-chaubey/YTPro/workflows/gradle/main/YTPRO.zip','application/zip');">Download</button>
+<button style="border:0;border-radius:10px;height:30px;width:150px;background:rgba(255,50,50,.7);float:right;" onclick="Android.downvid('YTPRO.zip','https://www.spmods.download','application/zip');">Download</button>
 </div>
 
 </div>
