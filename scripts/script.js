@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.5
+Version: 1.0.6
 URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -934,7 +934,7 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 }
 
 /*Video Downloader*/
-/*Video Downloader - Load innertube.js dynamically*/
+/*Video Downloader - Load innertube.js from GitHub*/
 async function ytproDownVid(){
     var ytproDown=document.createElement("div");
     var ytproDownDiv=document.createElement("div");
@@ -967,34 +967,35 @@ async function ytproDownVid(){
     try {
         // Check if innertube.js already loaded
         if (typeof window.getDownloadStreams === 'undefined') {
-            // Load innertube.js
+            ytproDownDiv.innerHTML="⏳ Loading modules...";
+            
+            // Load innertube.js from GitHub
             const script = document.createElement('script');
             script.type = 'module';
-            script.src = 'https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js';
+            // Use raw.githubusercontent.com for direct file access
+            script.src = 'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js';
             document.body.appendChild(script);
             
             // Wait for script to load
             await new Promise((resolve, reject) => {
-                script.onload = resolve;
-                script.onerror = () => reject(new Error('Failed to load download script'));
+                let attempts = 0;
+                const maxAttempts = 40; // 20 seconds max
                 
-                // Timeout after 10 seconds
-                setTimeout(() => reject(new Error('Script load timeout')), 10000);
+                const checkInterval = setInterval(() => {
+                    attempts++;
+                    
+                    if (typeof window.getDownloadStreams !== 'undefined') {
+                        clearInterval(checkInterval);
+                        resolve();
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        reject(new Error('Script load timeout'));
+                    }
+                }, 500);
             });
-            
-            // Additional wait for functions to be available
-            let attempts = 0;
-            while (typeof window.getDownloadStreams === 'undefined' && attempts < 20) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-                attempts++;
-            }
-            
-            if (typeof window.getDownloadStreams === 'undefined') {
-                throw new Error('Download function not available');
-            }
         }
         
-        ytproDownDiv.innerHTML="⏳ Loading video info...";
+        ytproDownDiv.innerHTML="⏳ Fetching video info...";
         
         // Call the download function
         await window.getDownloadStreams();
@@ -1005,7 +1006,12 @@ async function ytproDownVid(){
         <div style="padding:20px;color:${c};">
             <h3>❌ Download Error</h3>
             <p style="margin-top:10px;font-size:14px;">${error.message}</p>
-            <p style="margin-top:10px;font-size:12px;opacity:0.7;">Please try again or check your connection.</p>
+            <p style="margin-top:10px;font-size:12px;opacity:0.7;">
+                ${error.message.includes('timeout') ? 
+                    'Script took too long to load. Please check your internet connection.' : 
+                    'An error occurred while loading the download module.'}
+            </p>
+            <button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;margin-right:10px;">Reload Page</button>
             <button onclick="history.back()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;">Close</button>
         </div>`;
     }
