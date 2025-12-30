@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.6
+Version: 1.0.7
 URI: https://github.com/prateek-chaubey/YTPRO
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -934,7 +934,7 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 }
 
 /*Video Downloader*/
-/*Video Downloader - Load innertube.js from GitHub*/
+/*Video Downloader - Simple & Working*/
 async function ytproDownVid(){
     var ytproDown=document.createElement("div");
     var ytproDownDiv=document.createElement("div");
@@ -962,56 +962,95 @@ async function ytproDownVid(){
     document.body.appendChild(ytproDown);
     ytproDown.appendChild(ytproDownDiv);
 
-    ytproDownDiv.innerHTML="⏳ Loading download script...";
+    var id="";
+    if(window.location.pathname.indexOf("shorts") > -1){
+        id=window.location.pathname.substr(8,window.location.pathname.length);
+    }
+    else{
+        id=new URLSearchParams(window.location.search).get("v");
+    }
+
+    ytproDownDiv.innerHTML="⏳ Loading...";
 
     try {
-        // Check if innertube.js already loaded
-        if (typeof window.getDownloadStreams === 'undefined') {
-            ytproDownDiv.innerHTML="⏳ Loading modules...";
-            
-            // Load innertube.js from GitHub
-            const script = document.createElement('script');
-            script.type = 'module';
-            // Use raw.githubusercontent.com for direct file access
-            script.src = 'https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/scripts/innertube.js';
-            document.body.appendChild(script);
-            
-            // Wait for script to load
-            await new Promise((resolve, reject) => {
-                let attempts = 0;
-                const maxAttempts = 40; // 20 seconds max
-                
-                const checkInterval = setInterval(() => {
-                    attempts++;
-                    
-                    if (typeof window.getDownloadStreams !== 'undefined') {
-                        clearInterval(checkInterval);
-                        resolve();
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(checkInterval);
-                        reject(new Error('Script load timeout'));
+        // Simple YouTube API call
+        const response = await fetch(`https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                videoId: id,
+                context: {
+                    client: {
+                        clientName: "ANDROID",
+                        clientVersion: "19.09.37",
+                        androidSdkVersion: 30
                     }
-                }, 500);
+                }
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.streamingData) {
+            throw new Error("Video unavailable");
+        }
+        
+        const formats = data.streamingData.formats || [];
+        const adaptiveFormats = data.streamingData.adaptiveFormats || [];
+        const title = (data.videoDetails.title || "video").replace(/[|\\?*<":>+\[\]/']/g, '_');
+        const thumb = data.videoDetails.thumbnail.thumbnails;
+        
+        let html = `<h3 style="font-size:14px;margin-bottom:15px;color:${c};">📥 ${title}</h3>`;
+        
+        // Video + Audio
+        if (formats.length > 0) {
+            html += `<h4 style="text-align:left;margin:10px 0;color:${c};font-size:13px;">🎬 Video + Audio</h4>`;
+            formats.forEach(f => {
+                const q = f.qualityLabel || f.quality || "?";
+                const s = f.contentLength ? formatFileSize(f.contentLength) : "";
+                html += `<button onclick="Android.downvid('${title}.mp4','${f.url}','video/mp4');Android.showToast('Download started!');" style="display:block;width:100%;margin:5px 0;padding:10px;background:${d};border:0;border-radius:10px;text-align:left;color:${c};font-size:13px;">📹 ${q} ${s}</button>`;
             });
         }
         
-        ytproDownDiv.innerHTML="⏳ Fetching video info...";
+        // Video Only
+        const vids = adaptiveFormats.filter(f => f.mimeType && f.mimeType.includes("video"));
+        if (vids.length > 0) {
+            html += `<h4 style="text-align:left;margin:10px 0;color:${c};font-size:13px;">🎥 Video Only</h4>`;
+            vids.slice(0, 5).forEach(f => {
+                const q = f.qualityLabel || (f.height + "p");
+                const fps = f.fps ? ` ${f.fps}fps` : "";
+                const s = f.contentLength ? formatFileSize(f.contentLength) : "";
+                html += `<button onclick="Android.downvid('${title}_${q}.mp4','${f.url}','video/mp4');Android.showToast('Download started!');" style="display:block;width:100%;margin:5px 0;padding:10px;background:${d};border:0;border-radius:10px;text-align:left;color:${c};font-size:13px;">🎬 ${q}${fps} ${s}</button>`;
+            });
+        }
         
-        // Call the download function
-        await window.getDownloadStreams();
+        // Audio Only
+        const auds = adaptiveFormats.filter(f => f.mimeType && f.mimeType.includes("audio"));
+        if (auds.length > 0) {
+            html += `<h4 style="text-align:left;margin:10px 0;color:${c};font-size:13px;">🎵 Audio Only</h4>`;
+            auds.slice(0, 3).forEach(f => {
+                const br = f.bitrate ? Math.round(f.bitrate / 1000) + "kbps" : "";
+                const s = f.contentLength ? formatFileSize(f.contentLength) : "";
+                html += `<button onclick="Android.downvid('${title}.m4a','${f.url}','audio/mp4');Android.showToast('Download started!');" style="display:block;width:100%;margin:5px 0;padding:10px;background:${d};border:0;border-radius:10px;text-align:left;color:${c};font-size:13px;">🎵 ${br} ${s}</button>`;
+            });
+        }
+        
+        // Thumbnail
+        if (thumb && thumb.length > 0) {
+            html += `<h4 style="text-align:left;margin:10px 0;color:${c};font-size:13px;">🖼️ Thumbnail</h4>`;
+            const t = thumb[thumb.length - 1];
+            html += `<button onclick="Android.downvid('${title}_thumb.jpg','${t.url}','image/jpeg');Android.showToast('Download started!');" style="display:block;width:100%;margin:5px 0;padding:10px;background:${d};border:0;border-radius:10px;text-align:left;color:${c};font-size:13px;">📸 ${t.width} × ${t.height}</button>`;
+        }
+        
+        ytproDownDiv.innerHTML = html;
         
     } catch (error) {
-        console.error("Download error:", error);
         ytproDownDiv.innerHTML = `
         <div style="padding:20px;color:${c};">
-            <h3>❌ Download Error</h3>
-            <p style="margin-top:10px;font-size:14px;">${error.message}</p>
-            <p style="margin-top:10px;font-size:12px;opacity:0.7;">
-                ${error.message.includes('timeout') ? 
-                    'Script took too long to load. Please check your internet connection.' : 
-                    'An error occurred while loading the download module.'}
-            </p>
-            <button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;margin-right:10px;">Reload Page</button>
+            <h3>❌ Error</h3>
+            <p style="margin-top:10px;font-size:13px;">${error.message}</p>
             <button onclick="history.back()" style="margin-top:15px;padding:10px 20px;background:${c};color:${dc};border:0;border-radius:10px;">Close</button>
         </div>`;
     }
