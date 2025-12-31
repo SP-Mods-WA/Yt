@@ -1,7 +1,7 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.0.9
-URI: https://github.com/prateek-chaubey/YTPRO
+Version: 1.1.0
+URI: https://www.spmods.download
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
 
@@ -37,6 +37,9 @@ window.isPIP=false;
 window.pauseAllowed = true; // allow pause by default
 var sTime=[];
 var webUrls=["m.youtube.com","youtube.com","yout.be","accounts.google.com"];
+var isVideoPlaying = false;
+var miniPlayerActive = false;
+var originalPlayerContainer = null;
 var GeminiAT="";
 var GeminiModels={
 "2.0 Flash":'[null,null,null,null,"f299729663a2343f"]',   //g2.0 FLASH
@@ -746,7 +749,7 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 </svg>
 </button>
 <br>
-<button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channell
+<button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channel
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${isD ? "#ccc" : "#444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 2l6 6-6 6"/>
 </svg>
@@ -2562,6 +2565,11 @@ addMaxButton();
 //settingsTab
 addSettingsTab();
 
+monitorVideoState();
+    
+    try{
+        var video = document.getElementsByClassName('video-stream')[0];
+
 
 try{
 var video = document.getElementsByClassName('video-stream')[0];
@@ -2655,6 +2663,153 @@ event.stopPropagation();
 true);
 
 
+/*Mini Player Functions*/
 
+// Monitor video play state
+function monitorVideoState() {
+    const video = document.querySelector('.video-stream');
+    if (video && !video.hasAttribute('data-ytpro-monitored')) {
+        video.setAttribute('data-ytpro-monitored', 'true');
+        video.addEventListener('play', () => {
+            isVideoPlaying = true;
+        });
+        video.addEventListener('pause', () => {
+            isVideoPlaying = false;
+        });
+        video.addEventListener('ended', () => {
+            isVideoPlaying = false;
+        });
+    }
+}
+
+// Create mini player
+function createMiniPlayer() {
+    if (miniPlayerActive) return;
+    
+    const playerContainer = document.getElementById('player-container-id');
+    if (!playerContainer) return;
+    
+    // Store original state
+    originalPlayerContainer = {
+        position: playerContainer.style.position,
+        top: playerContainer.style.top,
+        left: playerContainer.style.left,
+        width: playerContainer.style.width,
+        height: playerContainer.style.height,
+        zIndex: playerContainer.style.zIndex,
+        transform: playerContainer.style.transform,
+        bottom: playerContainer.style.bottom,
+        right: playerContainer.style.right
+    };
+    
+    // Apply mini player styles
+    playerContainer.style.position = 'fixed';
+    playerContainer.style.bottom = '70px';
+    playerContainer.style.left = '10px';
+    playerContainer.style.width = '45%';
+    playerContainer.style.height = 'auto';
+    playerContainer.style.zIndex = '9999';
+    playerContainer.style.borderRadius = '12px';
+    playerContainer.style.overflow = 'hidden';
+    playerContainer.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+    playerContainer.style.transition = 'all 0.3s ease';
+    playerContainer.style.top = 'auto';
+    playerContainer.style.right = 'auto';
+    
+    // Add close button
+    const closeBtn = document.createElement('div');
+    closeBtn.id = 'miniPlayerClose';
+    closeBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fff" viewBox="0 0 16 16">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+        </svg>
+    `;
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 32px;
+        height: 32px;
+        background: rgba(0,0,0,0.7);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10000;
+        backdrop-filter: blur(5px);
+    `;
+    
+    closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        closeMiniPlayer();
+    };
+    
+    // Expand on click
+    playerContainer.onclick = (e) => {
+        if (e.target !== closeBtn && !closeBtn.contains(e.target)) {
+            closeMiniPlayer();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+    
+    playerContainer.appendChild(closeBtn);
+    miniPlayerActive = true;
+    
+    // Hide other elements
+    const metadataContainer = document.querySelector('.slim-video-metadata-header');
+    const actionsBar = document.querySelector('.slim-video-action-bar-actions');
+    const ytproMainDiv = document.getElementById('ytproMainDivE');
+    if (metadataContainer) metadataContainer.style.display = 'none';
+    if (actionsBar) actionsBar.style.display = 'none';
+    if (ytproMainDiv) ytproMainDiv.style.display = 'none';
+}
+
+// Close mini player
+function closeMiniPlayer() {
+    if (!miniPlayerActive || !originalPlayerContainer) return;
+    
+    const playerContainer = document.getElementById('player-container-id');
+    if (!playerContainer) return;
+    
+    // Remove close button
+    const closeBtn = document.getElementById('miniPlayerClose');
+    if (closeBtn) closeBtn.remove();
+    
+    // Restore styles
+    Object.keys(originalPlayerContainer).forEach(key => {
+        playerContainer.style[key] = originalPlayerContainer[key];
+    });
+    
+    playerContainer.onclick = null;
+    miniPlayerActive = false;
+    
+    // Show elements
+    const metadataContainer = document.querySelector('.slim-video-metadata-header');
+    const actionsBar = document.querySelector('.slim-video-action-bar-actions');
+    const ytproMainDiv = document.getElementById('ytproMainDivE');
+    if (metadataContainer) metadataContainer.style.display = '';
+    if (actionsBar) actionsBar.style.display = '';
+    if (ytproMainDiv) ytproMainDiv.style.display = '';
+}
+
+// Handle back button
+if (typeof Android !== 'undefined') {
+    const originalGoHome = Android.gohome;
+    Android.gohome = function() {
+        if (window.location.pathname.includes('/watch') && isVideoPlaying && !miniPlayerActive) {
+            createMiniPlayer();
+        } else if (miniPlayerActive) {
+            closeMiniPlayer();
+        } else {
+            if (originalGoHome) originalGoHome.call(Android);
+        }
+    };
+}
+
+// Initialize after delay
+setTimeout(() => {
+    monitorVideoState();
+}, 2000);
 
 }
