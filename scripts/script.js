@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.1.1
+Version: 1.1.2
 URI: https://www.spmods.download
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -36,10 +36,6 @@ window.PIPause = false; // for pausing video when in PIP
 window.isPIP=false;
 window.pauseAllowed = true; // allow pause by default
 var sTime=[];
-// Mini Player Variables
-var isVideoPlaying = false;
-var miniPlayerActive = false;
-var originalPlayerContainer = null;
 var webUrls=["m.youtube.com","youtube.com","yout.be","accounts.google.com"];
 var GeminiAT="";
 var GeminiModels={
@@ -750,7 +746,7 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 </svg>
 </button>
 <br>
-<button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channell
+<button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channells
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${isD ? "#ccc" : "#444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 2l6 6-6 6"/>
 </svg>
@@ -2433,9 +2429,48 @@ return origSend.apply(this, arguments);
 /*YT ADS BLOCKER*/
 function adsBlock(){
 
-
 try{
 document.getElementsByClassName('video-stream')[0].removeAttribute('disablepictureinpicture');
+}catch{}
+
+/*Show Top Bar Icons - FIX*/
+try{
+    // Top bar elements
+    const topbar = document.querySelector('ytm-mobile-topbar-renderer');
+    const notification = document.querySelector('ytm-notification-topbar-button-renderer');
+    const upload = document.querySelector('ytm-upload-button-renderer');
+    const cast = document.querySelector('ytm-cast-button-renderer');
+    
+    if(topbar) {
+        topbar.style.display = '';
+        topbar.style.visibility = '';
+        topbar.style.opacity = '';
+    }
+    if(notification) {
+        notification.style.display = '';
+        notification.style.visibility = '';
+    }
+    if(upload) {
+        upload.style.display = '';
+        upload.style.visibility = '';
+    }
+    if(cast) {
+        cast.style.display = '';
+        cast.style.visibility = '';
+    }
+    
+    // Bottom nav bar - upload button
+    const bottomNav = document.querySelector('ytm-pivot-bar-renderer');
+    const uploadBtn = document.querySelector('ytm-upload-icon-button');
+    
+    if(bottomNav) {
+        bottomNav.style.display = '';
+        bottomNav.style.visibility = '';
+    }
+    if(uploadBtn) {
+        uploadBtn.style.display = '';
+        uploadBtn.style.visibility = '';
+    }
 }catch{}
 
 
@@ -2447,11 +2482,7 @@ try{ads[x].remove();}catch{}
 try{
 document.getElementsByClassName("ad-interrupting")[0].getElementsByTagName("video")[0].currentTime=document.getElementsByClassName("ad-interrupting")[0].getElementsByTagName("video")[0].duration;
 document.getElementsByClassName("ytp-ad-skip-button-modern")[0].click();
-
 }catch{}
-
-
-
 
 /*Block Ads*/
 try{
@@ -2474,28 +2505,16 @@ try{document.getElementsByTagName("ytm-paid-content-overlay-renderer")[0].style.
 
 /*Hide Shorts*/
 if(localStorage.getItem("shorts") == "true"){
-
-
 for( x in document.getElementsByClassName("big-shorts-singleton")){
-try{document.getElementsByClassName("big-shorts-singleton")[x].remove();
-}catch{}
+try{document.getElementsByClassName("big-shorts-singleton")[x].remove();}catch{}
 }
-
 for( x in document.getElementsByTagName("ytm-reel-shelf-renderer")){
-try{document.getElementsByTagName("ytm-reel-shelf-renderer")[x].remove();
-}catch{}
-
+try{document.getElementsByTagName("ytm-reel-shelf-renderer")[x].remove();}catch{}
 for( x in document.getElementsByTagName("ytm-shorts-lockup-view-model")){
-try{document.getElementsByTagName("ytm-shorts-lockup-view-model")[x].remove();
-}catch{}
-
-}
-
+try{document.getElementsByTagName("ytm-shorts-lockup-view-model")[x].remove();}catch{}
 }
 }
-
-
-
+}
 
 }
 
@@ -2565,9 +2584,6 @@ addMaxButton();
 
 //settingsTab
 addSettingsTab();
-
-//monitor video
-monitorVideoState();
 
 
 try{
@@ -2661,107 +2677,7 @@ event.stopPropagation();
 },
 true);
 
-/*Mini Player Feature*/
-function monitorVideoState() {
-    const video = document.querySelector('.video-stream');
-    if (video && !video.hasAttribute('data-monitored')) {
-        video.setAttribute('data-monitored', 'true');
-        video.addEventListener('play', () => { isVideoPlaying = true; });
-        video.addEventListener('pause', () => { isVideoPlaying = false; });
-        video.addEventListener('ended', () => { isVideoPlaying = false; });
-    }
-}
 
-function createMiniPlayer() {
-    if (miniPlayerActive) return;
-    const pc = document.getElementById('player-container-id');
-    if (!pc) return;
-    
-    originalPlayerContainer = {
-        position: pc.style.position,
-        top: pc.style.top,
-        left: pc.style.left,
-        width: pc.style.width,
-        height: pc.style.height,
-        zIndex: pc.style.zIndex,
-        transform: pc.style.transform
-    };
-    
-    pc.style.position = 'fixed';
-    pc.style.bottom = '70px';
-    pc.style.left = '10px';
-    pc.style.width = '45%';
-    pc.style.height = 'auto';
-    pc.style.zIndex = '9999';
-    pc.style.borderRadius = '12px';
-    pc.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
-    pc.style.top = 'auto';
-    pc.style.right = 'auto';
-    
-    const cb = document.createElement('div');
-    cb.id = 'miniClose';
-    cb.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fff" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg>';
-    cb.style.cssText = 'position:absolute;top:5px;right:5px;width:32px;height:32px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:10000;';
-    cb.onclick = (e) => { e.stopPropagation(); closeMiniPlayer(); };
-    
-    pc.onclick = (e) => {
-        if (e.target !== cb && !cb.contains(e.target)) {
-            closeMiniPlayer();
-            window.scrollTo({top:0,behavior:'smooth'});
-        }
-    };
-    
-    pc.appendChild(cb);
-    miniPlayerActive = true;
-    
-    const md = document.querySelector('.slim-video-metadata-header');
-    const ab = document.querySelector('.slim-video-action-bar-actions');
-    const yt = document.getElementById('ytproMainDivE');
-    if(md) md.style.display='none';
-    if(ab) ab.style.display='none';
-    if(yt) yt.style.display='none';
-}
-
-function closeMiniPlayer() {
-    if (!miniPlayerActive || !originalPlayerContainer) return;
-    const pc = document.getElementById('player-container-id');
-    if (!pc) return;
-    
-    const cb = document.getElementById('miniClose');
-    if(cb) cb.remove();
-    
-    Object.keys(originalPlayerContainer).forEach(k => {
-        pc.style[k] = originalPlayerContainer[k];
-    });
-    pc.style.bottom = '';
-    pc.style.right = '';
-    pc.style.borderRadius = '';
-    pc.style.boxShadow = '';
-    pc.onclick = null;
-    miniPlayerActive = false;
-    
-    const md = document.querySelector('.slim-video-metadata-header');
-    const ab = document.querySelector('.slim-video-action-bar-actions');
-    const yt = document.getElementById('ytproMainDivE');
-    if(md) md.style.display='';
-    if(ab) ab.style.display='';
-    if(yt) yt.style.display='';
-}
-
-if (typeof Android !== 'undefined') {
-    const og = Android.gohome;
-    Android.gohome = function() {
-        if (window.location.pathname.includes('/watch') && isVideoPlaying && !miniPlayerActive) {
-            createMiniPlayer();
-        } else if (miniPlayerActive) {
-            closeMiniPlayer();
-        } else {
-            if(og) og.call(Android);
-        }
-    };
-}
-
-setTimeout(() => { monitorVideoState(); }, 2000);
 
 
 }
