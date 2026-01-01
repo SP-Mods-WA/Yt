@@ -2,28 +2,65 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.spmods.ytpro"  
-    compileSdk 36
+    compileSdk 34  // 34 කරන්න
 
     defaultConfig {
         applicationId "com.spmods.ytpro"
         minSdkVersion 21
-        targetSdkVersion 36
-        versionCode 1
-        versionName "1.0"
+        targetSdkVersion 34  // 34 කරන්න
+        versionCode 1  // වැඩි කරන්න (1 → 2)
+        versionName "1.0"  // වෙනස් කරන්න
+        
+        // මේවා එකතු කරන්න
+        multiDexEnabled true
+    }
+
+    // 🚨 අනිවාර්යයි: Signing Configs එකතු කරන්න
+    signingConfigs {
+        release {
+            storeFile file("../android.keystore")  // GitHub එකෙන් generate වෙනවා
+            storePassword System.getenv('STORE_PASS') ?: "android"  // GitHub secret
+            keyAlias "upload"  // GitHub secret එකේ තියෙනවා
+            keyPassword System.getenv('KEY_PASS') ?: "android"  // GitHub secret
+        }
     }
 
     buildTypes {
-        release {
+        debug {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            debuggable true
+            applicationIdSuffix ".debug"
         }
+        
+        release {
+            // 🚨 අනිවාර්ය වෙනස්කම්
+            minifyEnabled true  // false → true කරන්න!
+            shrinkResources true  // අලුත්වැඩියා
+            proguardFiles getDefaultProguardFile(
+                'proguard-android-optimize.txt'),  // optimize එකතු කරන්න
+                'proguard-rules.pro'
+            
+            // 🚨 Signing config භාවිතා කරන්න
+            signingConfig signingConfigs.release
+        }
+    }
+    
+    // මේවා එකතු කරන්න
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
 dependencies {
-    // Add your dependencies here
+    // 🚨 අනිවාර්ය dependencies එකතු කරන්න
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    
+    // ඔබේ app එකට අවශ්‍ය වෙනත් dependencies
+    // implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    // implementation 'com.google.code.gson:gson:2.10.1'
+    // implementation 'com.github.bumptech.glide:glide:4.16.0'
 }
-
-
-
-
