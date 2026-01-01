@@ -53,14 +53,12 @@ android {
 }
 
 dependencies {
-    // 🚨 අනිවාර්ය dependencies එකතු කරන්න
+    // මේ 3ක් පමණක් පළමුව තබන්න
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.10.0'
+    implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.multidex:multidex:2.0.1'
     
-    // ඔබේ app එකට අවශ්‍ය වෙනත් dependencies
-    // implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    // implementation 'com.google.code.gson:gson:2.10.1'
-    // implementation 'com.github.bumptech.glide:glide:4.16.0'
+    // multidex අවශ්‍ය නැත්නම් ඉවත් කරන්න
+    // implementation 'androidx.multidex:multidex:2.0.1'
 }
+
