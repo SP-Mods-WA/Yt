@@ -31,20 +31,20 @@ jobs:
     
     # 5. Keystore එක generate කරන්න
     - name: Generate Keystore
-      run: |
-        echo "🔐 Creating keystore..."
-        keytool -genkeypair -v \
-          -keystore android.keystore \
-          -alias upload \
-          -keyalg RSA \
-          -keysize 2048 \
-          -validity 10000 \
-          -dname "CN=Android, OU=Dev, O=Company, L=City, ST=State, C=LK" \
-          -storepass "${{ secrets.STORE_PASS }}" \
-          -keypass "${{ secrets.KEY_PASS }}"
-        
-        echo "📁 Moving keystore..."
-        mv android.keystore ./
+  run: |
+    echo "🔐 Creating keystore..."
+    keytool -genkeypair -v \
+      -keystore android.keystore \  # ✅ "keystore" ලියන්න
+      -alias upload \
+      -keyalg RSA \
+      -keysize 2048 \
+      -validity 10000 \
+      -dname "CN=Android, OU=Dev, O=Company, L=City, ST=State, C=LK" \
+      -storepass "${{ secrets.STORE_PASS }}" \
+      -keypass "${{ secrets.KEY_PASS }}"
+    
+    echo "📁 Moving keystore..."
+    mv android.keystore ./  # ✅ "keystore" ලියන්න
     
     # 6. APK build කරන්න
     - name: Build APK
