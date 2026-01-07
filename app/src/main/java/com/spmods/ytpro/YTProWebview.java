@@ -49,8 +49,7 @@ public class YTProWebview extends WebView {
         // Enable database
         webSettings.setDatabaseEnabled(true);
         
-        // Enable caching
-        webSettings.setAppCacheEnabled(true);
+        // Enable caching (removed deprecated setAppCacheEnabled)
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
         // Enable zoom controls
@@ -145,7 +144,7 @@ public class YTProWebview extends WebView {
         String customCSS = "javascript:(function() {" +
                 "var style = document.createElement('style');" +
                 "style.innerHTML = '" +
-                "body { zoom: 0.8; }" + // Adjust zoom for better viewing
+                "body { zoom: 0.8; }" +
                 "';" +
                 "document.head.appendChild(style);" +
                 "})()";
