@@ -49,7 +49,7 @@ public class YTProWebview extends WebView {
         // Enable database
         webSettings.setDatabaseEnabled(true);
         
-        // Enable caching (removed deprecated setAppCacheEnabled)
+        // Enable caching
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
         // Enable zoom controls
@@ -60,9 +60,9 @@ public class YTProWebview extends WebView {
         // Enable media playback
         webSettings.setMediaPlaybackRequiresUserGesture(false);
         
-        // Set desktop user agent to show notification and TV icons
-        String desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-        webSettings.setUserAgentString(desktopUserAgent);
+        // Keep mobile user agent for compatibility with your JS code
+        // Don't change to desktop mode
+        webSettings.setUserAgentString(webSettings.getUserAgentString());
         
         // Enable wide viewport
         webSettings.setUseWideViewPort(true);
@@ -112,8 +112,8 @@ public class YTProWebview extends WebView {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 
-                // Inject custom CSS/JS if needed
-                injectCustomCode(view);
+                // Inject CSS to show notification bell and TV icons
+                injectNotificationIcons(view);
             }
         });
         
@@ -139,12 +139,14 @@ public class YTProWebview extends WebView {
         });
     }
 
-    private void injectCustomCode(WebView view) {
-        // Inject custom CSS to improve desktop layout on mobile
+    private void injectNotificationIcons(WebView view) {
+        // Inject CSS to force show notification bell and TV/Cast icons on mobile YouTube
         String customCSS = "javascript:(function() {" +
                 "var style = document.createElement('style');" +
                 "style.innerHTML = '" +
-                "body { zoom: 0.8; }" +
+                "ytm-topbar-menu-button-renderer[button-renderer-id=\"FEnotifications\"] { display: flex !important; visibility: visible !important; }" +
+                "ytm-topbar-menu-button-renderer[button-renderer-id=\"FEcast\"] { display: flex !important; visibility: visible !important; }" +
+                "ytm-notification-topbar-button-view-model { display: flex !important; }" +
                 "';" +
                 "document.head.appendChild(style);" +
                 "})()";
@@ -176,6 +178,6 @@ public class YTProWebview extends WebView {
     }
 
     public void loadYouTube() {
-        loadUrl("https://www.youtube.com");
+        loadUrl("https://m.youtube.com");
     }
 }
