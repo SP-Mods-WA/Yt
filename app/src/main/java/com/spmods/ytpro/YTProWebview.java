@@ -60,8 +60,7 @@ public class YTProWebview extends WebView {
         // Enable media playback
         webSettings.setMediaPlaybackRequiresUserGesture(false);
         
-        // Keep mobile user agent for compatibility with your JS code
-        // Don't change to desktop mode
+        // Keep mobile user agent
         webSettings.setUserAgentString(webSettings.getUserAgentString());
         
         // Enable wide viewport
@@ -112,8 +111,8 @@ public class YTProWebview extends WebView {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 
-                // Inject CSS to show notification bell and TV icons
-                injectNotificationIcons(view);
+                // Add notification and TV icons to header
+                addHeaderIcons(view);
             }
         });
         
@@ -139,22 +138,53 @@ public class YTProWebview extends WebView {
         });
     }
 
-    private void injectNotificationIcons(WebView view) {
-        // Inject CSS to force show notification bell and TV/Cast icons on mobile YouTube
-        String customCSS = "javascript:(function() {" +
-                "var style = document.createElement('style');" +
-                "style.innerHTML = '" +
-                "ytm-topbar-menu-button-renderer[button-renderer-id=\"FEnotifications\"] { display: flex !important; visibility: visible !important; }" +
-                "ytm-topbar-menu-button-renderer[button-renderer-id=\"FEcast\"] { display: flex !important; visibility: visible !important; }" +
-                "ytm-notification-topbar-button-view-model { display: flex !important; }" +
-                "';" +
-                "document.head.appendChild(style);" +
+    private void addHeaderIcons(WebView view) {
+        // JavaScript to add notification bell and TV icons to YouTube mobile header
+        String js = "javascript:(function() {" +
+                "if(document.getElementById('ytpro-custom-icons')) return;" +
+                
+                // Wait for header to load
+                "function addIcons() {" +
+                "  var header = document.querySelector('ytm-mobile-topbar-renderer');" +
+                "  if(!header) { setTimeout(addIcons, 500); return; }" +
+                "  " +
+                "  var buttonsContainer = header.querySelector('.mobile-topbar-header-content');" +
+                "  if(!buttonsContainer) { setTimeout(addIcons, 500); return; }" +
+                "  " +
+                // Create container for custom icons
+                "  var iconsDiv = document.createElement('div');" +
+                "  iconsDiv.id = 'ytpro-custom-icons';" +
+                "  iconsDiv.style.cssText = 'display:flex;align-items:center;margin-right:8px;';" +
+                "  " +
+                // Notification Bell Icon
+                "  var bellBtn = document.createElement('button');" +
+                "  bellBtn.style.cssText = 'background:transparent;border:0;padding:8px;display:flex;align-items:center;cursor:pointer;';" +
+                "  bellBtn.innerHTML = '<svg height=\"24\" width=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z\"/></svg>';" +
+                "  bellBtn.onclick = function() { window.location.href = 'https://m.youtube.com/feed/notifications'; };" +
+                "  " +
+                // TV/Cast Icon  
+                "  var castBtn = document.createElement('button');" +
+                "  castBtn.style.cssText = 'background:transparent;border:0;padding:8px;display:flex;align-items:center;cursor:pointer;';" +
+                "  castBtn.innerHTML = '<svg height=\"24\" width=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11z\"/></svg>';" +
+                "  castBtn.onclick = function() { Android.showToast('Cast feature coming soon!'); };" +
+                "  " +
+                // Add icons to container
+                "  iconsDiv.appendChild(bellBtn);" +
+                "  iconsDiv.appendChild(castBtn);" +
+                "  " +
+                // Insert before search button
+                "  var searchBtn = buttonsContainer.querySelector('ytm-topbar-menu-button-renderer[button-renderer-id=\"FEsearch\"]');" +
+                "  if(searchBtn) {" +
+                "    buttonsContainer.insertBefore(iconsDiv, searchBtn);" +
+                "  }" +
+                "}" +
+                "addIcons();" +
                 "})()";
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            view.evaluateJavascript(customCSS, null);
+            view.evaluateJavascript(js, null);
         } else {
-            view.loadUrl(customCSS);
+            view.loadUrl(js);
         }
     }
 
