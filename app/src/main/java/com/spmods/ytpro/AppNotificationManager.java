@@ -10,7 +10,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import androidx.core.app.NotificationCompat;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import java.util.HashSet;
 import java.util.List;
