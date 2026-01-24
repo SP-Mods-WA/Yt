@@ -5,11 +5,11 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)  // Enforces settings-only repos
     repositories {
         google()
         mavenCentral()
     }
 }
-rootProject.name = "ytpro"  // Or your project name
+rootProject.name = "Yt"  // Or your project name
 include ':app'
