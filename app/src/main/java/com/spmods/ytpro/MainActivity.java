@@ -25,6 +25,8 @@ import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.text.InputType;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 public class MainActivity extends Activity {
 
@@ -58,14 +60,63 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean("bgplay", true).apply();
         }
         
+        // ✅ Request notification permission (Android 13+)
+        requestNotificationPermission();
+        
         if (!isNetworkAvailable()) {
             showOfflineScreen();
         } else {
             load(false);
             checkForAppUpdate();
+            
+            // ✅ Start notification service
+            startNotificationService();
+            
+            // ✅ Check for notifications immediately
+            checkNotificationsNow();
         }
         
         MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    // ✅ NEW: Request notification permission
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, 
+                android.Manifest.permission.POST_NOTIFICATIONS) != 
+                PackageManager.PERMISSION_GRANTED) {
+                
+                ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                    102);
+            }
+        }
+    }
+
+    // ✅ NEW: Start notification checking service
+    private void startNotificationService() {
+        Intent serviceIntent = new Intent(this, NotificationCheckService.class);
+        startService(serviceIntent);
+        Log.d("MainActivity", "📢 Notification service started");
+    }
+
+    // ✅ NEW: Check for notifications immediately
+    private void checkNotificationsNow() {
+        NotificationFetcher fetcher = new NotificationFetcher(this);
+        AppNotificationManager notificationManager = new AppNotificationManager(this);
+        
+        fetcher.fetchNotifications(new NotificationFetcher.NotificationCallback() {
+            @Override
+            public void onSuccess(List<NotificationModel> notifications) {
+                Log.d("MainActivity", "✅ Fetched " + notifications.size() + " notifications");
+                notificationManager.showNotifications(notifications);
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e("MainActivity", "❌ Notification fetch error: " + error);
+            }
+        });
     }
 
     public void load(boolean dl) {
@@ -336,9 +387,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ✅ NEW METHOD: Inject TV and Create buttons into YouTube toolbar
+    // ✅ Inject TV and Create buttons into YouTube toolbar
     private void injectYoutubeToolbarButtons() {
-        // Wait for YouTube page to fully load
         web.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -346,9 +396,7 @@ public class MainActivity extends Activity {
                     "(function() {" +
                     "    console.log('🔧 Injecting YTPRO buttons...');" +
                     "    " +
-                    "    // Function to check and add buttons" +
                     "    function addButtons() {" +
-                    "        // Find YouTube's end buttons container" +
                     "        var endButtons = document.querySelector('#end');" +
                     "        if (!endButtons) {" +
                     "            console.log('⏳ Waiting for YouTube toolbar...');" +
@@ -356,13 +404,11 @@ public class MainActivity extends Activity {
                     "            return;" +
                     "        }" +
                     "        " +
-                    "        // Remove existing injected buttons to avoid duplicates" +
                     "        var existingTvBtn = document.querySelector('#ytpro-tv-btn');" +
                     "        var existingCreateBtn = document.querySelector('#ytpro-create-btn');" +
                     "        if (existingTvBtn) existingTvBtn.remove();" +
                     "        if (existingCreateBtn) existingCreateBtn.remove();" +
                     "        " +
-                    "        // Create TV button" +
                     "        var tvButton = document.createElement('button');" +
                     "        tvButton.id = 'ytpro-tv-btn';" +
                     "        tvButton.innerHTML = '<svg style=\"width:24px;height:24px;fill:white;\" viewBox=\"0 0 24 24\"><path d=\"M21,17H3V5H21M21,3H3A2,2 0 0,0 1,5V17A2,2 0 0,0 3,19H8V21H16V19H21A2,2 0 0,0 23,17V5A2,2 0 0,0 21,3Z\"></path></svg>';" +
@@ -374,7 +420,6 @@ public class MainActivity extends Activity {
                     "            window.Android.showTvDialog();" +
                     "        };" +
                     "        " +
-                    "        // Create button" +
                     "        var createButton = document.createElement('button');" +
                     "        createButton.id = 'ytpro-create-btn';" +
                     "        createButton.innerHTML = '<svg style=\"width:24px;height:24px;fill:white;\" viewBox=\"0 0 24 24\"><path d=\"M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z\"></path></svg>';" +
@@ -386,13 +431,11 @@ public class MainActivity extends Activity {
                     "            window.Android.showCreateDialog();" +
                     "        };" +
                     "        " +
-                    "        // Insert buttons before notification icon" +
                     "        var notificationBtn = endButtons.querySelector('ytd-notification-topbar-button-renderer');" +
                     "        if (notificationBtn) {" +
                     "            endButtons.insertBefore(tvButton, notificationBtn);" +
                     "            endButtons.insertBefore(createButton, notificationBtn);" +
                     "        } else {" +
-                    "            // Fallback: add to end" +
                     "            endButtons.appendChild(tvButton);" +
                     "            endButtons.appendChild(createButton);" +
                     "        }" +
@@ -400,10 +443,8 @@ public class MainActivity extends Activity {
                     "        console.log('✅ YTPRO buttons injected successfully!');" +
                     "    }" +
                     "    " +
-                    "    // Start injecting buttons" +
                     "    addButtons();" +
                     "    " +
-                    "    // Re-inject on navigation (YouTube is SPA)" +
                     "    var originalPushState = history.pushState;" +
                     "    history.pushState = function() {" +
                     "        originalPushState.apply(this, arguments);" +
@@ -416,12 +457,10 @@ public class MainActivity extends Activity {
                     "        setTimeout(addButtons, 1000);" +
                     "    };" +
                     "    " +
-                    "    // Also listen for YouTube's page changes" +
                     "    document.addEventListener('yt-navigate-finish', function() {" +
                     "        setTimeout(addButtons, 500);" +
                     "    });" +
                     "    " +
-                    "    // Handle YouTube's dynamic updates" +
                     "    var observer = new MutationObserver(function(mutations) {" +
                     "        for (var mutation of mutations) {" +
                     "            if (mutation.type === 'childList') {" +
@@ -444,12 +483,13 @@ public class MainActivity extends Activity {
                     }
                 });
             }
-        }, 2000); // Wait 2 seconds for page to stabilize
+        }, 2000);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        
         if (requestCode == 101) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 web.loadUrl("https://m.youtube.com");
@@ -459,6 +499,14 @@ public class MainActivity extends Activity {
         } else if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
                 Toast.makeText(getApplicationContext(), getString(R.string.grant_storage), Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == 102) {
+            // ✅ Notification permission result
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("MainActivity", "✅ Notification permission granted");
+                startNotificationService();
+            } else {
+                Log.d("MainActivity", "❌ Notification permission denied");
             }
         }
     }
@@ -833,7 +881,6 @@ public class MainActivity extends Activity {
             }
         }
         
-        // ✅ NEW: TV Dialog method
         @JavascriptInterface
         public void showTvDialog() {
             runOnUiThread(new Runnable() {
@@ -846,7 +893,6 @@ public class MainActivity extends Activity {
                                @Override
                                public void onClick(DialogInterface dialog, int which) {
                                    Toast.makeText(MainActivity.this, "Scanning for TV devices...", Toast.LENGTH_SHORT).show();
-                                   // Add TV connection logic here
                                }
                            })
                            .setNegativeButton("Enter code", new DialogInterface.OnClickListener() {
@@ -861,7 +907,6 @@ public class MainActivity extends Activity {
             });
         }
         
-        // ✅ NEW: Create Dialog method
         @JavascriptInterface
         public void showCreateDialog() {
             runOnUiThread(new Runnable() {
@@ -902,7 +947,6 @@ public class MainActivity extends Activity {
         }
     }
     
-    // ✅ Helper method for TV code dialog
     private void showTvCodeDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Enter TV Code");
@@ -1158,4 +1202,3 @@ public class MainActivity extends Activity {
         }, 2000);
     }
 }
-
