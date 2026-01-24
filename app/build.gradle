@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace 'com.spmods.ytpro'
-    compileSdk 34  // Change to 34 for stable Android 14; use 35 if previewing Android 15
+    compileSdk 36  // Or 34 for stability
 
     defaultConfig {
         applicationId 'com.spmods.ytpro'
         minSdk 21
-        targetSdk 34  // Match compileSdk
+        targetSdk 36
         versionCode 1
         versionName '1.0'
     }
@@ -17,17 +17,17 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'  // Use optimized ProGuard
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.7.0'  // Latest stable
-    implementation 'androidx.core:core-ktx:1.13.1'  // Latest; remove comment if not using Kotlin
-    implementation 'androidx.activity:activity:1.9.0'  // Latest
-    // If your build log shows lifecycle/fragment issues, add/update these explicitly to latest:
-    // implementation 'androidx.lifecycle:lifecycle-viewmodel:2.8.0'
-    // implementation 'androidx.lifecycle:lifecycle-livedata:2.8.0'
-    // implementation 'androidx.fragment:fragment:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'  // Latest stable<grok:render card_id="bb3658" card_type="citation_card" type="render_inline_citation"><argument name="citation_id">11</argument></grok:render>
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.activity:activity:1.9.0'
+    // Add these if lifecycle/fragment errors appear:
+    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.8.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata:2.8.0'
+    implementation 'androidx.fragment:fragment:1.8.0'
 }
