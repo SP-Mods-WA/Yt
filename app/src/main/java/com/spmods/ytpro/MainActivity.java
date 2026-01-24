@@ -25,8 +25,8 @@ import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.text.InputType;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 
 public class MainActivity extends Activity {
 
@@ -1202,3 +1202,4 @@ public class MainActivity extends Activity {
         }, 2000);
     }
 }
+
