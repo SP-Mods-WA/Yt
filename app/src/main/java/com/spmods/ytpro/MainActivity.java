@@ -407,8 +407,8 @@ public class MainActivity extends Activity {
     }
   }
   
-  // ✅ NEW: Enhanced back button handler with mini player
-  private void handleBackPress() {
+// ✅ NEW: Enhanced back button handler with mini player
+private void handleBackPress() {
     String currentUrl = web.getUrl();
     
     if (currentUrl != null && (currentUrl.contains("/watch") || currentUrl.contains("/shorts"))) {
@@ -425,8 +425,21 @@ public class MainActivity extends Activity {
                 @Override
                 public void onReceiveValue(String value) {
                     if ("\"playing\"".equals(value)) {
-                        // Video is playing - trigger mini player via your JS
-                        web.evaluateJavascript("if(typeof Android !== 'undefined' && typeof Android.gohome === 'function') { Android.gohome(); }", null);
+                        // Video is playing - trigger mini player
+                        web.evaluateJavascript(
+                            "if(typeof createMiniPlayer === 'function') {" +
+                            "  createMiniPlayer();" +
+                            "} else {" +
+                            "  console.log('Mini player not available');" +
+                            "}",
+                            null
+                        );
+                        
+                        // Go to home
+                        Intent startMain = new Intent(Intent.ACTION_MAIN);
+                        startMain.addCategory(Intent.CATEGORY_HOME);
+                        startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(startMain);
                     } else {
                         // Video not playing - normal back
                         if (web.canGoBack()) {
@@ -446,7 +459,7 @@ public class MainActivity extends Activity {
             finish();
         }
     }
-  }
+}
 
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -627,13 +640,19 @@ public class MainActivity extends Activity {
       Toast.makeText(getApplicationContext(), txt + "", Toast.LENGTH_SHORT).show();
     }
 
-    @JavascriptInterface
-    public void gohome(String x) {
-      Intent startMain = new Intent(Intent.ACTION_MAIN);
-      startMain.addCategory(Intent.CATEGORY_HOME);
-      startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      startActivity(startMain);
-    }
+@JavascriptInterface
+public void gohome() {
+    Intent startMain = new Intent(Intent.ACTION_MAIN);
+    startMain.addCategory(Intent.CATEGORY_HOME);
+    startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    startActivity(startMain);
+}
+
+// Keep this for backward compatibility
+@JavascriptInterface
+public void gohome(String x) {
+    gohome();
+}
 
     @JavascriptInterface
     public void downvid(String name, String url, String m) {
