@@ -205,8 +205,6 @@ public class MainActivity extends Activity {
 
 @Override
 public void onPageFinished(WebView p1, String url) {
-    super.onPageFinished(p1, url); // ✅ මෙය අවසානයට දමන්න
-    
     // Trusted Types policy
     web.evaluateJavascript(
         "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
@@ -219,13 +217,13 @@ public void onPageFinished(WebView p1, String url) {
         null
     );
     
-    // Hide YouTube bottom nav
+    // Hide YouTube bottom nav and add padding
     web.evaluateJavascript(
         "(function() {" +
         "  var style = document.createElement('style');" +
         "  style.innerHTML = '" +
         "    ytm-pivot-bar-renderer { display: none !important; }" +
-        "    body { padding-bottom: 60px !important; }" +
+        "    body { padding-bottom: 65px !important; }" +
         "  ';" +
         "  document.head.appendChild(style);" +
         "})();",
@@ -299,7 +297,9 @@ public void onPageFinished(WebView p1, String url) {
         mediaSession = false;
         stopService(new Intent(getApplicationContext(), ForegroundService.class));
     }
-} // ✅ Method එක නිවැරදිව close කරන්න
+
+    super.onPageFinished(p1, url);
+}
 
 
 
