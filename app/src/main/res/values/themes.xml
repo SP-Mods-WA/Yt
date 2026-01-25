@@ -1,24 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme -->
+    <!-- Base theme -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">#FF0000</item>
-        <item name="colorPrimaryDark">#CC0000</item>
-        <item name="colorAccent">#FF0000</item>
-        <item name="android:windowBackground">@android:color/white</item>
+        <!-- Your existing theme settings -->
     </style>
 
-    <!-- ✅ Splash Screen Theme - No default splash -->
+    <!-- ✅ Splash Theme -->
     <style name="SplashTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <!-- Your custom splash background -->
-        <item name="android:windowBackground">@drawable/splash_background</item>
-        
-        <!-- Full screen -->
+        <item name="android:windowBackground">@android:color/white</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowActionBar">false</item>
-        
-        <!-- Disable default splash (Android 12+) -->
-        <item name="android:windowIsTranslucent">false</item>
         <item name="android:windowContentOverlay">@null</item>
     </style>
 </resources>
