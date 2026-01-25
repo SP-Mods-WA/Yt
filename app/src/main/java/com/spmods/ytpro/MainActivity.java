@@ -75,7 +75,6 @@ public class MainActivity extends Activity {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
-    // ===== Video Playback Optimization Settings =====
     WebSettings settings = web.getSettings();
     settings.setJavaScriptEnabled(true);
     settings.setSupportZoom(true);
@@ -84,8 +83,6 @@ public class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
     settings.setMediaPlaybackRequiresUserGesture(false);
-    
-    // ✅ Enable smooth video streaming
     settings.setAllowFileAccess(true);
     settings.setAllowContentAccess(true);
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -93,17 +90,13 @@ public class MainActivity extends Activity {
     settings.setLoadsImagesAutomatically(true);
     settings.setBlockNetworkImage(false);
     settings.setBlockNetworkLoads(false);
-    
-    // ✅ Enable wide viewport for better video experience
     settings.setUseWideViewPort(true);
     settings.setLoadWithOverviewMode(true);
     
-    // ✅ Enable mixed content (important for video streams)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
     }
     
-    // ✅ Hardware acceleration for smooth playback
     web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
     Intent intent = getIntent();
@@ -220,11 +213,9 @@ public class MainActivity extends Activity {
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-        // ✅ Optimize video buffering and playback
         optimizeVideoPlayback();
-        
-        // ✅ Add notification and cast icons
         addHeaderIcons();
+        injectMiniPlayerScript(); // ✅ මෙන්න මේකයි වැදගත් line එක!
         
         web.evaluateJavascript(
             "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
@@ -341,7 +332,6 @@ public class MainActivity extends Activity {
 
     setReceiver();
 
-    // ✅ Enhanced back button handling with mini player support
     if (android.os.Build.VERSION.SDK_INT >= 33) {
       OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
       backCallback = new OnBackInvokedCallback() {
@@ -353,8 +343,33 @@ public class MainActivity extends Activity {
       dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
     }
   }
+
+// ✅ PART 2 මෙතනින් පටන් ගන්නවා
   
-  // ✅ NEW: Optimize video buffering and playback
+  // ✅ Enhanced back button handler with mini player
+  private void handleBackPress() {
+    String currentUrl = web.getUrl();
+    
+    // Video play වෙනවා නම් mini player එක පෙන්වලා home එකට යනවා
+    if ((currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtube.com/shorts")) && isPlaying) {
+        web.evaluateJavascript(
+            "javascript:(function() {" +
+            "  if (typeof showMiniPlayer === 'function') {" +
+            "    showMiniPlayer();" +
+            "  }" +
+            "  setTimeout(function() {" +
+            "    window.location.href = 'https://m.youtube.com';" +
+            "  }, 100);" +
+            "})();",
+            null
+        );
+    } else if (web.canGoBack()) {
+        web.goBack();
+    } else {
+        finish();
+    }
+  }
+  
   private void optimizeVideoPlayback() {
     String js = "javascript:(function() {" +
             "var videos = document.querySelectorAll('video');" +
@@ -372,7 +387,6 @@ public class MainActivity extends Activity {
     }
   }
   
-  // ✅ NEW: Add notification bell and cast icons to header
   private void addHeaderIcons() {
     String js = "javascript:(function() {" +
             "if(document.getElementById('ytpro-custom-icons')) return;" +
@@ -406,21 +420,81 @@ public class MainActivity extends Activity {
         web.loadUrl(js);
     }
   }
-  
-// ✅ NEW: Enhanced back button handler with mini player
-// ✅ Enhanced back button handler WITHOUT auto PIP
-private void handleBackPress() {
-    String currentUrl = web.getUrl();
-    
-    // Just normal back navigation - no PIP triggering
-    if (web.canGoBack()) {
-        web.goBack();
-    } else {
-        finish();
-    }
-}
-    
 
+  // ✅ මෙන්න මේකයි MAIN වැඩේ - Mini Player Script!
+  private void injectMiniPlayerScript() {
+    String miniPlayerJS = 
+        "javascript:(function() {" +
+        "  if (window.miniPlayerInjected) return;" +
+        "  window.miniPlayerInjected = true;" +
+        "  " +
+        "  window.showMiniPlayer = function() {" +
+        "    console.log('📺 Showing mini player');" +
+        "    var video = document.querySelector('video');" +
+        "    if (!video) return;" +
+        "    var miniPlayer = document.getElementById('ytpro-mini-player');" +
+        "    if (!miniPlayer) {" +
+        "      miniPlayer = document.createElement('div');" +
+        "      miniPlayer.id = 'ytpro-mini-player';" +
+        "      miniPlayer.style.cssText = 'position:fixed;bottom:50px;left:0;right:0;height:80px;background:#000;z-index:9999999;display:flex;align-items:center;padding:8px;box-shadow:0 -2px 10px rgba(0,0,0,0.5);border-top:1px solid #303030;';" +
+        "      var videoContainer = document.createElement('div');" +
+        "      videoContainer.style.cssText = 'width:120px;height:68px;background:#000;margin-right:12px;position:relative;overflow:hidden;';" +
+        "      var miniVideo = video.cloneNode(true);" +
+        "      miniVideo.style.cssText = 'width:100%;height:100%;object-fit:cover;';" +
+        "      miniVideo.muted = false;" +
+        "      miniVideo.controls = false;" +
+        "      videoContainer.appendChild(miniVideo);" +
+        "      var infoContainer = document.createElement('div');" +
+        "      infoContainer.style.cssText = 'flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden;';" +
+        "      var titleEl = document.createElement('div');" +
+        "      titleEl.style.cssText = 'color:#fff;font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';" +
+        "      titleEl.textContent = document.title.replace(' - YouTube', '');" +
+        "      var channelEl = document.createElement('div');" +
+        "      channelEl.style.cssText = 'color:#aaa;font-size:12px;';" +
+        "      var channelName = document.querySelector('.ytm-slim-owner-renderer .yt-core-attributed-string');" +
+        "      channelEl.textContent = channelName ? channelName.textContent : '';" +
+        "      infoContainer.appendChild(titleEl);" +
+        "      infoContainer.appendChild(channelEl);" +
+        "      var controlsContainer = document.createElement('div');" +
+        "      controlsContainer.style.cssText = 'display:flex;align-items:center;gap:16px;margin-right:8px;';" +
+        "      var playPauseBtn = document.createElement('button');" +
+        "      playPauseBtn.style.cssText = 'background:transparent;border:none;padding:8px;color:#fff;font-size:24px;cursor:pointer;';" +
+        "      playPauseBtn.innerHTML = video.paused ? '▶️' : '⏸️';" +
+        "      playPauseBtn.onclick = function(e) {" +
+        "        e.stopPropagation();" +
+        "        if (video.paused) { video.play(); miniVideo.play(); playPauseBtn.innerHTML = '⏸️'; }" +
+        "        else { video.pause(); miniVideo.pause(); playPauseBtn.innerHTML = '▶️'; }" +
+        "      };" +
+        "      var closeBtn = document.createElement('button');" +
+        "      closeBtn.style.cssText = 'background:transparent;border:none;padding:8px;color:#fff;font-size:20px;cursor:pointer;';" +
+        "      closeBtn.innerHTML = '✖️';" +
+        "      closeBtn.onclick = function(e) { e.stopPropagation(); video.pause(); miniVideo.pause(); miniPlayer.remove(); };" +
+        "      controlsContainer.appendChild(playPauseBtn);" +
+        "      controlsContainer.appendChild(closeBtn);" +
+        "      miniPlayer.appendChild(videoContainer);" +
+        "      miniPlayer.appendChild(infoContainer);" +
+        "      miniPlayer.appendChild(controlsContainer);" +
+        "      miniPlayer.onclick = function(e) { if (e.target !== closeBtn && e.target !== playPauseBtn) window.history.back(); };" +
+        "      document.body.appendChild(miniPlayer);" +
+        "      video.onplay = function() { miniVideo.play(); playPauseBtn.innerHTML = '⏸️'; };" +
+        "      video.onpause = function() { miniVideo.pause(); playPauseBtn.innerHTML = '▶️'; };" +
+        "      video.ontimeupdate = function() { miniVideo.currentTime = video.currentTime; };" +
+        "      if (!video.paused) miniVideo.play();" +
+        "    }" +
+        "    miniPlayer.style.display = 'flex';" +
+        "  };" +
+        "  window.hideMiniPlayer = function() {" +
+        "    var miniPlayer = document.getElementById('ytpro-mini-player');" +
+        "    if (miniPlayer) miniPlayer.style.display = 'none';" +
+        "  };" +
+        "})();";
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        web.evaluateJavascript(miniPlayerJS, null);
+    } else {
+        web.loadUrl(miniPlayerJS);
+    }
+  }
 
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -464,16 +538,14 @@ private void handleBackPress() {
     }
   }
 
-@Override
-protected void onUserLeaveHint() {
+  @Override
+  protected void onUserLeaveHint() {
     super.onUserLeaveHint();
     
-    // ✅ Only trigger PIP when switching apps, NOT on back button
-    // Check if we're actually leaving the app (not just pressing back)
     if (android.os.Build.VERSION.SDK_INT >= 26 && 
         web.getUrl().contains("watch") && 
         isPlaying &&
-        !isFinishing()) {  // ← This checks if back button was pressed
+        !isFinishing()) {
         
         try {
           PictureInPictureParams params;
@@ -489,7 +561,7 @@ protected void onUserLeaveHint() {
           e.printStackTrace();
         }
     }
-}
+  }
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
@@ -594,6 +666,8 @@ protected void onUserLeaveHint() {
     }
   }
 
+// ✅ PART 3 - අවසාන කොටස මෙතනින් පටන් ගන්නවා
+
   public class WebAppInterface {
     Context mContext;
     WebAppInterface(Context c) {
@@ -605,19 +679,18 @@ protected void onUserLeaveHint() {
       Toast.makeText(getApplicationContext(), txt + "", Toast.LENGTH_SHORT).show();
     }
 
-@JavascriptInterface
-public void gohome() {
-    Intent startMain = new Intent(Intent.ACTION_MAIN);
-    startMain.addCategory(Intent.CATEGORY_HOME);
-    startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    startActivity(startMain);
-}
+    @JavascriptInterface
+    public void gohome() {
+        Intent startMain = new Intent(Intent.ACTION_MAIN);
+        startMain.addCategory(Intent.CATEGORY_HOME);
+        startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(startMain);
+    }
 
-// Keep this for backward compatibility
-@JavascriptInterface
-public void gohome(String x) {
-    gohome();
-}
+    @JavascriptInterface
+    public void gohome(String x) {
+        gohome();
+    }
 
     @JavascriptInterface
     public void downvid(String name, String url, String m) {
@@ -1067,3 +1140,4 @@ public void gohome(String x) {
     });
   }
 }
+
