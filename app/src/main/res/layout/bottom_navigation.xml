@@ -3,13 +3,12 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/bottomNavBar"
     android:layout_width="match_parent"
-    android:layout_height="56dp"
+    android:layout_height="65dp"
     android:orientation="horizontal"
-    android:background="#0F0F0F"
+    android:background="@drawable/nav_glass_background"
     android:elevation="8dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
-    android:layout_alignParentBottom="true">
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
 
     <!-- Home Button -->
     <LinearLayout
@@ -25,10 +24,9 @@
         
         <ImageView
             android:id="@+id/iconHome"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_home"
-            android:tint="#FFFFFF"/>
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_home"/>
         
         <TextView
             android:id="@+id/textHome"
@@ -37,7 +35,7 @@
             android:text="Home"
             android:textSize="10sp"
             android:textColor="#FFFFFF"
-            android:layout_marginTop="2dp"/>
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
     <!-- Shorts Button -->
@@ -54,10 +52,9 @@
         
         <ImageView
             android:id="@+id/iconShorts"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_shorts"
-            android:tint="#AAAAAA"/>
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_shorts"/>
         
         <TextView
             android:id="@+id/textShorts"
@@ -66,16 +63,15 @@
             android:text="Shorts"
             android:textSize="10sp"
             android:textColor="#AAAAAA"
-            android:layout_marginTop="2dp"/>
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- Upload Button (Plus Icon) -->
+    <!-- Upload Button -->
     <LinearLayout
         android:id="@+id/navUpload"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:orientation="vertical"
         android:gravity="center"
         android:clickable="true"
         android:focusable="true"
@@ -83,20 +79,9 @@
         
         <ImageView
             android:id="@+id/iconUpload"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:src="@drawable/ic_upload"
-            android:tint="#AAAAAA"/>
-        
-        <TextView
-            android:id="@+id/textUpload"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="10sp"
-            android:textColor="#AAAAAA"
-            android:layout_marginTop="2dp"
-            android:visibility="gone"/>
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_upload"/>
     </LinearLayout>
 
     <!-- Subscriptions Button -->
@@ -113,10 +98,9 @@
         
         <ImageView
             android:id="@+id/iconSubscriptions"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_subscriptions"
-            android:tint="#AAAAAA"/>
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_subscriptions"/>
         
         <TextView
             android:id="@+id/textSubscriptions"
@@ -125,7 +109,7 @@
             android:text="Subscriptions"
             android:textSize="10sp"
             android:textColor="#AAAAAA"
-            android:layout_marginTop="2dp"/>
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
     <!-- You Button -->
@@ -142,10 +126,9 @@
         
         <ImageView
             android:id="@+id/iconYou"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_you"
-            android:tint="#AAAAAA"/>
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_you"/>
         
         <TextView
             android:id="@+id/textYou"
@@ -154,7 +137,7 @@
             android:text="You"
             android:textSize="10sp"
             android:textColor="#AAAAAA"
-            android:layout_marginTop="2dp"/>
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
 </LinearLayout>
