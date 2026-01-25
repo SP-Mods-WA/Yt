@@ -346,40 +346,53 @@ public class MainActivity extends Activity {
 
 // ✅ PART 2 මෙතනින් පටන් ගන්නවා
   
-// ✅ FIXED - Enhanced back button handler with mini player
+// ✅ COMPLETE FIX - Enhanced back button handler
   private void handleBackPress() {
     String currentUrl = web.getUrl();
     
-    // Video play වෙනවා නම් mini player එක පෙන්වනවා
-    if ((currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtube.com/shorts")) && isPlaying) {
-        // මුලින්ම mini player එක show කරනවා
-        web.evaluateJavascript(
-            "javascript:(function() {" +
-            "  if (typeof showMiniPlayer === 'function') {" +
-            "    showMiniPlayer();" +
-            "  }" +
-            "})();",
-            null
-        );
-        
-        // ටිකක් delay එකක් දීලා home එකට යනවා (mini player load වෙන්න time එක)
-        web.postDelayed(new Runnable() {
+    // Check if mini player is already visible
+    web.evaluateJavascript(
+        "(function() { return document.getElementById('ytpro-mini-player') !== null; })();",
+        new ValueCallback<String>() {
             @Override
-            public void run() {
-                if (web.canGoBack()) {
+            public void onReceiveValue(String hasMiniPlayer) {
+                boolean miniPlayerExists = "true".equals(hasMiniPlayer);
+                
+                // Video play වෙනවා නම් AND mini player නැත්නම්
+                if ((currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtube.com/shorts")) && isPlaying && !miniPlayerExists) {
+                    // Mini player create කරලා home එකට යනවා
+                    web.evaluateJavascript(
+                        "javascript:(function() {" +
+                        "  console.log('🎬 Creating mini player...');" +
+                        "  if (typeof showMiniPlayer === 'function') {" +
+                        "    showMiniPlayer();" +
+                        "    console.log('✅ Mini player shown');" +
+                        "  } else {" +
+                        "    console.error('❌ showMiniPlayer not found');" +
+                        "  }" +
+                        "})();",
+                        null
+                    );
+                    
+                    // Mini player load වෙලා home එකට යනවා
+                    web.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            web.loadUrl("https://m.youtube.com");
+                        }
+                    }, 300);
+                } else if (web.canGoBack()) {
                     web.goBack();
                 } else {
-                    web.loadUrl("https://m.youtube.com");
+                    finish();
                 }
             }
-        }, 200);
-    } else if (web.canGoBack()) {
-        web.goBack();
-    } else {
-        finish();
-    }
+        }
+    );
   }
   
+  
+  // ✅ Optimize video playback
   private void optimizeVideoPlayback() {
     String js = "javascript:(function() {" +
             "var videos = document.querySelectorAll('video');" +
@@ -397,6 +410,7 @@ public class MainActivity extends Activity {
     }
   }
   
+  // ✅ Add header icons
   private void addHeaderIcons() {
     String js = "javascript:(function() {" +
             "if(document.getElementById('ytpro-custom-icons')) return;" +
@@ -430,153 +444,172 @@ public class MainActivity extends Activity {
         web.loadUrl(js);
     }
   }
-  
-  
-  // ✅ FIXED - Mini Player Script with proper video continuation
+
+  // ✅ COMPLETE MINI PLAYER - Persistent across page navigation
   private void injectMiniPlayerScript() {
     String miniPlayerJS = 
         "javascript:(function() {" +
         "  if (window.miniPlayerInjected) return;" +
         "  window.miniPlayerInjected = true;" +
-        "  console.log('✅ Mini Player Script Injected');" +
+        "  console.log('🎯 Mini Player Script Loaded');" +
+        "  " +
+        "  var globalVideoData = {" +
+        "    title: ''," +
+        "    channel: ''," +
+        "    thumbnail: ''," +
+        "    videoElement: null," +
+        "    isPlaying: false" +
+        "  };" +
         "  " +
         "  window.showMiniPlayer = function() {" +
-        "    console.log('📺 Showing mini player');" +
+        "    console.log('📺 Creating Mini Player...');" +
+        "    " +
+        "    // Get current video info" +
         "    var video = document.querySelector('video');" +
-        "    if (!video) { console.error('❌ No video found'); return; }" +
-        "    " +
-        "    // Video pause නොකර continue කරනවා" +
-        "    var wasPlaying = !video.paused;" +
-        "    var currentTime = video.currentTime;" +
-        "    " +
-        "    var miniPlayer = document.getElementById('ytpro-mini-player');" +
-        "    if (!miniPlayer) {" +
-        "      miniPlayer = document.createElement('div');" +
-        "      miniPlayer.id = 'ytpro-mini-player';" +
-        "      miniPlayer.style.cssText = '" +
-        "        position: fixed !important;" +
-        "        bottom: 50px !important;" +
-        "        left: 0 !important;" +
-        "        right: 0 !important;" +
-        "        height: 80px !important;" +
-        "        background: #000 !important;" +
-        "        z-index: 999999999 !important;" +
-        "        display: flex !important;" +
-        "        align-items: center !important;" +
-        "        padding: 8px !important;" +
-        "        box-shadow: 0 -2px 10px rgba(0,0,0,0.5) !important;" +
-        "        border-top: 1px solid #303030 !important;" +
-        "      ';" +
-        "      " +
-        "      // Mini video container" +
-        "      var videoContainer = document.createElement('div');" +
-        "      videoContainer.style.cssText = 'width:120px;height:68px;background:#000;margin-right:12px;position:relative;overflow:hidden;';" +
-        "      " +
-        "      // Video thumbnail/preview" +
-        "      var thumbnail = document.createElement('div');" +
-        "      thumbnail.style.cssText = 'width:100%;height:100%;background:#000;position:relative;';" +
-        "      " +
-        "      // Video එකේ thumbnail එක ගන්නවා" +
-        "      var videoThumb = document.querySelector('meta[property=\"og:image\"]');" +
-        "      if (videoThumb) {" +
-        "        var img = document.createElement('img');" +
-        "        img.src = videoThumb.content;" +
-        "        img.style.cssText = 'width:100%;height:100%;object-fit:cover;';" +
-        "        thumbnail.appendChild(img);" +
-        "      }" +
-        "      videoContainer.appendChild(thumbnail);" +
-        "      " +
-        "      // Info container" +
-        "      var infoContainer = document.createElement('div');" +
-        "      infoContainer.style.cssText = 'flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden;min-width:0;';" +
-        "      " +
-        "      var titleEl = document.createElement('div');" +
-        "      titleEl.style.cssText = 'color:#fff;font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';" +
-        "      var pageTitle = document.title.replace(' - YouTube', '').replace(' - YouTube Music', '');" +
-        "      titleEl.textContent = pageTitle;" +
-        "      " +
-        "      var channelEl = document.createElement('div');" +
-        "      channelEl.style.cssText = 'color:#aaa;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';" +
-        "      var channelName = document.querySelector('.ytm-slim-owner-renderer .yt-core-attributed-string');" +
-        "      if (!channelName) channelName = document.querySelector('ytm-channel-name a');" +
-        "      channelEl.textContent = channelName ? channelName.textContent : '';" +
-        "      " +
-        "      infoContainer.appendChild(titleEl);" +
-        "      infoContainer.appendChild(channelEl);" +
-        "      " +
-        "      // Controls container" +
-        "      var controlsContainer = document.createElement('div');" +
-        "      controlsContainer.style.cssText = 'display:flex;align-items:center;gap:12px;margin-right:4px;flex-shrink:0;';" +
-        "      " +
-        "      // Play/Pause button" +
-        "      var playPauseBtn = document.createElement('button');" +
-        "      playPauseBtn.style.cssText = 'background:transparent;border:none;padding:8px;color:#fff;font-size:28px;cursor:pointer;line-height:1;';" +
-        "      playPauseBtn.innerHTML = wasPlaying ? '⏸' : '▶';" +
-        "      playPauseBtn.onclick = function(e) {" +
-        "        e.stopPropagation();" +
-        "        var mainVideo = document.querySelector('video');" +
-        "        if (mainVideo) {" +
-        "          if (mainVideo.paused) {" +
-        "            mainVideo.play();" +
-        "            playPauseBtn.innerHTML = '⏸';" +
-        "          } else {" +
-        "            mainVideo.pause();" +
-        "            playPauseBtn.innerHTML = '▶';" +
-        "          }" +
-        "        }" +
-        "      };" +
-        "      " +
-        "      // Close button" +
-        "      var closeBtn = document.createElement('button');" +
-        "      closeBtn.style.cssText = 'background:transparent;border:none;padding:8px;color:#fff;font-size:24px;cursor:pointer;line-height:1;';" +
-        "      closeBtn.innerHTML = '✖';" +
-        "      closeBtn.onclick = function(e) {" +
-        "        e.stopPropagation();" +
-        "        var mainVideo = document.querySelector('video');" +
-        "        if (mainVideo) mainVideo.pause();" +
-        "        miniPlayer.remove();" +
-        "      };" +
-        "      " +
-        "      controlsContainer.appendChild(playPauseBtn);" +
-        "      controlsContainer.appendChild(closeBtn);" +
-        "      " +
-        "      miniPlayer.appendChild(videoContainer);" +
-        "      miniPlayer.appendChild(infoContainer);" +
-        "      miniPlayer.appendChild(controlsContainer);" +
-        "      " +
-        "      // Mini player click කරොත් video එකට ආපහු යනවා" +
-        "      miniPlayer.onclick = function(e) {" +
-        "        if (e.target === closeBtn || e.target === playPauseBtn) return;" +
-        "        window.history.back();" +
-        "      };" +
-        "      " +
-        "      document.body.appendChild(miniPlayer);" +
-        "      " +
-        "      // Video events listen කරනවා" +
-        "      video.addEventListener('play', function() {" +
-        "        playPauseBtn.innerHTML = '⏸';" +
-        "      });" +
-        "      video.addEventListener('pause', function() {" +
-        "        playPauseBtn.innerHTML = '▶';" +
-        "      });" +
-        "      " +
-        "      // Video play කරනවා නැවත if it was playing" +
-        "      if (wasPlaying && video.paused) {" +
-        "        video.play().catch(function(err) { console.log('Play error:', err); });" +
-        "      }" +
+        "    if (!video) {" +
+        "      console.error('❌ No video element found!');" +
+        "      return;" +
         "    }" +
         "    " +
-        "    miniPlayer.style.display = 'flex';" +
-        "    console.log('✅ Mini player displayed');" +
+        "    globalVideoData.videoElement = video;" +
+        "    globalVideoData.isPlaying = !video.paused;" +
+        "    globalVideoData.title = document.title.replace(' - YouTube', '').replace(' - YouTube Music', '');" +
+        "    " +
+        "    var channelEl = document.querySelector('.ytm-slim-owner-renderer .yt-core-attributed-string');" +
+        "    if (!channelEl) channelEl = document.querySelector('ytm-channel-name a');" +
+        "    globalVideoData.channel = channelEl ? channelEl.textContent : '';" +
+        "    " +
+        "    var thumbMeta = document.querySelector('meta[property=\"og:image\"]');" +
+        "    globalVideoData.thumbnail = thumbMeta ? thumbMeta.content : '';" +
+        "    " +
+        "    // Remove existing mini player if any" +
+        "    var existing = document.getElementById('ytpro-mini-player');" +
+        "    if (existing) existing.remove();" +
+        "    " +
+        "    // Create mini player" +
+        "    var miniPlayer = document.createElement('div');" +
+        "    miniPlayer.id = 'ytpro-mini-player';" +
+        "    miniPlayer.className = 'ytpro-persistent-player';" +
+        "    miniPlayer.style.cssText = '" +
+        "      position: fixed !important;" +
+        "      bottom: 50px !important;" +
+        "      left: 0 !important;" +
+        "      right: 0 !important;" +
+        "      height: 80px !important;" +
+        "      background: #0f0f0f !important;" +
+        "      z-index: 2147483647 !important;" +
+        "      display: flex !important;" +
+        "      align-items: center !important;" +
+        "      padding: 8px 12px !important;" +
+        "      box-shadow: 0 -2px 16px rgba(0,0,0,0.8) !important;" +
+        "      border-top: 1px solid #303030 !important;" +
+        "      pointer-events: auto !important;" +
+        "    ';" +
+        "    " +
+        "    // Thumbnail container" +
+        "    var thumbContainer = document.createElement('div');" +
+        "    thumbContainer.style.cssText = 'width:120px;height:68px;background:#000;margin-right:12px;border-radius:8px;overflow:hidden;flex-shrink:0;';" +
+        "    " +
+        "    if (globalVideoData.thumbnail) {" +
+        "      var img = document.createElement('img');" +
+        "      img.src = globalVideoData.thumbnail;" +
+        "      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';" +
+        "      thumbContainer.appendChild(img);" +
+        "    }" +
+        "    " +
+        "    // Info container" +
+        "    var infoContainer = document.createElement('div');" +
+        "    infoContainer.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;';" +
+        "    " +
+        "    var titleDiv = document.createElement('div');" +
+        "    titleDiv.style.cssText = 'color:#fff;font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';" +
+        "    titleDiv.textContent = globalVideoData.title;" +
+        "    " +
+        "    var channelDiv = document.createElement('div');" +
+        "    channelDiv.style.cssText = 'color:#aaa;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';" +
+        "    channelDiv.textContent = globalVideoData.channel;" +
+        "    " +
+        "    infoContainer.appendChild(titleDiv);" +
+        "    infoContainer.appendChild(channelDiv);" +
+        "    " +
+        "    // Controls" +
+        "    var controls = document.createElement('div');" +
+        "    controls.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0;';" +
+        "    " +
+        "    var playBtn = document.createElement('button');" +
+        "    playBtn.id = 'ytpro-play-btn';" +
+        "    playBtn.style.cssText = 'background:transparent;border:none;color:#fff;font-size:32px;padding:8px;cursor:pointer;line-height:1;';" +
+        "    playBtn.innerHTML = globalVideoData.isPlaying ? '⏸' : '▶';" +
+        "    playBtn.onclick = function(e) {" +
+        "      e.stopPropagation();" +
+        "      var v = document.querySelector('video');" +
+        "      if (v) {" +
+        "        if (v.paused) {" +
+        "          v.play();" +
+        "          playBtn.innerHTML = '⏸';" +
+        "        } else {" +
+        "          v.pause();" +
+        "          playBtn.innerHTML = '▶';" +
+        "        }" +
+        "      }" +
+        "    };" +
+        "    " +
+        "    var closeBtn = document.createElement('button');" +
+        "    closeBtn.style.cssText = 'background:transparent;border:none;color:#fff;font-size:28px;padding:8px;cursor:pointer;line-height:1;';" +
+        "    closeBtn.innerHTML = '✖';" +
+        "    closeBtn.onclick = function(e) {" +
+        "      e.stopPropagation();" +
+        "      var v = document.querySelector('video');" +
+        "      if (v) v.pause();" +
+        "      miniPlayer.remove();" +
+        "    };" +
+        "    " +
+        "    controls.appendChild(playBtn);" +
+        "    controls.appendChild(closeBtn);" +
+        "    " +
+        "    miniPlayer.appendChild(thumbContainer);" +
+        "    miniPlayer.appendChild(infoContainer);" +
+        "    miniPlayer.appendChild(controls);" +
+        "    " +
+        "    // Click to go back to video" +
+        "    miniPlayer.onclick = function(e) {" +
+        "      if (e.target === closeBtn || e.target === playBtn) return;" +
+        "      window.history.back();" +
+        "    };" +
+        "    " +
+        "    document.body.appendChild(miniPlayer);" +
+        "    console.log('✅ Mini Player Created & Displayed');" +
+        "    " +
+        "    // Update play button when video state changes" +
+        "    setTimeout(function() {" +
+        "      var v = document.querySelector('video');" +
+        "      if (v) {" +
+        "        v.addEventListener('play', function() {" +
+        "          var btn = document.getElementById('ytpro-play-btn');" +
+        "          if (btn) btn.innerHTML = '⏸';" +
+        "        });" +
+        "        v.addEventListener('pause', function() {" +
+        "          var btn = document.getElementById('ytpro-play-btn');" +
+        "          if (btn) btn.innerHTML = '▶';" +
+        "        });" +
+        "      }" +
+        "    }, 100);" +
         "  };" +
         "  " +
         "  window.hideMiniPlayer = function() {" +
-        "    var miniPlayer = document.getElementById('ytpro-mini-player');" +
-        "    if (miniPlayer) {" +
-        "      miniPlayer.style.display = 'none';" +
-        "      console.log('✅ Mini player hidden');" +
-        "    }" +
+        "    var mp = document.getElementById('ytpro-mini-player');" +
+        "    if (mp) mp.remove();" +
         "  };" +
+        "  " +
+        "  // Keep mini player visible across page loads" +
+        "  window.addEventListener('load', function() {" +
+        "    setTimeout(function() {" +
+        "      var mp = document.getElementById('ytpro-mini-player');" +
+        "      if (mp && !window.location.href.includes('/watch') && !window.location.href.includes('/shorts')) {" +
+        "        mp.style.display = 'flex';" +
+        "      }" +
+        "    }, 500);" +
+        "  });" +
         "})();";
     
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -585,7 +618,6 @@ public class MainActivity extends Activity {
         web.loadUrl(miniPlayerJS);
     }
   }
-
 
 
   @Override
