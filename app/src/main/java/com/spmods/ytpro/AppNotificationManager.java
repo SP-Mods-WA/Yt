@@ -10,7 +10,6 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +35,6 @@ public class AppNotificationManager {
         createNotificationChannel();
     }
 
-    // Create notification channel (for Android O and above)
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -53,7 +51,6 @@ public class AppNotificationManager {
         }
     }
 
-    // Show notifications
     public void showNotifications(List<NotificationModel> notifications) {
         if (notifications == null || notifications.isEmpty()) {
             Log.d(TAG, "No notifications to show");
@@ -63,7 +60,6 @@ public class AppNotificationManager {
         Set<String> shownNotifications = getShownNotifications();
         
         for (NotificationModel notif : notifications) {
-            // Check if already shown
             if (!shownNotifications.contains(notif.getId()) && notif.isValid()) {
                 showNotification(notif);
                 markAsShown(notif.getId());
@@ -71,36 +67,46 @@ public class AppNotificationManager {
         }
     }
 
-    // Show single notification
     private void showNotification(NotificationModel notif) {
         try {
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle(notif.getTitle())
-                .setContentText(notif.getMessage())
-                .setStyle(new NotificationCompat.BigTextStyle()
-                    .bigText(notif.getMessage()))
-                .setPriority(getPriority(notif.getPriority()))
-                .setAutoCancel(true)
-                .setWhen(notif.getTimestamp());
+            Notification.Builder builder;
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                builder = new Notification.Builder(context, CHANNEL_ID);
+            } else {
+                builder = new Notification.Builder(context);
+            }
 
-            // Add action if URL is provided
+            builder.setSmallIcon(getIconForType(notif.getType()))
+                   .setContentTitle(notif.getTitle())
+                   .setContentText(notif.getMessage())
+                   .setAutoCancel(true)
+                   .setWhen(notif.getTimestamp());
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                builder.setStyle(new Notification.BigTextStyle()
+                    .bigText(notif.getMessage()));
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                builder.setPriority(getPriorityLegacy(notif.getPriority()));
+            }
+
             if (notif.getActionUrl() != null && !notif.getActionUrl().isEmpty()) {
                 Intent intent = createIntentFromUrl(notif.getActionUrl());
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    flags |= PendingIntent.FLAG_IMMUTABLE;
+                }
                 PendingIntent pendingIntent = PendingIntent.getActivity(
                     context, 
                     notif.getId().hashCode(),
                     intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                    flags
                 );
                 builder.setContentIntent(pendingIntent);
             }
 
-            // Set notification icon based on type
-            int icon = getIconForType(notif.getType());
-            builder.setSmallIcon(icon);
-
-            // Show notification
             notificationManager.notify(notif.getId().hashCode(), builder.build());
             
             Log.d(TAG, "Notification shown: " + notif.getTitle());
@@ -110,16 +116,13 @@ public class AppNotificationManager {
         }
     }
 
-    // Create intent from URL
     private Intent createIntentFromUrl(String url) {
         if (url.startsWith("ytpro://")) {
-            // Deep link to app
             Intent intent = new Intent(context, MainActivity.class);
             intent.setData(Uri.parse(url));
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             return intent;
         } else {
-            // External URL
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setData(Uri.parse(url));
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -127,19 +130,20 @@ public class AppNotificationManager {
         }
     }
 
-    // Get priority for notification
-    private int getPriority(String priority) {
-        switch (priority.toLowerCase()) {
-            case "high":
-                return NotificationCompat.PRIORITY_HIGH;
-            case "low":
-                return NotificationCompat.PRIORITY_LOW;
-            default:
-                return NotificationCompat.PRIORITY_DEFAULT;
+    private int getPriorityLegacy(String priority) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            switch (priority.toLowerCase()) {
+                case "high":
+                    return Notification.PRIORITY_HIGH;
+                case "low":
+                    return Notification.PRIORITY_LOW;
+                default:
+                    return Notification.PRIORITY_DEFAULT;
+            }
         }
+        return 0;
     }
 
-    // Get icon for notification type
     private int getIconForType(String type) {
         switch (type.toLowerCase()) {
             case "update":
@@ -153,26 +157,22 @@ public class AppNotificationManager {
         }
     }
 
-    // Get shown notifications from SharedPreferences
     private Set<String> getShownNotifications() {
-        return prefs.getStringSet(KEY_SHOWN_NOTIFICATIONS, new HashSet<>());
+        return prefs.getStringSet(KEY_SHOWN_NOTIFICATIONS, new HashSet<String>());
     }
 
-    // Mark notification as shown
     private void markAsShown(String notificationId) {
         Set<String> shown = new HashSet<>(getShownNotifications());
         shown.add(notificationId);
         prefs.edit().putStringSet(KEY_SHOWN_NOTIFICATIONS, shown).apply();
     }
 
-    // Clear all shown notifications history (useful for testing)
     public void clearShownNotifications() {
         prefs.edit().remove(KEY_SHOWN_NOTIFICATIONS).apply();
         Log.d(TAG, "Cleared shown notifications history");
     }
 
-    // Cancel all notifications
     public void cancelAllNotifications() {
         notificationManager.cancelAll();
     }
-        }
+                }
