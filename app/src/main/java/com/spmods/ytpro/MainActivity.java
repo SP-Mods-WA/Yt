@@ -437,7 +437,6 @@ private void setupBottomNavigation() {
     
     final ImageView iconHome = findViewById(R.id.iconHome);
     final ImageView iconShorts = findViewById(R.id.iconShorts);
-    final ImageView iconUpload = findViewById(R.id.iconUpload);
     final ImageView iconSubscriptions = findViewById(R.id.iconSubscriptions);
     final ImageView iconYou = findViewById(R.id.iconYou);
     
@@ -446,7 +445,7 @@ private void setupBottomNavigation() {
     final TextView textSubscriptions = findViewById(R.id.textSubscriptions);
     final TextView textYou = findViewById(R.id.textYou);
     
-    // Home button
+    // ✅ HOME BUTTON
     navHome.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -455,15 +454,11 @@ private void setupBottomNavigation() {
                 iconSubscriptions, textSubscriptions,
                 iconYou, textYou
             );
-            
-            web.evaluateJavascript(
-                "(function() { window.location.href = 'https://m.youtube.com/'; })();",
-                null
-            );
+            web.loadUrl("https://m.youtube.com/");
         }
     });
     
-    // Shorts button
+    // ✅ SHORTS BUTTON - FIXED
     navShorts.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -473,18 +468,27 @@ private void setupBottomNavigation() {
                 iconYou, textYou
             );
             
+            // Try JavaScript first, fallback to loadUrl
             web.evaluateJavascript(
                 "(function() {" +
-                "  var shortsLink = document.querySelector('a[href*=\"/shorts\"]');" +
-                "  if(shortsLink) { shortsLink.click(); }" +
-                "  else { window.location.href = 'https://m.youtube.com/feed/explore'; }" +
+                "  var shortsTab = document.querySelector('[tab-identifier=\"FEshorts\"] a') || " +
+                "                  document.querySelector('a[href*=\"/shorts\"]');" +
+                "  if (shortsTab) { shortsTab.click(); return true; }" +
+                "  return false;" +
                 "})();",
-                null
+                new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String value) {
+                        if (value == null || value.equals("false")) {
+                            web.loadUrl("https://m.youtube.com/shorts");
+                        }
+                    }
+                }
             );
         }
     });
     
-    // Upload button
+    // ✅ UPLOAD BUTTON
     navUpload.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -492,7 +496,7 @@ private void setupBottomNavigation() {
         }
     });
     
-    // Subscriptions button
+    // ✅ SUBSCRIPTIONS BUTTON
     navSubscriptions.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -501,15 +505,11 @@ private void setupBottomNavigation() {
                 iconShorts, textShorts,
                 iconYou, textYou
             );
-            
-            web.evaluateJavascript(
-                "(function() { window.location.href = 'https://m.youtube.com/feed/subscriptions'; })();",
-                null
-            );
+            web.loadUrl("https://m.youtube.com/feed/subscriptions");
         }
     });
     
-    // You button
+    // ✅ YOU BUTTON
     navYou.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -518,11 +518,7 @@ private void setupBottomNavigation() {
                 iconShorts, textShorts,
                 iconSubscriptions, textSubscriptions
             );
-            
-            web.evaluateJavascript(
-                "(function() { window.location.href = 'https://m.youtube.com/feed/account'; })();",
-                null
-            );
+            web.loadUrl("https://m.youtube.com/feed/account");
         }
     });
 }
