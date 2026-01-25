@@ -408,58 +408,19 @@ public class MainActivity extends Activity {
   }
   
 // ✅ NEW: Enhanced back button handler with mini player
+// ✅ Enhanced back button handler WITHOUT auto PIP
 private void handleBackPress() {
     String currentUrl = web.getUrl();
     
-    if (currentUrl != null && (currentUrl.contains("/watch") || currentUrl.contains("/shorts"))) {
-        // Check if video is playing
-        web.evaluateJavascript(
-            "(function() { " +
-            "  var video = document.querySelector('.video-stream');" +
-            "  if(video && !video.paused) {" +
-            "    return 'playing';" +
-            "  }" +
-            "  return 'stopped';" +
-            "})();",
-            new ValueCallback<String>() {
-                @Override
-                public void onReceiveValue(String value) {
-                    if ("\"playing\"".equals(value)) {
-                        // Video is playing - trigger mini player
-                        web.evaluateJavascript(
-                            "if(typeof createMiniPlayer === 'function') {" +
-                            "  createMiniPlayer();" +
-                            "} else {" +
-                            "  console.log('Mini player not available');" +
-                            "}",
-                            null
-                        );
-                        
-                        // Go to home
-                        Intent startMain = new Intent(Intent.ACTION_MAIN);
-                        startMain.addCategory(Intent.CATEGORY_HOME);
-                        startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(startMain);
-                    } else {
-                        // Video not playing - normal back
-                        if (web.canGoBack()) {
-                            web.goBack();
-                        } else {
-                            finish();
-                        }
-                    }
-                }
-            }
-        );
+    // Just normal back navigation - no PIP triggering
+    if (web.canGoBack()) {
+        web.goBack();
     } else {
-        // Not on video page - normal back
-        if (web.canGoBack()) {
-            web.goBack();
-        } else {
-            finish();
-        }
+        finish();
     }
 }
+    
+
 
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -504,9 +465,14 @@ private void handleBackPress() {
   }
 
   @Override
-  protected void onUserLeaveHint() {
+protected void onUserLeaveHint() {
     super.onUserLeaveHint();
-   
+    
+    // ✅ DISABLE auto PIP on back button
+    // Only trigger PIP when explicitly requested or app switching
+    // Comment out the auto PIP code:
+    
+    /*
     if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch")) {
       if(isPlaying){
         try {
@@ -524,7 +490,8 @@ private void handleBackPress() {
         }
       }
     }
-  }
+    */
+}
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
