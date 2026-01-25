@@ -695,8 +695,8 @@ margin-right:2%;
 color:${c};
 }
 </style>`;
-ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
-<span style="font-size:10px">v${YTProVer}</span>
+ytpSetI.innerHTML+=`<br><b style='font-size:18px' >SPYT PRO</b>
+<span style="font-size:10px">config v${YTProVer}</span>
 <br><br>
 <div><input type="url" placeholder="Enter Youtube URL" onkeyup="searchUrl(this,event)"></div>
 <br>
@@ -750,7 +750,7 @@ ytpSetI.innerHTML+=`<br><b style='font-size:18px' >YT PRO Settings</b>
 </svg>
 </button>
 <br>
-<button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channell
+<button style="font-weight:bolder;" onclick="Android.oplink('https://t.me/SPModsSandun');">Join Our Telegram Channel
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${isD ? "#ccc" : "#444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 2l6 6-6 6"/>
 </svg>
