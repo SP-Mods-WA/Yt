@@ -464,17 +464,17 @@ private void handleBackPress() {
     }
   }
 
-  @Override
+@Override
 protected void onUserLeaveHint() {
     super.onUserLeaveHint();
     
-    // ✅ DISABLE auto PIP on back button
-    // Only trigger PIP when explicitly requested or app switching
-    // Comment out the auto PIP code:
-    
-    /*
-    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch")) {
-      if(isPlaying){
+    // ✅ Only trigger PIP when switching apps, NOT on back button
+    // Check if we're actually leaving the app (not just pressing back)
+    if (android.os.Build.VERSION.SDK_INT >= 26 && 
+        web.getUrl().contains("watch") && 
+        isPlaying &&
+        !isFinishing()) {  // ← This checks if back button was pressed
+        
         try {
           PictureInPictureParams params;
           isPip=true;
@@ -488,9 +488,7 @@ protected void onUserLeaveHint() {
         } catch (IllegalStateException e) {
           e.printStackTrace();
         }
-      }
     }
-    */
 }
 
   public class CustomWebClient extends WebChromeClient {
