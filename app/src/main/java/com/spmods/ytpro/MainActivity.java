@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
       prefs.edit().putBoolean("bgplay", true).apply();
     }
     
+    // ✅ Request notification permission
     requestNotificationPermission();
     
     if (!isNetworkAvailable()) {
@@ -64,7 +65,11 @@ public class MainActivity extends Activity {
     } else {
         load(false);
         checkForAppUpdate();
+        
+        // ✅ Start notification service
         startNotificationService();
+        
+        // ✅ Check for notifications immediately
         checkNotificationsNow();
     }
     
@@ -75,29 +80,10 @@ public class MainActivity extends Activity {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
-    WebSettings settings = web.getSettings();
-    settings.setJavaScriptEnabled(true);
-    settings.setSupportZoom(true);
-    settings.setBuiltInZoomControls(true);
-    settings.setDisplayZoomControls(false);
-    settings.setDomStorageEnabled(true);
-    settings.setDatabaseEnabled(true);
-    settings.setMediaPlaybackRequiresUserGesture(false);
-    settings.setAllowFileAccess(true);
-    settings.setAllowContentAccess(true);
-    settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-    settings.setJavaScriptCanOpenWindowsAutomatically(true);
-    settings.setLoadsImagesAutomatically(true);
-    settings.setBlockNetworkImage(false);
-    settings.setBlockNetworkLoads(false);
-    settings.setUseWideViewPort(true);
-    settings.setLoadWithOverviewMode(true);
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-    }
-    
-    web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+    web.getSettings().setJavaScriptEnabled(true);
+    web.getSettings().setSupportZoom(true);
+    web.getSettings().setBuiltInZoomControls(true);
+    web.getSettings().setDisplayZoomControls(false);
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -112,8 +98,12 @@ public class MainActivity extends Activity {
       }
     }
     web.loadUrl(url);
+    web.getSettings().setDomStorageEnabled(true);
+    web.getSettings().setDatabaseEnabled(true);
     web.addJavascriptInterface(new WebAppInterface(this), "Android");
     web.setWebChromeClient(new CustomWebClient());
+    web.getSettings().setMediaPlaybackRequiresUserGesture(false);
+    web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
     CookieManager cookieManager = CookieManager.getInstance();
     cookieManager.setAcceptCookie(true);
@@ -213,10 +203,6 @@ public class MainActivity extends Activity {
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-        optimizeVideoPlayback();
-        addHeaderIcons();
-        injectMiniPlayerScript(); // ✅ මෙන්න මේකයි වැදගත් line එක!
-        
         web.evaluateJavascript(
             "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
             "  window.trustedTypes.createPolicy('default', {" +
@@ -337,288 +323,16 @@ public class MainActivity extends Activity {
       backCallback = new OnBackInvokedCallback() {
           @Override
           public void onBackInvoked() {
-              handleBackPress();
+              if (web.canGoBack()) {
+                web.goBack();
+              } else {
+                finish();
+              }
           }
       };
       dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
     }
   }
-
-// ✅ PART 2 මෙතනින් පටන් ගන්නවා
-  
-// ✅ COMPLETE FIX - Enhanced back button handler
-  private void handleBackPress() {
-    String currentUrl = web.getUrl();
-    
-    // Check if mini player is already visible
-    web.evaluateJavascript(
-        "(function() { return document.getElementById('ytpro-mini-player') !== null; })();",
-        new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String hasMiniPlayer) {
-                boolean miniPlayerExists = "true".equals(hasMiniPlayer);
-                
-                // Video play වෙනවා නම් AND mini player නැත්නම්
-                if ((currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtube.com/shorts")) && isPlaying && !miniPlayerExists) {
-                    // Mini player create කරලා home එකට යනවා
-                    web.evaluateJavascript(
-                        "javascript:(function() {" +
-                        "  console.log('🎬 Creating mini player...');" +
-                        "  if (typeof showMiniPlayer === 'function') {" +
-                        "    showMiniPlayer();" +
-                        "    console.log('✅ Mini player shown');" +
-                        "  } else {" +
-                        "    console.error('❌ showMiniPlayer not found');" +
-                        "  }" +
-                        "})();",
-                        null
-                    );
-                    
-                    // Mini player load වෙලා home එකට යනවා
-                    web.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            web.loadUrl("https://m.youtube.com");
-                        }
-                    }, 300);
-                } else if (web.canGoBack()) {
-                    web.goBack();
-                } else {
-                    finish();
-                }
-            }
-        }
-    );
-  }
-  
-  
-  // ✅ Optimize video playback
-  private void optimizeVideoPlayback() {
-    String js = "javascript:(function() {" +
-            "var videos = document.querySelectorAll('video');" +
-            "videos.forEach(function(video) {" +
-            "  video.preload = 'auto';" +
-            "  video.setAttribute('playsinline', '');" +
-            "  video.setAttribute('webkit-playsinline', '');" +
-            "});" +
-            "})()";
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-        web.evaluateJavascript(js, null);
-    } else {
-        web.loadUrl(js);
-    }
-  }
-  
-  // ✅ Add header icons
-  private void addHeaderIcons() {
-    String js = "javascript:(function() {" +
-            "if(document.getElementById('ytpro-custom-icons')) return;" +
-            "function addIcons() {" +
-            "  var header = document.querySelector('ytm-mobile-topbar-renderer');" +
-            "  if(!header) { setTimeout(addIcons, 500); return; }" +
-            "  var buttonsContainer = header.querySelector('.mobile-topbar-header-content');" +
-            "  if(!buttonsContainer) { setTimeout(addIcons, 500); return; }" +
-            "  var iconsDiv = document.createElement('div');" +
-            "  iconsDiv.id = 'ytpro-custom-icons';" +
-            "  iconsDiv.style.cssText = 'display:flex;align-items:center;margin-right:8px;';" +
-            "  var bellBtn = document.createElement('button');" +
-            "  bellBtn.style.cssText = 'background:transparent;border:0;padding:8px;display:flex;align-items:center;cursor:pointer;';" +
-            "  bellBtn.innerHTML = '<svg height=\"24\" width=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z\"/></svg>';" +
-            "  bellBtn.onclick = function() { window.location.href = 'https://m.youtube.com/feed/notifications'; };" +
-            "  var castBtn = document.createElement('button');" +
-            "  castBtn.style.cssText = 'background:transparent;border:0;padding:8px;display:flex;align-items:center;cursor:pointer;';" +
-            "  castBtn.innerHTML = '<svg height=\"24\" width=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11z\"/></svg>';" +
-            "  castBtn.onclick = function() { Android.showToast('Cast feature coming soon!'); };" +
-            "  iconsDiv.appendChild(bellBtn);" +
-            "  iconsDiv.appendChild(castBtn);" +
-            "  var searchBtn = buttonsContainer.querySelector('ytm-topbar-menu-button-renderer[button-renderer-id=\"FEsearch\"]');" +
-            "  if(searchBtn) { buttonsContainer.insertBefore(iconsDiv, searchBtn); }" +
-            "}" +
-            "addIcons();" +
-            "})()";
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-        web.evaluateJavascript(js, null);
-    } else {
-        web.loadUrl(js);
-    }
-  }
-
-  // ✅ COMPLETE MINI PLAYER - Persistent across page navigation
-  private void injectMiniPlayerScript() {
-    String miniPlayerJS = 
-        "javascript:(function() {" +
-        "  if (window.miniPlayerInjected) return;" +
-        "  window.miniPlayerInjected = true;" +
-        "  console.log('🎯 Mini Player Script Loaded');" +
-        "  " +
-        "  var globalVideoData = {" +
-        "    title: ''," +
-        "    channel: ''," +
-        "    thumbnail: ''," +
-        "    videoElement: null," +
-        "    isPlaying: false" +
-        "  };" +
-        "  " +
-        "  window.showMiniPlayer = function() {" +
-        "    console.log('📺 Creating Mini Player...');" +
-        "    " +
-        "    // Get current video info" +
-        "    var video = document.querySelector('video');" +
-        "    if (!video) {" +
-        "      console.error('❌ No video element found!');" +
-        "      return;" +
-        "    }" +
-        "    " +
-        "    globalVideoData.videoElement = video;" +
-        "    globalVideoData.isPlaying = !video.paused;" +
-        "    globalVideoData.title = document.title.replace(' - YouTube', '').replace(' - YouTube Music', '');" +
-        "    " +
-        "    var channelEl = document.querySelector('.ytm-slim-owner-renderer .yt-core-attributed-string');" +
-        "    if (!channelEl) channelEl = document.querySelector('ytm-channel-name a');" +
-        "    globalVideoData.channel = channelEl ? channelEl.textContent : '';" +
-        "    " +
-        "    var thumbMeta = document.querySelector('meta[property=\"og:image\"]');" +
-        "    globalVideoData.thumbnail = thumbMeta ? thumbMeta.content : '';" +
-        "    " +
-        "    // Remove existing mini player if any" +
-        "    var existing = document.getElementById('ytpro-mini-player');" +
-        "    if (existing) existing.remove();" +
-        "    " +
-        "    // Create mini player" +
-        "    var miniPlayer = document.createElement('div');" +
-        "    miniPlayer.id = 'ytpro-mini-player';" +
-        "    miniPlayer.className = 'ytpro-persistent-player';" +
-        "    miniPlayer.style.cssText = '" +
-        "      position: fixed !important;" +
-        "      bottom: 50px !important;" +
-        "      left: 0 !important;" +
-        "      right: 0 !important;" +
-        "      height: 80px !important;" +
-        "      background: #0f0f0f !important;" +
-        "      z-index: 2147483647 !important;" +
-        "      display: flex !important;" +
-        "      align-items: center !important;" +
-        "      padding: 8px 12px !important;" +
-        "      box-shadow: 0 -2px 16px rgba(0,0,0,0.8) !important;" +
-        "      border-top: 1px solid #303030 !important;" +
-        "      pointer-events: auto !important;" +
-        "    ';" +
-        "    " +
-        "    // Thumbnail container" +
-        "    var thumbContainer = document.createElement('div');" +
-        "    thumbContainer.style.cssText = 'width:120px;height:68px;background:#000;margin-right:12px;border-radius:8px;overflow:hidden;flex-shrink:0;';" +
-        "    " +
-        "    if (globalVideoData.thumbnail) {" +
-        "      var img = document.createElement('img');" +
-        "      img.src = globalVideoData.thumbnail;" +
-        "      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';" +
-        "      thumbContainer.appendChild(img);" +
-        "    }" +
-        "    " +
-        "    // Info container" +
-        "    var infoContainer = document.createElement('div');" +
-        "    infoContainer.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;';" +
-        "    " +
-        "    var titleDiv = document.createElement('div');" +
-        "    titleDiv.style.cssText = 'color:#fff;font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';" +
-        "    titleDiv.textContent = globalVideoData.title;" +
-        "    " +
-        "    var channelDiv = document.createElement('div');" +
-        "    channelDiv.style.cssText = 'color:#aaa;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';" +
-        "    channelDiv.textContent = globalVideoData.channel;" +
-        "    " +
-        "    infoContainer.appendChild(titleDiv);" +
-        "    infoContainer.appendChild(channelDiv);" +
-        "    " +
-        "    // Controls" +
-        "    var controls = document.createElement('div');" +
-        "    controls.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0;';" +
-        "    " +
-        "    var playBtn = document.createElement('button');" +
-        "    playBtn.id = 'ytpro-play-btn';" +
-        "    playBtn.style.cssText = 'background:transparent;border:none;color:#fff;font-size:32px;padding:8px;cursor:pointer;line-height:1;';" +
-        "    playBtn.innerHTML = globalVideoData.isPlaying ? '⏸' : '▶';" +
-        "    playBtn.onclick = function(e) {" +
-        "      e.stopPropagation();" +
-        "      var v = document.querySelector('video');" +
-        "      if (v) {" +
-        "        if (v.paused) {" +
-        "          v.play();" +
-        "          playBtn.innerHTML = '⏸';" +
-        "        } else {" +
-        "          v.pause();" +
-        "          playBtn.innerHTML = '▶';" +
-        "        }" +
-        "      }" +
-        "    };" +
-        "    " +
-        "    var closeBtn = document.createElement('button');" +
-        "    closeBtn.style.cssText = 'background:transparent;border:none;color:#fff;font-size:28px;padding:8px;cursor:pointer;line-height:1;';" +
-        "    closeBtn.innerHTML = '✖';" +
-        "    closeBtn.onclick = function(e) {" +
-        "      e.stopPropagation();" +
-        "      var v = document.querySelector('video');" +
-        "      if (v) v.pause();" +
-        "      miniPlayer.remove();" +
-        "    };" +
-        "    " +
-        "    controls.appendChild(playBtn);" +
-        "    controls.appendChild(closeBtn);" +
-        "    " +
-        "    miniPlayer.appendChild(thumbContainer);" +
-        "    miniPlayer.appendChild(infoContainer);" +
-        "    miniPlayer.appendChild(controls);" +
-        "    " +
-        "    // Click to go back to video" +
-        "    miniPlayer.onclick = function(e) {" +
-        "      if (e.target === closeBtn || e.target === playBtn) return;" +
-        "      window.history.back();" +
-        "    };" +
-        "    " +
-        "    document.body.appendChild(miniPlayer);" +
-        "    console.log('✅ Mini Player Created & Displayed');" +
-        "    " +
-        "    // Update play button when video state changes" +
-        "    setTimeout(function() {" +
-        "      var v = document.querySelector('video');" +
-        "      if (v) {" +
-        "        v.addEventListener('play', function() {" +
-        "          var btn = document.getElementById('ytpro-play-btn');" +
-        "          if (btn) btn.innerHTML = '⏸';" +
-        "        });" +
-        "        v.addEventListener('pause', function() {" +
-        "          var btn = document.getElementById('ytpro-play-btn');" +
-        "          if (btn) btn.innerHTML = '▶';" +
-        "        });" +
-        "      }" +
-        "    }, 100);" +
-        "  };" +
-        "  " +
-        "  window.hideMiniPlayer = function() {" +
-        "    var mp = document.getElementById('ytpro-mini-player');" +
-        "    if (mp) mp.remove();" +
-        "  };" +
-        "  " +
-        "  // Keep mini player visible across page loads" +
-        "  window.addEventListener('load', function() {" +
-        "    setTimeout(function() {" +
-        "      var mp = document.getElementById('ytpro-mini-player');" +
-        "      if (mp && !window.location.href.includes('/watch') && !window.location.href.includes('/shorts')) {" +
-        "        mp.style.display = 'flex';" +
-        "      }" +
-        "    }, 500);" +
-        "  });" +
-        "})();";
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-        web.evaluateJavascript(miniPlayerJS, null);
-    } else {
-        web.loadUrl(miniPlayerJS);
-    }
-  }
-
 
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -635,6 +349,7 @@ public class MainActivity extends Activity {
         Toast.makeText(getApplicationContext(), getString(R.string.grant_storage), Toast.LENGTH_SHORT).show();
       }
     } else if (requestCode == 102) {
+      // ✅ Notification permission result
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
           Log.d("MainActivity", "✅ Notification permission granted");
           startNotificationService();
@@ -646,9 +361,13 @@ public class MainActivity extends Activity {
 
   @Override
   public void onBackPressed() {
-    handleBackPress();
+    if (web.canGoBack()) {
+      web.goBack();
+    } else {
+      finish();
+    }
   }
-  
+
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
     web.loadUrl(isInPictureInPictureMode ?
@@ -665,12 +384,9 @@ public class MainActivity extends Activity {
   @Override
   protected void onUserLeaveHint() {
     super.onUserLeaveHint();
-    
-    if (android.os.Build.VERSION.SDK_INT >= 26 && 
-        web.getUrl().contains("watch") && 
-        isPlaying &&
-        !isFinishing()) {
-        
+   
+    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch")) {
+      if(isPlaying){
         try {
           PictureInPictureParams params;
           isPip=true;
@@ -684,8 +400,10 @@ public class MainActivity extends Activity {
         } catch (IllegalStateException e) {
           e.printStackTrace();
         }
+      }
     }
   }
+
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
@@ -790,8 +508,6 @@ public class MainActivity extends Activity {
     }
   }
 
-// ✅ PART 3 - අවසාන කොටස මෙතනින් පටන් ගන්නවා
-
   public class WebAppInterface {
     Context mContext;
     WebAppInterface(Context c) {
@@ -804,16 +520,11 @@ public class MainActivity extends Activity {
     }
 
     @JavascriptInterface
-    public void gohome() {
-        Intent startMain = new Intent(Intent.ACTION_MAIN);
-        startMain.addCategory(Intent.CATEGORY_HOME);
-        startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(startMain);
-    }
-
-    @JavascriptInterface
     public void gohome(String x) {
-        gohome();
+      Intent startMain = new Intent(Intent.ACTION_MAIN);
+      startMain.addCategory(Intent.CATEGORY_HOME);
+      startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      startActivity(startMain);
     }
 
     @JavascriptInterface
@@ -1228,6 +939,8 @@ public class MainActivity extends Activity {
     }, 2000);
   }
 
+  // ✅ NOTIFICATION METHODS (3)
+  
   private void requestNotificationPermission() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != 
@@ -1264,4 +977,3 @@ public class MainActivity extends Activity {
     });
   }
 }
-
