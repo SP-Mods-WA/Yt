@@ -5,12 +5,11 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
-import androidx.annotation.Nullable;
 import java.util.List;
 
 public class NotificationCheckService extends Service {
     private static final String TAG = "NotificationCheckService";
-    private static final long CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+    private static final long CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
     
     private Handler handler;
     private Runnable checkRunnable;
@@ -26,12 +25,10 @@ public class NotificationCheckService extends Service {
         notificationManager = new AppNotificationManager(this);
         handler = new Handler();
         
-        // Create runnable for periodic checks
         checkRunnable = new Runnable() {
             @Override
             public void run() {
                 checkForNotifications();
-                // Schedule next check
                 handler.postDelayed(this, CHECK_INTERVAL);
             }
         };
@@ -41,7 +38,6 @@ public class NotificationCheckService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Service started");
         
-        // Start periodic checking
         handler.post(checkRunnable);
         
         return START_STICKY;
@@ -69,13 +65,11 @@ public class NotificationCheckService extends Service {
         super.onDestroy();
         Log.d(TAG, "Service destroyed");
         
-        // Stop periodic checks
         if (handler != null && checkRunnable != null) {
             handler.removeCallbacks(checkRunnable);
         }
     }
 
-    @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
