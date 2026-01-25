@@ -203,9 +203,11 @@ public class MainActivity extends Activity {
         super.onPageStarted(p1, p2, p3);
       }
 
-    @Override
+@Override
 public void onPageFinished(WebView p1, String url) {
-    // ✅ ALWAYS inject on EVERY page load
+    super.onPageFinished(p1, url); // ✅ මෙය අවසානයට දමන්න
+    
+    // Trusted Types policy
     web.evaluateJavascript(
         "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
         "  window.trustedTypes.createPolicy('default', {" +
@@ -217,7 +219,7 @@ public void onPageFinished(WebView p1, String url) {
         null
     );
     
-    // ✅ Hide YouTube bottom nav and add padding
+    // Hide YouTube bottom nav
     web.evaluateJavascript(
         "(function() {" +
         "  var style = document.createElement('style');" +
@@ -230,7 +232,7 @@ public void onPageFinished(WebView p1, String url) {
         null
     );
     
-    // ✅ IMPORTANT: Re-inject YTPRO scripts on EVERY page
+    // Load YTPRO scripts
     String scriptLoader = 
         "(function() {" +
         "  if(window.YTPRO_LOADED) { console.log('✅ YTPRO already loaded'); return; }" +
@@ -275,7 +277,7 @@ public void onPageFinished(WebView p1, String url) {
     optimizeVideoPlayback();
     addHeaderIcons();
 
-    if (dl) {
+    if (dL) {
         web.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -297,10 +299,47 @@ public void onPageFinished(WebView p1, String url) {
         mediaSession = false;
         stopService(new Intent(getApplicationContext(), ForegroundService.class));
     }
+} // ✅ Method එක නිවැරදිව close කරන්න
 
-    super.onPageFinished(p1, url);
+private void optimizeVideoPlayback() {
+    web.evaluateJavascript(
+        "(function() {" +
+        "  console.log('⚡ Optimizing video playback');" +
+        "})();",
+        null
+    );
 }
-      }
+
+private void addHeaderIcons() {
+    web.evaluateJavascript(
+        "(function() {" +
+        "  console.log('🎨 Adding header icons');" +
+        "})();",
+        null
+    );
+}
+
+private void monitorUrlChanges() {
+    // URL changes track කරන්න
+}
+
+private void setActiveTab(ImageView activeIcon, TextView activeText,
+                         ImageView... inactiveIcons, TextView... inactiveTexts) {
+    // Active tab set කරන්න
+    activeIcon.setColorFilter(Color.parseColor("#FF0000"));
+    activeText.setTextColor(Color.WHITE);
+    
+    for (ImageView icon : inactiveIcons) {
+        icon.setColorFilter(Color.parseColor("#AAAAAA"));
+    }
+    for (TextView text : inactiveTexts) {
+        text.setTextColor(Color.parseColor("#AAAAAA"));
+    }
+}
+
+private void showUploadOptions() {
+    Toast.makeText(this, "Upload feature coming soon", Toast.LENGTH_SHORT).show();
+}
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
