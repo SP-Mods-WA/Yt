@@ -17,7 +17,7 @@ import java.util.TimeZone;
 
 public class NotificationFetcher {
     private static final String TAG = "NotificationFetcher";
-    private static final String NOTIFICATIONS_URL = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/notifications.json";
+    private static final String NOTIFICATIONS_URL = "https://raw.githubusercontent.com/SP-Mods-WA/SP-Mods-WA/refs/heads/main/ytpro_notification.json";
     
     private Context context;
 
