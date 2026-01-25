@@ -301,45 +301,7 @@ public void onPageFinished(WebView p1, String url) {
     }
 } // ✅ Method එක නිවැරදිව close කරන්න
 
-private void optimizeVideoPlayback() {
-    web.evaluateJavascript(
-        "(function() {" +
-        "  console.log('⚡ Optimizing video playback');" +
-        "})();",
-        null
-    );
-}
 
-private void addHeaderIcons() {
-    web.evaluateJavascript(
-        "(function() {" +
-        "  console.log('🎨 Adding header icons');" +
-        "})();",
-        null
-    );
-}
-
-private void monitorUrlChanges() {
-    // URL changes track කරන්න
-}
-
-private void setActiveTab(ImageView activeIcon, TextView activeText,
-                         ImageView... inactiveIcons, TextView... inactiveTexts) {
-    // Active tab set කරන්න
-    activeIcon.setColorFilter(Color.parseColor("#FF0000"));
-    activeText.setTextColor(Color.WHITE);
-    
-    for (ImageView icon : inactiveIcons) {
-        icon.setColorFilter(Color.parseColor("#AAAAAA"));
-    }
-    for (TextView text : inactiveTexts) {
-        text.setTextColor(Color.parseColor("#AAAAAA"));
-    }
-}
-
-private void showUploadOptions() {
-    Toast.makeText(this, "Upload feature coming soon", Toast.LENGTH_SHORT).show();
-}
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -473,7 +435,6 @@ private void setupBottomNavigation() {
     LinearLayout navSubscriptions = findViewById(R.id.navSubscriptions);
     LinearLayout navYou = findViewById(R.id.navYou);
     
-    // Get all icons and texts
     final ImageView iconHome = findViewById(R.id.iconHome);
     final ImageView iconShorts = findViewById(R.id.iconShorts);
     final ImageView iconUpload = findViewById(R.id.iconUpload);
@@ -485,46 +446,45 @@ private void setupBottomNavigation() {
     final TextView textSubscriptions = findViewById(R.id.textSubscriptions);
     final TextView textYou = findViewById(R.id.textYou);
     
-    // Home button click
+    // Home button
     navHome.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconHome, textHome, iconShorts, iconSubscriptions, iconYou, 
-                        textShorts, textSubscriptions, textYou);
+            setActiveTab(iconHome, textHome,
+                iconShorts, textShorts,
+                iconSubscriptions, textSubscriptions,
+                iconYou, textYou
+            );
             
-            // ✅ Use JavaScript navigation instead of loadUrl to keep scripts
             web.evaluateJavascript(
-                "(function() {" +
-                "  window.location.href = 'https://m.youtube.com/';" +
-                "})();",
+                "(function() { window.location.href = 'https://m.youtube.com/'; })();",
                 null
             );
         }
     });
     
-    // Shorts button click
+    // Shorts button
     navShorts.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconShorts, textShorts, iconHome, iconSubscriptions, iconYou,
-                        textHome, textSubscriptions, textYou);
+            setActiveTab(iconShorts, textShorts,
+                iconHome, textHome,
+                iconSubscriptions, textSubscriptions,
+                iconYou, textYou
+            );
             
-            // ✅ Navigate using JavaScript
             web.evaluateJavascript(
                 "(function() {" +
                 "  var shortsLink = document.querySelector('a[href*=\"/shorts\"]');" +
-                "  if(shortsLink) { " +
-                "    shortsLink.click(); " +
-                "  } else { " +
-                "    window.location.href = 'https://m.youtube.com/feed/explore';" +
-                "  }" +
+                "  if(shortsLink) { shortsLink.click(); }" +
+                "  else { window.location.href = 'https://m.youtube.com/feed/explore'; }" +
                 "})();",
                 null
             );
         }
     });
     
-    // Upload button click
+    // Upload button
     navUpload.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -532,41 +492,70 @@ private void setupBottomNavigation() {
         }
     });
     
-    // Subscriptions button click
+    // Subscriptions button
     navSubscriptions.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconSubscriptions, textSubscriptions, iconHome, iconShorts, iconYou,
-                        textHome, textShorts, textYou);
+            setActiveTab(iconSubscriptions, textSubscriptions,
+                iconHome, textHome,
+                iconShorts, textShorts,
+                iconYou, textYou
+            );
             
-            // ✅ Navigate using JavaScript
             web.evaluateJavascript(
-                "(function() {" +
-                "  window.location.href = 'https://m.youtube.com/feed/subscriptions';" +
-                "})();",
+                "(function() { window.location.href = 'https://m.youtube.com/feed/subscriptions'; })();",
                 null
             );
         }
     });
     
-    // You button click
+    // You button
     navYou.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconYou, textYou, iconHome, iconShorts, iconSubscriptions,
-                        textHome, textShorts, textSubscriptions);
+            setActiveTab(iconYou, textYou,
+                iconHome, textHome,
+                iconShorts, textShorts,
+                iconSubscriptions, textSubscriptions
+            );
             
-            // ✅ Navigate using JavaScript
             web.evaluateJavascript(
-                "(function() {" +
-                "  window.location.href = 'https://m.youtube.com/feed/account';" +
-                "})();",
+                "(function() { window.location.href = 'https://m.youtube.com/feed/account'; })();",
                 null
             );
         }
     });
+}
+
+// Helper method
+private void setActiveTab(ImageView activeIcon, TextView activeText,
+                         Object... inactiveElements) {
+    activeIcon.setColorFilter(Color.parseColor("#FF0000"));
+    activeText.setTextColor(Color.WHITE);
     
-    monitorUrlChanges();
+    for (Object element : inactiveElements) {
+        if (element instanceof ImageView) {
+            ((ImageView) element).setColorFilter(Color.parseColor("#AAAAAA"));
+        } else if (element instanceof TextView) {
+            ((TextView) element).setTextColor(Color.parseColor("#AAAAAA"));
+        }
+    }
+}
+
+private void showUploadOptions() {
+    Toast.makeText(this, "Upload feature coming soon", Toast.LENGTH_SHORT).show();
+}
+
+private void optimizeVideoPlayback() {
+    // Video optimization logic
+}
+
+private void addHeaderIcons() {
+    // Header icons logic
+}
+
+private void monitorUrlChanges() {
+    // URL monitoring logic
 }
 
 
