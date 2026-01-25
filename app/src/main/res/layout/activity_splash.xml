@@ -4,14 +4,13 @@
     android:layout_height="match_parent"
     android:background="#FFFFFF">
 
-    <!-- Logo centered -->
-    <ImageView
+    <!-- ✅ GIF ImageView -->
+    <pl.droidsonroids.gif.GifImageView
         android:id="@+id/splash_logo"
         android:layout_width="120dp"
         android:layout_height="120dp"
         android:layout_centerInParent="true"
-        android:src="@drawable/ytpro_logo"
-        android:contentDescription="YTPro Logo" />
+        android:src="@drawable/ytpro_logo" />
 
     <!-- From SPMODS text at bottom -->
     <LinearLayout
