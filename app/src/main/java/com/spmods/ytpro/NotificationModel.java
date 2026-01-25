@@ -1,20 +1,17 @@
 package com.spmods.ytpro;
 
-import java.util.Date;
-
 public class NotificationModel {
     private String id;
     private String title;
     private String message;
-    private String type; // update, info, feature, warning
-    private String priority; // high, medium, low
+    private String type;
+    private String priority;
     private String iconUrl;
     private String actionUrl;
     private long timestamp;
     private long showUntil;
     private boolean isDismissible;
 
-    // Constructor
     public NotificationModel() {
     }
 
@@ -33,7 +30,6 @@ public class NotificationModel {
         this.isDismissible = isDismissible;
     }
 
-    // Getters and Setters
     public String getId() {
         return id;
     }
@@ -114,23 +110,24 @@ public class NotificationModel {
         isDismissible = dismissible;
     }
 
-    // Helper method to check if notification is still valid
     public boolean isValid() {
         long currentTime = System.currentTimeMillis();
         return currentTime <= showUntil;
     }
 
-    // Get notification importance for Android
     public int getNotificationImportance() {
-        switch (priority.toLowerCase()) {
-            case "high":
-                return android.app.NotificationManager.IMPORTANCE_HIGH;
-            case "medium":
-                return android.app.NotificationManager.IMPORTANCE_DEFAULT;
-            case "low":
-                return android.app.NotificationManager.IMPORTANCE_LOW;
-            default:
-                return android.app.NotificationManager.IMPORTANCE_DEFAULT;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            switch (priority.toLowerCase()) {
+                case "high":
+                    return android.app.NotificationManager.IMPORTANCE_HIGH;
+                case "medium":
+                    return android.app.NotificationManager.IMPORTANCE_DEFAULT;
+                case "low":
+                    return android.app.NotificationManager.IMPORTANCE_LOW;
+                default:
+                    return android.app.NotificationManager.IMPORTANCE_DEFAULT;
+            }
         }
+        return 0;
     }
-        }
+}
