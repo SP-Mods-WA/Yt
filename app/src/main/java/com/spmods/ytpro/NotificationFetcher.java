@@ -25,7 +25,6 @@ public class NotificationFetcher {
         this.context = context;
     }
 
-    // Fetch notifications from GitHub
     public void fetchNotifications(NotificationCallback callback) {
         new Thread(() -> {
             try {
@@ -71,7 +70,6 @@ public class NotificationFetcher {
         }).start();
     }
 
-    // Parse JSON response
     private List<NotificationModel> parseNotifications(String jsonString) {
         List<NotificationModel> notificationList = new ArrayList<>();
         
@@ -95,7 +93,6 @@ public class NotificationFetcher {
                 notification.setActionUrl(notifObj.optString("action_url", ""));
                 notification.setDismissible(notifObj.optBoolean("is_dismissible", true));
                 
-                // Parse timestamps
                 try {
                     Date timestampDate = dateFormat.parse(notifObj.getString("timestamp"));
                     Date showUntilDate = dateFormat.parse(notifObj.getString("show_until"));
@@ -108,7 +105,6 @@ public class NotificationFetcher {
                     Log.e(TAG, "Error parsing dates", e);
                 }
                 
-                // Only add valid notifications
                 if (notification.isValid()) {
                     notificationList.add(notification);
                 }
@@ -121,9 +117,8 @@ public class NotificationFetcher {
         return notificationList;
     }
 
-    // Callback interface
     public interface NotificationCallback {
         void onSuccess(List<NotificationModel> notifications);
         void onError(String error);
     }
-                  }
+                    }
