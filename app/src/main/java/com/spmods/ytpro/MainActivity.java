@@ -71,6 +71,8 @@ public class MainActivity extends Activity {
         
         // ✅ Check for notifications immediately
         checkNotificationsNow();
+        
+        setupBottomNavigation();
     }
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -201,83 +203,103 @@ public class MainActivity extends Activity {
         super.onPageStarted(p1, p2, p3);
       }
 
-      @Override
-      public void onPageFinished(WebView p1, String url) {
-        web.evaluateJavascript(
-            "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
-            "  window.trustedTypes.createPolicy('default', {" +
-            "    createHTML: (string) => string," +
-            "    createScriptURL: string => string," +
-            "    createScript: string => string" +
-            "  });" +
-            "}",
-            null
-        );
-        
-        String scriptLoader = 
-            "(function() {" +
-            "  console.log('🔄 Starting YTPRO script loader...');" +
-            "  function loadScript(src, name) {" +
-            "    return new Promise((resolve, reject) => {" +
-            "      console.log('📥 Loading ' + name + ': ' + src);" +
-            "      var script = document.createElement('script');" +
-            "      script.src = src;" +
-            "      script.async = false;" +
-            "      script.onload = function() {" +
-            "        console.log('✅ Loaded ' + name);" +
-            "        resolve();" +
-            "      };" +
-            "      script.onerror = function(e) {" +
-            "        console.error('❌ Failed to load ' + name + ':', e);" +
-            "        reject(new Error('Failed to load ' + name));" +
-            "      };" +
-            "      document.body.appendChild(script);" +
-            "    });" +
-            "  }" +
-            "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main Script')" +
-            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG Play'))" +
-            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'InnerTube'))" +
-            "    .then(() => {" +
-            "      console.log('✅ All YTPRO scripts loaded successfully!');" +
-            "      window.YTPRO_LOADED = true;" +
-            "    })" +
-            "    .catch((error) => {" +
-            "      console.error('❌ YTPRO script loading failed:', error);" +
-            "      window.YTPRO_LOADED = false;" +
-            "    });" +
-            "})();";
-        
-        web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
+    @Override
+public void onPageFinished(WebView p1, String url) {
+    // ✅ ALWAYS inject on EVERY page load
+    web.evaluateJavascript(
+        "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
+        "  window.trustedTypes.createPolicy('default', {" +
+        "    createHTML: (string) => string," +
+        "    createScriptURL: string => string," +
+        "    createScript: string => string" +
+        "  });" +
+        "}",
+        null
+    );
+    
+    // ✅ Hide YouTube bottom nav and add padding
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var style = document.createElement('style');" +
+        "  style.innerHTML = '" +
+        "    ytm-pivot-bar-renderer { display: none !important; }" +
+        "    body { padding-bottom: 60px !important; }" +
+        "  ';" +
+        "  document.head.appendChild(style);" +
+        "})();",
+        null
+    );
+    
+    // ✅ IMPORTANT: Re-inject YTPRO scripts on EVERY page
+    String scriptLoader = 
+        "(function() {" +
+        "  if(window.YTPRO_LOADED) { console.log('✅ YTPRO already loaded'); return; }" +
+        "  console.log('🔄 Loading YTPRO scripts...');" +
+        "  function loadScript(src, name) {" +
+        "    return new Promise((resolve, reject) => {" +
+        "      console.log('📥 Loading ' + name + ': ' + src);" +
+        "      var script = document.createElement('script');" +
+        "      script.src = src;" +
+        "      script.async = false;" +
+        "      script.onload = function() {" +
+        "        console.log('✅ Loaded ' + name);" +
+        "        resolve();" +
+        "      };" +
+        "      script.onerror = function(e) {" +
+        "        console.error('❌ Failed to load ' + name + ':', e);" +
+        "        reject(new Error('Failed to load ' + name));" +
+        "      };" +
+        "      document.body.appendChild(script);" +
+        "    });" +
+        "  }" +
+        "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main Script')" +
+        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG Play'))" +
+        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'InnerTube'))" +
+        "    .then(() => {" +
+        "      console.log('✅ All YTPRO scripts loaded!');" +
+        "      window.YTPRO_LOADED = true;" +
+        "    })" +
+        "    .catch((error) => {" +
+        "      console.error('❌ YTPRO script loading failed:', error);" +
+        "      window.YTPRO_LOADED = false;" +
+        "    });" +
+        "})();";
+    
+    web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
+        @Override
+        public void onReceiveValue(String value) {
+            Log.d("WebView", "📜 Script loader injected for: " + url);
+        }
+    });
+    
+    optimizeVideoPlayback();
+    addHeaderIcons();
+
+    if (dl) {
+        web.postDelayed(new Runnable() {
             @Override
-            public void onReceiveValue(String value) {
-                Log.d("WebView", "📜 Script loader injected");
+            public void run() {
+                web.evaluateJavascript(
+                    "if (typeof window.ytproDownVid === 'function') {" +
+                    "  window.location.hash='download';" +
+                    "} else {" +
+                    "  console.error('❌ ytproDownVid not available yet');" +
+                    "}",
+                    null
+                );
+                dL = false;
             }
-        });
+        }, 2000);
+    }
 
-        if (dl) {
-            web.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    web.evaluateJavascript(
-                        "if (typeof window.ytproDownVid === 'function') {" +
-                        "  window.location.hash='download';" +
-                        "} else {" +
-                        "  console.error('❌ ytproDownVid not available yet');" +
-                        "}",
-                        null
-                    );
-                    dL = false;
-                }
-            }, 2000);
-        }
+    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+        isPlaying = false;
+        mediaSession = false;
+        stopService(new Intent(getApplicationContext(), ForegroundService.class));
+    }
 
-        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-            isPlaying = false;
-            mediaSession = false;
-            stopService(new Intent(getApplicationContext(), ForegroundService.class));
-        }
-
-        super.onPageFinished(p1, url);
+    super.onPageFinished(p1, url);
+}
       }
 
       @Override
@@ -403,6 +425,110 @@ public class MainActivity extends Activity {
       }
     }
   }
+
+
+private void setupBottomNavigation() {
+    LinearLayout navHome = findViewById(R.id.navHome);
+    LinearLayout navShorts = findViewById(R.id.navShorts);
+    LinearLayout navUpload = findViewById(R.id.navUpload);
+    LinearLayout navSubscriptions = findViewById(R.id.navSubscriptions);
+    LinearLayout navYou = findViewById(R.id.navYou);
+    
+    // Get all icons and texts
+    final ImageView iconHome = findViewById(R.id.iconHome);
+    final ImageView iconShorts = findViewById(R.id.iconShorts);
+    final ImageView iconUpload = findViewById(R.id.iconUpload);
+    final ImageView iconSubscriptions = findViewById(R.id.iconSubscriptions);
+    final ImageView iconYou = findViewById(R.id.iconYou);
+    
+    final TextView textHome = findViewById(R.id.textHome);
+    final TextView textShorts = findViewById(R.id.textShorts);
+    final TextView textSubscriptions = findViewById(R.id.textSubscriptions);
+    final TextView textYou = findViewById(R.id.textYou);
+    
+    // Home button click
+    navHome.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            setActiveTab(iconHome, textHome, iconShorts, iconSubscriptions, iconYou, 
+                        textShorts, textSubscriptions, textYou);
+            
+            // ✅ Use JavaScript navigation instead of loadUrl to keep scripts
+            web.evaluateJavascript(
+                "(function() {" +
+                "  window.location.href = 'https://m.youtube.com/';" +
+                "})();",
+                null
+            );
+        }
+    });
+    
+    // Shorts button click
+    navShorts.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            setActiveTab(iconShorts, textShorts, iconHome, iconSubscriptions, iconYou,
+                        textHome, textSubscriptions, textYou);
+            
+            // ✅ Navigate using JavaScript
+            web.evaluateJavascript(
+                "(function() {" +
+                "  var shortsLink = document.querySelector('a[href*=\"/shorts\"]');" +
+                "  if(shortsLink) { " +
+                "    shortsLink.click(); " +
+                "  } else { " +
+                "    window.location.href = 'https://m.youtube.com/feed/explore';" +
+                "  }" +
+                "})();",
+                null
+            );
+        }
+    });
+    
+    // Upload button click
+    navUpload.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            showUploadOptions();
+        }
+    });
+    
+    // Subscriptions button click
+    navSubscriptions.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            setActiveTab(iconSubscriptions, textSubscriptions, iconHome, iconShorts, iconYou,
+                        textHome, textShorts, textYou);
+            
+            // ✅ Navigate using JavaScript
+            web.evaluateJavascript(
+                "(function() {" +
+                "  window.location.href = 'https://m.youtube.com/feed/subscriptions';" +
+                "})();",
+                null
+            );
+        }
+    });
+    
+    // You button click
+    navYou.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            setActiveTab(iconYou, textYou, iconHome, iconShorts, iconSubscriptions,
+                        textHome, textShorts, textSubscriptions);
+            
+            // ✅ Navigate using JavaScript
+            web.evaluateJavascript(
+                "(function() {" +
+                "  window.location.href = 'https://m.youtube.com/feed/account';" +
+                "})();",
+                null
+            );
+        }
+    });
+    
+    monitorUrlChanges();
+}
 
 
   public class CustomWebClient extends WebChromeClient {
