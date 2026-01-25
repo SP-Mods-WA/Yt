@@ -22,7 +22,9 @@ android {
 
 dependencies {
     // Add your dependencies here
+    implementation 'androidx.core:core-splashscreen:1.0.1'
 }
+
 
 
 
