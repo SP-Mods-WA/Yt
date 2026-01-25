@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/drawable/ic_upload_plus.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Vertical line of plus -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,4 L13,4 L13,20 L11,20 Z"/>
+    
+    <!-- Horizontal line of plus -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M4,11 L20,11 L20,13 L4,13 Z"/>
+        
+</vector>
