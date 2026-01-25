@@ -57,7 +57,6 @@ public class MainActivity extends Activity {
       prefs.edit().putBoolean("bgplay", true).apply();
     }
     
-    // ✅ Request notification permission
     requestNotificationPermission();
     
     if (!isNetworkAvailable()) {
@@ -65,11 +64,7 @@ public class MainActivity extends Activity {
     } else {
         load(false);
         checkForAppUpdate();
-        
-        // ✅ Start notification service
         startNotificationService();
-        
-        // ✅ Check for notifications immediately
         checkNotificationsNow();
     }
     
@@ -80,10 +75,36 @@ public class MainActivity extends Activity {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
-    web.getSettings().setJavaScriptEnabled(true);
-    web.getSettings().setSupportZoom(true);
-    web.getSettings().setBuiltInZoomControls(true);
-    web.getSettings().setDisplayZoomControls(false);
+    // ===== Video Playback Optimization Settings =====
+    WebSettings settings = web.getSettings();
+    settings.setJavaScriptEnabled(true);
+    settings.setSupportZoom(true);
+    settings.setBuiltInZoomControls(true);
+    settings.setDisplayZoomControls(false);
+    settings.setDomStorageEnabled(true);
+    settings.setDatabaseEnabled(true);
+    settings.setMediaPlaybackRequiresUserGesture(false);
+    
+    // ✅ Enable smooth video streaming
+    settings.setAllowFileAccess(true);
+    settings.setAllowContentAccess(true);
+    settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+    settings.setJavaScriptCanOpenWindowsAutomatically(true);
+    settings.setLoadsImagesAutomatically(true);
+    settings.setBlockNetworkImage(false);
+    settings.setBlockNetworkLoads(false);
+    
+    // ✅ Enable wide viewport for better video experience
+    settings.setUseWideViewPort(true);
+    settings.setLoadWithOverviewMode(true);
+    
+    // ✅ Enable mixed content (important for video streams)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+    }
+    
+    // ✅ Hardware acceleration for smooth playback
+    web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -98,12 +119,8 @@ public class MainActivity extends Activity {
       }
     }
     web.loadUrl(url);
-    web.getSettings().setDomStorageEnabled(true);
-    web.getSettings().setDatabaseEnabled(true);
     web.addJavascriptInterface(new WebAppInterface(this), "Android");
     web.setWebChromeClient(new CustomWebClient());
-    web.getSettings().setMediaPlaybackRequiresUserGesture(false);
-    web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
     CookieManager cookieManager = CookieManager.getInstance();
     cookieManager.setAcceptCookie(true);
@@ -203,6 +220,12 @@ public class MainActivity extends Activity {
 
       @Override
       public void onPageFinished(WebView p1, String url) {
+        // ✅ Optimize video buffering and playback
+        optimizeVideoPlayback();
+        
+        // ✅ Add notification and cast icons
+        addHeaderIcons();
+        
         web.evaluateJavascript(
             "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
             "  window.trustedTypes.createPolicy('default', {" +
@@ -318,19 +341,110 @@ public class MainActivity extends Activity {
 
     setReceiver();
 
+    // ✅ Enhanced back button handling with mini player support
     if (android.os.Build.VERSION.SDK_INT >= 33) {
       OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
       backCallback = new OnBackInvokedCallback() {
           @Override
           public void onBackInvoked() {
-              if (web.canGoBack()) {
-                web.goBack();
-              } else {
-                finish();
-              }
+              handleBackPress();
           }
       };
       dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
+    }
+  }
+  
+  // ✅ NEW: Optimize video buffering and playback
+  private void optimizeVideoPlayback() {
+    String js = "javascript:(function() {" +
+            "var videos = document.querySelectorAll('video');" +
+            "videos.forEach(function(video) {" +
+            "  video.preload = 'auto';" +
+            "  video.setAttribute('playsinline', '');" +
+            "  video.setAttribute('webkit-playsinline', '');" +
+            "});" +
+            "})()";
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        web.evaluateJavascript(js, null);
+    } else {
+        web.loadUrl(js);
+    }
+  }
+  
+  // ✅ NEW: Add notification bell and cast icons to header
+  private void addHeaderIcons() {
+    String js = "javascript:(function() {" +
+            "if(document.getElementById('ytpro-custom-icons')) return;" +
+            "function addIcons() {" +
+            "  var header = document.querySelector('ytm-mobile-topbar-renderer');" +
+            "  if(!header) { setTimeout(addIcons, 500); return; }" +
+            "  var buttonsContainer = header.querySelector('.mobile-topbar-header-content');" +
+            "  if(!buttonsContainer) { setTimeout(addIcons, 500); return; }" +
+            "  var iconsDiv = document.createElement('div');" +
+            "  iconsDiv.id = 'ytpro-custom-icons';" +
+            "  iconsDiv.style.cssText = 'display:flex;align-items:center;margin-right:8px;';" +
+            "  var bellBtn = document.createElement('button');" +
+            "  bellBtn.style.cssText = 'background:transparent;border:0;padding:8px;display:flex;align-items:center;cursor:pointer;';" +
+            "  bellBtn.innerHTML = '<svg height=\"24\" width=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z\"/></svg>';" +
+            "  bellBtn.onclick = function() { window.location.href = 'https://m.youtube.com/feed/notifications'; };" +
+            "  var castBtn = document.createElement('button');" +
+            "  castBtn.style.cssText = 'background:transparent;border:0;padding:8px;display:flex;align-items:center;cursor:pointer;';" +
+            "  castBtn.innerHTML = '<svg height=\"24\" width=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11z\"/></svg>';" +
+            "  castBtn.onclick = function() { Android.showToast('Cast feature coming soon!'); };" +
+            "  iconsDiv.appendChild(bellBtn);" +
+            "  iconsDiv.appendChild(castBtn);" +
+            "  var searchBtn = buttonsContainer.querySelector('ytm-topbar-menu-button-renderer[button-renderer-id=\"FEsearch\"]');" +
+            "  if(searchBtn) { buttonsContainer.insertBefore(iconsDiv, searchBtn); }" +
+            "}" +
+            "addIcons();" +
+            "})()";
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        web.evaluateJavascript(js, null);
+    } else {
+        web.loadUrl(js);
+    }
+  }
+  
+  // ✅ NEW: Enhanced back button handler with mini player
+  private void handleBackPress() {
+    String currentUrl = web.getUrl();
+    
+    if (currentUrl != null && (currentUrl.contains("/watch") || currentUrl.contains("/shorts"))) {
+        // Check if video is playing
+        web.evaluateJavascript(
+            "(function() { " +
+            "  var video = document.querySelector('.video-stream');" +
+            "  if(video && !video.paused) {" +
+            "    return 'playing';" +
+            "  }" +
+            "  return 'stopped';" +
+            "})();",
+            new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    if ("\"playing\"".equals(value)) {
+                        // Video is playing - trigger mini player via your JS
+                        web.evaluateJavascript("if(typeof Android !== 'undefined' && typeof Android.gohome === 'function') { Android.gohome(); }", null);
+                    } else {
+                        // Video not playing - normal back
+                        if (web.canGoBack()) {
+                            web.goBack();
+                        } else {
+                            finish();
+                        }
+                    }
+                }
+            }
+        );
+    } else {
+        // Not on video page - normal back
+        if (web.canGoBack()) {
+            web.goBack();
+        } else {
+            finish();
+        }
     }
   }
 
@@ -349,7 +463,6 @@ public class MainActivity extends Activity {
         Toast.makeText(getApplicationContext(), getString(R.string.grant_storage), Toast.LENGTH_SHORT).show();
       }
     } else if (requestCode == 102) {
-      // ✅ Notification permission result
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
           Log.d("MainActivity", "✅ Notification permission granted");
           startNotificationService();
@@ -361,13 +474,9 @@ public class MainActivity extends Activity {
 
   @Override
   public void onBackPressed() {
-    if (web.canGoBack()) {
-      web.goBack();
-    } else {
-      finish();
-    }
+    handleBackPress();
   }
-
+  
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
     web.loadUrl(isInPictureInPictureMode ?
@@ -403,7 +512,6 @@ public class MainActivity extends Activity {
       }
     }
   }
-
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
@@ -939,8 +1047,6 @@ public class MainActivity extends Activity {
     }, 2000);
   }
 
-  // ✅ NOTIFICATION METHODS (3)
-  
   private void requestNotificationPermission() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != 
