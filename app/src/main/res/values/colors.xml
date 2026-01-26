@@ -6,5 +6,15 @@
 	<color name="colorControlNormal">#000000</color>
 	<color name="black">#DD000000</color>
     <color name="white">#FFFFFF</color>
+	<color name="youtube_dark_bg">#0f0f0f</color>
+<color name="youtube_dark_card">#212121</color>
+<color name="youtube_dark_card_hover">#282828</color>
+<color name="youtube_dark_border">#3f3f3f</color>
+<color name="youtube_blue">#3ea6ff</color>
+<color name="youtube_blue_dark">#065fd4</color>
+<color name="youtube_text_primary">#FFFFFF</color>
+<color name="youtube_text_secondary">#AAAAAA</color>
+<color name="youtube_visualizer_bg">#181818</color>
 </resources>
+
 
