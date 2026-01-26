@@ -57,7 +57,6 @@ public class MainActivity extends Activity {
       prefs.edit().putBoolean("bgplay", true).apply();
     }
     
-    // ✅ Request notification permission
     requestNotificationPermission();
     
     if (!isNetworkAvailable()) {
@@ -65,13 +64,8 @@ public class MainActivity extends Activity {
     } else {
         load(false);
         checkForAppUpdate();
-        
-        // ✅ Start notification service
         startNotificationService();
-        
-        // ✅ Check for notifications immediately
         checkNotificationsNow();
-        
         setupBottomNavigation();
     }
     
@@ -82,30 +76,56 @@ public class MainActivity extends Activity {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
-    web.getSettings().setJavaScriptEnabled(true);
-    web.getSettings().setSupportZoom(true);
-    web.getSettings().setBuiltInZoomControls(true);
-    web.getSettings().setDisplayZoomControls(false);
+    WebSettings settings = web.getSettings();
+    settings.setJavaScriptEnabled(true);
+    settings.setSupportZoom(true);
+    settings.setBuiltInZoomControls(true);
+    settings.setDisplayZoomControls(false);
+    settings.setDomStorageEnabled(true);
+    settings.setDatabaseEnabled(true);
+    settings.setMediaPlaybackRequiresUserGesture(false);
+    settings.setAllowFileAccess(true);
+    settings.setAllowContentAccess(true);
+    settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+    settings.setJavaScriptCanOpenWindowsAutomatically(true);
+    settings.setLoadsImagesAutomatically(true);
+    settings.setBlockNetworkImage(false);
+    settings.setBlockNetworkLoads(false);
+    settings.setUseWideViewPort(true);
+    settings.setLoadWithOverviewMode(true);
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+    }
+    
+    web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
     Intent intent = getIntent();
     String action = intent.getAction();
     Uri data = intent.getData();
+    
+    // ✅ ALWAYS default to home page
     String url = "https://m.youtube.com/";
+    
+    // Only override if there's a specific intent
     if (Intent.ACTION_VIEW.equals(action) && data != null) {
       url = data.toString();
+      Log.d("MainActivity", "📲 Opened from external link: " + url);
     } else if (Intent.ACTION_SEND.equals(action)) {
       String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
       if (sharedText != null && (sharedText.contains("youtube.com") || sharedText.contains("youtu.be"))) {
         url = sharedText;
+        Log.d("MainActivity", "📤 Shared link: " + url);
       }
+    } else {
+      // Normal app launch - force home page
+      Log.d("MainActivity", "🏠 Default launch - loading home page");
+      url = "https://m.youtube.com/";
     }
+    
     web.loadUrl(url);
-    web.getSettings().setDomStorageEnabled(true);
-    web.getSettings().setDatabaseEnabled(true);
     web.addJavascriptInterface(new WebAppInterface(this), "Android");
     web.setWebChromeClient(new CustomWebClient());
-    web.getSettings().setMediaPlaybackRequiresUserGesture(false);
-    web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
     CookieManager cookieManager = CookieManager.getInstance();
     cookieManager.setAcceptCookie(true);
@@ -203,105 +223,100 @@ public class MainActivity extends Activity {
         super.onPageStarted(p1, p2, p3);
       }
 
-@Override
-public void onPageFinished(WebView p1, String url) {
-    // Trusted Types policy
-    web.evaluateJavascript(
-        "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
-        "  window.trustedTypes.createPolicy('default', {" +
-        "    createHTML: (string) => string," +
-        "    createScriptURL: string => string," +
-        "    createScript: string => string" +
-        "  });" +
-        "}",
-        null
-    );
-    
-    // Hide YouTube bottom nav and add padding
-    web.evaluateJavascript(
-        "(function() {" +
-        "  var style = document.createElement('style');" +
-        "  style.innerHTML = '" +
-        "    ytm-pivot-bar-renderer { display: none !important; }" +
-        "    body { padding-bottom: 65px !important; }" +
-        "  ';" +
-        "  document.head.appendChild(style);" +
-        "})();",
-        null
-    );
-    
-    // Load YTPRO scripts
-    String scriptLoader = 
-        "(function() {" +
-        "  if(window.YTPRO_LOADED) { console.log('✅ YTPRO already loaded'); return; }" +
-        "  console.log('🔄 Loading YTPRO scripts...');" +
-        "  function loadScript(src, name) {" +
-        "    return new Promise((resolve, reject) => {" +
-        "      console.log('📥 Loading ' + name + ': ' + src);" +
-        "      var script = document.createElement('script');" +
-        "      script.src = src;" +
-        "      script.async = false;" +
-        "      script.onload = function() {" +
-        "        console.log('✅ Loaded ' + name);" +
-        "        resolve();" +
-        "      };" +
-        "      script.onerror = function(e) {" +
-        "        console.error('❌ Failed to load ' + name + ':', e);" +
-        "        reject(new Error('Failed to load ' + name));" +
-        "      };" +
-        "      document.body.appendChild(script);" +
-        "    });" +
-        "  }" +
-        "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main Script')" +
-        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG Play'))" +
-        "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'InnerTube'))" +
-        "    .then(() => {" +
-        "      console.log('✅ All YTPRO scripts loaded!');" +
-        "      window.YTPRO_LOADED = true;" +
-        "    })" +
-        "    .catch((error) => {" +
-        "      console.error('❌ YTPRO script loading failed:', error);" +
-        "      window.YTPRO_LOADED = false;" +
-        "    });" +
-        "})();";
-    
-    web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
-        @Override
-        public void onReceiveValue(String value) {
-            Log.d("WebView", "📜 Script loader injected for: " + url);
-        }
-    });
-    
-    optimizeVideoPlayback();
-    addHeaderIcons();
-
-    if (dL) {
-        web.postDelayed(new Runnable() {
+      @Override
+      public void onPageFinished(WebView p1, String url) {
+        // Trusted Types policy
+        web.evaluateJavascript(
+            "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
+            "  window.trustedTypes.createPolicy('default', {" +
+            "    createHTML: (string) => string," +
+            "    createScriptURL: string => string," +
+            "    createScript: string => string" +
+            "  });" +
+            "}",
+            null
+        );
+        
+        // Hide YouTube bottom nav and add padding
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var style = document.createElement('style');" +
+            "  style.innerHTML = '" +
+            "    ytm-pivot-bar-renderer { display: none !important; }" +
+            "    body { padding-bottom: 65px !important; }" +
+            "  ';" +
+            "  document.head.appendChild(style);" +
+            "})();",
+            null
+        );
+        
+        // Load YTPRO scripts
+        String scriptLoader = 
+            "(function() {" +
+            "  if(window.YTPRO_LOADED) { console.log('✅ YTPRO already loaded'); return; }" +
+            "  console.log('🔄 Loading YTPRO scripts...');" +
+            "  function loadScript(src, name) {" +
+            "    return new Promise((resolve, reject) => {" +
+            "      console.log('📥 Loading ' + name + ': ' + src);" +
+            "      var script = document.createElement('script');" +
+            "      script.src = src;" +
+            "      script.async = false;" +
+            "      script.onload = function() {" +
+            "        console.log('✅ Loaded ' + name);" +
+            "        resolve();" +
+            "      };" +
+            "      script.onerror = function(e) {" +
+            "        console.error('❌ Failed to load ' + name + ':', e);" +
+            "        reject(new Error('Failed to load ' + name));" +
+            "      };" +
+            "      document.body.appendChild(script);" +
+            "    });" +
+            "  }" +
+            "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main Script')" +
+            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG Play'))" +
+            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'InnerTube'))" +
+            "    .then(() => {" +
+            "      console.log('✅ All YTPRO scripts loaded!');" +
+            "      window.YTPRO_LOADED = true;" +
+            "    })" +
+            "    .catch((error) => {" +
+            "      console.error('❌ YTPRO script loading failed:', error);" +
+            "      window.YTPRO_LOADED = false;" +
+            "    });" +
+            "})();";
+        
+        web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
             @Override
-            public void run() {
-                web.evaluateJavascript(
-                    "if (typeof window.ytproDownVid === 'function') {" +
-                    "  window.location.hash='download';" +
-                    "} else {" +
-                    "  console.error('❌ ytproDownVid not available yet');" +
-                    "}",
-                    null
-                );
-                dL = false;
+            public void onReceiveValue(String value) {
+                Log.d("WebView", "📜 Script loader injected for: " + url);
             }
-        }, 2000);
-    }
+        });
 
-    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-        isPlaying = false;
-        mediaSession = false;
-        stopService(new Intent(getApplicationContext(), ForegroundService.class));
-    }
+        if (dL) {
+            web.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    web.evaluateJavascript(
+                        "if (typeof window.ytproDownVid === 'function') {" +
+                        "  window.location.hash='download';" +
+                        "} else {" +
+                        "  console.error('❌ ytproDownVid not available yet');" +
+                        "}",
+                        null
+                    );
+                    dL = false;
+                }
+            }, 2000);
+        }
 
-    super.onPageFinished(p1, url);
-}
+        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+            isPlaying = false;
+            mediaSession = false;
+            stopService(new Intent(getApplicationContext(), ForegroundService.class));
+        }
 
-
+        super.onPageFinished(p1, url);
+      }
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -357,6 +372,8 @@ public void onPageFinished(WebView p1, String url) {
     }
   }
 
+// ✅ PART 2 මෙතනින් පටන් ගන්නවා
+
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -372,7 +389,6 @@ public void onPageFinished(WebView p1, String url) {
         Toast.makeText(getApplicationContext(), getString(R.string.grant_storage), Toast.LENGTH_SHORT).show();
       }
     } else if (requestCode == 102) {
-      // ✅ Notification permission result
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
           Log.d("MainActivity", "✅ Notification permission granted");
           startNotificationService();
@@ -427,8 +443,7 @@ public void onPageFinished(WebView p1, String url) {
     }
   }
 
-
-private void setupBottomNavigation() {
+  private void setupBottomNavigation() {
     LinearLayout navHome = findViewById(R.id.navHome);
     LinearLayout navShorts = findViewById(R.id.navShorts);
     LinearLayout navUpload = findViewById(R.id.navUpload);
@@ -445,87 +460,47 @@ private void setupBottomNavigation() {
     final TextView textSubscriptions = findViewById(R.id.textSubscriptions);
     final TextView textYou = findViewById(R.id.textYou);
     
-    // ✅ HOME BUTTON
     navHome.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconHome, textHome,
-                iconShorts, textShorts,
-                iconSubscriptions, textSubscriptions,
-                iconYou, textYou
-            );
+            setActiveTab(iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions, iconYou, textYou);
             web.loadUrl("https://m.youtube.com/");
         }
     });
     
-    // ✅ SHORTS BUTTON - FIXED
     navShorts.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconShorts, textShorts,
-                iconHome, textHome,
-                iconSubscriptions, textSubscriptions,
-                iconYou, textYou
-            );
-            
-            // Try JavaScript first, fallback to loadUrl
-            web.evaluateJavascript(
-                "(function() {" +
-                "  var shortsTab = document.querySelector('[tab-identifier=\"FEshorts\"] a') || " +
-                "                  document.querySelector('a[href*=\"/shorts\"]');" +
-                "  if (shortsTab) { shortsTab.click(); return true; }" +
-                "  return false;" +
-                "})();",
-                new ValueCallback<String>() {
-                    @Override
-                    public void onReceiveValue(String value) {
-                        if (value == null || value.equals("false")) {
-                            web.loadUrl("https://m.youtube.com/shorts");
-                        }
-                    }
-                }
-            );
+            setActiveTab(iconShorts, textShorts, iconHome, textHome, iconSubscriptions, textSubscriptions, iconYou, textYou);
+            web.loadUrl("https://m.youtube.com/shorts");
         }
     });
     
-    // ✅ UPLOAD BUTTON
     navUpload.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            showUploadOptions();
+            Toast.makeText(MainActivity.this, "Upload feature coming soon! 🎥", Toast.LENGTH_SHORT).show();
         }
     });
     
-    // ✅ SUBSCRIPTIONS BUTTON
     navSubscriptions.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconSubscriptions, textSubscriptions,
-                iconHome, textHome,
-                iconShorts, textShorts,
-                iconYou, textYou
-            );
+            setActiveTab(iconSubscriptions, textSubscriptions, iconHome, textHome, iconShorts, textShorts, iconYou, textYou);
             web.loadUrl("https://m.youtube.com/feed/subscriptions");
         }
     });
     
-    // ✅ YOU BUTTON
     navYou.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            setActiveTab(iconYou, textYou,
-                iconHome, textHome,
-                iconShorts, textShorts,
-                iconSubscriptions, textSubscriptions
-            );
+            setActiveTab(iconYou, textYou, iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions);
             web.loadUrl("https://m.youtube.com/feed/account");
         }
     });
-}
+  }
 
-// Helper method
-private void setActiveTab(ImageView activeIcon, TextView activeText,
-                         Object... inactiveElements) {
+  private void setActiveTab(ImageView activeIcon, TextView activeText, Object... inactiveElements) {
     activeIcon.setColorFilter(Color.parseColor("#FF0000"));
     activeText.setTextColor(Color.WHITE);
     
@@ -536,24 +511,7 @@ private void setActiveTab(ImageView activeIcon, TextView activeText,
             ((TextView) element).setTextColor(Color.parseColor("#AAAAAA"));
         }
     }
-}
-
-private void showUploadOptions() {
-    Toast.makeText(this, "Upload feature coming soon", Toast.LENGTH_SHORT).show();
-}
-
-private void optimizeVideoPlayback() {
-    // Video optimization logic
-}
-
-private void addHeaderIcons() {
-    // Header icons logic
-}
-
-private void monitorUrlChanges() {
-    // URL monitoring logic
-}
-
+  }
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
@@ -875,6 +833,7 @@ private void monitorUrlChanges() {
       }
     }
   }
+// ✅ PART 3 - අවසාන කොටස
 
   public void setReceiver() {
     broadcastReceiver = new BroadcastReceiver() {
@@ -1029,7 +988,7 @@ private void monitorUrlChanges() {
     centerLayout.addView(messageView);
     
     Button retryButton = new Button(this);
-    retryButton.setText("Try again.");
+    retryButton.setText("Try again");
     retryButton.setTextColor(Color.WHITE);
     retryButton.setTextSize(16);
     retryButton.setTypeface(null, Typeface.BOLD);
@@ -1051,8 +1010,9 @@ private void monitorUrlChanges() {
             if (isNetworkAvailable()) {
                 hideOfflineScreen();
                 load(false);
+                setupBottomNavigation();
             } else {
-                Toast.makeText(MainActivity.this, "Still no connection.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Still no connection", Toast.LENGTH_SHORT).show();
             }
         }
     });
@@ -1089,8 +1049,6 @@ private void monitorUrlChanges() {
     }, 2000);
   }
 
-  // ✅ NOTIFICATION METHODS (3)
-  
   private void requestNotificationPermission() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != 
@@ -1127,3 +1085,4 @@ private void monitorUrlChanges() {
     });
   }
 }
+
