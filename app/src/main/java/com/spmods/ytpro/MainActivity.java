@@ -48,6 +48,8 @@ public class MainActivity extends Activity {
   
   private boolean userNavigated = false;
   private String lastUrl = "";
+  
+  private boolean scriptsInjected = false;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -83,51 +85,44 @@ public class MainActivity extends Activity {
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
-    settings.setMediaPlaybackRequiresUserGesture(false);
     
-    // ✅ Video Performance Optimization - CRITICAL FIX
-    settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
-    settings.setAppCacheEnabled(true);
-    settings.setAppCachePath(getCacheDir().getAbsolutePath());
-    settings.setAppCacheMaxSize(50 * 1024 * 1024); // 50MB cache
+    // ✅ FIXED: Remove deprecated APIs that cause build errors
+    settings.setCacheMode(WebSettings.LOAD_DEFAULT);
     
-    // ✅ Rendering Performance - Smart Layer Type
+    // ✅ Hardware acceleration for smooth video playback
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-    } else {
-        web.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
     }
     
-    // ✅ Reduce rendering overhead
-    settings.setRenderPriority(WebSettings.RenderPriority.HIGH);
-    
-    // ✅ Video autoplay optimization
+    // ✅ Video playback optimization - CRITICAL for smooth YouTube
     settings.setMediaPlaybackRequiresUserGesture(false);
-    
-    // ✅ Image & Resource Loading
     settings.setLoadsImagesAutomatically(true);
     settings.setBlockNetworkImage(false);
     settings.setBlockNetworkLoads(false);
     
-    // ✅ Viewport & Layout
+    // ✅ Viewport & Layout - optimized for mobile YouTube
     settings.setUseWideViewPort(true);
     settings.setLoadWithOverviewMode(true);
     settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
-    settings.setSupportZoom(true);
-    settings.setBuiltInZoomControls(true);
-    settings.setDisplayZoomControls(false);
+    settings.setSupportZoom(false); // YouTube handles its own zoom
     
     // ✅ File & Content Access
     settings.setAllowFileAccess(true);
     settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
     
+    // ✅ Mixed content for video streaming
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
     }
     
     // ✅ Smooth scrolling
     web.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+    
+    // ✅ Database path for proper caching
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+        settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
+    }
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -183,29 +178,25 @@ public class MainActivity extends Activity {
       public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         String url = request.getUrl().toString();
 
-        // ✅ PERFORMANCE FIX: Only intercept YTPRO CDN requests
-        if (!url.contains("youtube.com/ytpro_cdn/")) {
-            return super.shouldInterceptRequest(view, request);
+        // ✅ CRITICAL FIX: Only intercept YTPRO scripts - let YouTube videos load natively
+        if (!url.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
+            return null; // Let WebView handle all YouTube video requests normally
         }
 
-        Log.d("WebView", "🌐 Intercepting: " + url);
+        Log.d("WebView", "🔧 Intercepting YTPRO script: " + url);
 
         String modifiedUrl = null;
 
-        if (url.contains("youtube.com/ytpro_cdn/esm")) {
-            modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
-        } else if (url.contains("youtube.com/ytpro_cdn/npm/ytpro")) {
-            if (url.contains("innertube.js")) {
-                modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js";
-            } else if (url.contains("bgplay.js")) {
-                modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
-            } else if (url.contains("script.js")) {
-                modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
-            }
+        if (url.contains("innertube.js")) {
+            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js";
+        } else if (url.contains("bgplay.js")) {
+            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
+        } else if (url.contains("script.js")) {
+            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
         }
         
         if (modifiedUrl == null) {
-            return super.shouldInterceptRequest(view, request);
+            return null;
         }
         
         try {
@@ -213,9 +204,8 @@ public class MainActivity extends Activity {
             HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
             connection.setRequestProperty("Accept", "*/*");
-            connection.setRequestProperty("Cache-Control", "max-age=3600"); // ✅ Enable caching
-            connection.setConnectTimeout(10000); // ✅ Reduced timeout
-            connection.setReadTimeout(10000);
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
             connection.setRequestMethod("GET");
             connection.connect();
 
@@ -223,109 +213,58 @@ public class MainActivity extends Activity {
             
             if (responseCode != 200) {
                 Log.e("CDN", "❌ Failed: " + responseCode);
-                return super.shouldInterceptRequest(view, request);
+                return null;
             }
-
-            String contentType = connection.getContentType();
-            if (contentType == null || contentType.isEmpty()) {
-                contentType = modifiedUrl.endsWith(".js") ? "application/javascript" : "text/plain";
-            }
-            
-            String encoding = connection.getContentEncoding();
-            if (encoding == null) encoding = "utf-8";
-
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Access-Control-Allow-Origin", "*");
-            headers.put("Content-Type", contentType + "; charset=utf-8");
-            headers.put("Cache-Control", "max-age=3600"); // ✅ Client-side caching
 
             return new WebResourceResponse(
                 "application/javascript",
                 "utf-8",
-                connection.getResponseCode(),
-                "OK",
-                headers,
                 connection.getInputStream()
             );
 
         } catch (Exception e) {
             Log.e("CDN Error", "❌ Exception: " + e.getMessage());
-            return super.shouldInterceptRequest(view, request);
+            return null;
         }
       }
       
       @Override
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
+        scriptsInjected = false;
       }
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-        // ✅ PERFORMANCE: Run scripts in background thread
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            
-            // Trusted Types policy
-            web.evaluateJavascript(
-                "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
-                "  window.trustedTypes.createPolicy('default', {" +
-                "    createHTML: (string) => string," +
-                "    createScriptURL: string => string," +
-                "    createScript: string => string" +
-                "  });" +
-                "}",
-                null
-            );
-            
-            // Block shorts redirects
-            web.evaluateJavascript(
-                "(function() {" +
-                "  var originalPushState = history.pushState;" +
-                "  history.pushState = function(state, title, url) {" +
-                "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
-                "      return;" +
-                "    }" +
-                "    return originalPushState.apply(this, arguments);" +
-                "  };" +
-                "})();",
-                null
-            );
-            
-            // Hide YouTube bottom nav
-            web.evaluateJavascript(
-                "(function() {" +
-                "  var style = document.createElement('style');" +
-                "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
-                "  document.head.appendChild(style);" +
-                "})();",
-                null
-            );
-            
-        }, 100); // ✅ Small delay to not block rendering
+        // ✅ CRITICAL FIX: Inject scripts immediately for smooth playback
+        if (!scriptsInjected) {
+            injectYTProScripts();
+            scriptsInjected = true;
+        }
         
-        // ✅ Load scripts asynchronously
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            String scriptLoader = 
-                "(function() {" +
-                "  if(window.YTPRO_LOADED) return;" +
-                "  function loadScript(src) {" +
-                "    return new Promise((resolve, reject) => {" +
-                "      var script = document.createElement('script');" +
-                "      script.src = src;" +
-                "      script.async = true;" + // ✅ Async loading
-                "      script.onload = () => resolve();" +
-                "      script.onerror = (e) => reject(e);" +
-                "      document.body.appendChild(script);" +
-                "    });" +
-                "  }" +
-                "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js')" +
-                "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js'))" +
-                "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js'))" +
-                "    .then(() => { window.YTPRO_LOADED = true; })" +
-                "    .catch((e) => console.error('❌ Load failed:', e));" +
-                "})();";
-            
-            web.evaluateJavascript(scriptLoader, null);
-        }, 300); // ✅ Load after page renders
+        // ✅ Hide YouTube bottom nav immediately
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var style = document.createElement('style');" +
+            "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
+            "  document.head.appendChild(style);" +
+            "})();",
+            null
+        );
+        
+        // ✅ Block shorts auto-redirect
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var originalPushState = history.pushState;" +
+            "  history.pushState = function(state, title, url) {" +
+            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+            "      return;" +
+            "    }" +
+            "    return originalPushState.apply(this, arguments);" +
+            "  };" +
+            "})();",
+            null
+        );
 
         if (dL) {
             web.postDelayed(() -> {
@@ -376,6 +315,47 @@ public class MainActivity extends Activity {
       dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
     }
   }
+  
+  // ✅ CRITICAL FIX: Optimized script injection
+  private void injectYTProScripts() {
+    // Trusted Types policy first
+    web.evaluateJavascript(
+        "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
+        "  window.trustedTypes.createPolicy('default', {" +
+        "    createHTML: (string) => string," +
+        "    createScriptURL: string => string," +
+        "    createScript: string => string" +
+        "  });" +
+        "}",
+        null
+    );
+    
+    // ✅ Load scripts with proper async loading
+    String scriptLoader = 
+        "(function() {" +
+        "  if(window.YTPRO_LOADED) return;" +
+        "  function loadScript(src) {" +
+        "    return new Promise((resolve, reject) => {" +
+        "      var script = document.createElement('script');" +
+        "      script.src = src;" +
+        "      script.async = false;" + // Sequential loading for dependencies
+        "      script.onload = () => resolve();" +
+        "      script.onerror = (e) => reject(e);" +
+        "      document.body.appendChild(script);" +
+        "    });" +
+        "  }" +
+        "  Promise.all([" +
+        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js')," +
+        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js')," +
+        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js')" +
+        "  ])" +
+        "  .then(() => { window.YTPRO_LOADED = true; console.log('✅ YTPRO loaded'); })" +
+        "  .catch((e) => console.error('❌ YTPRO load failed:', e));" +
+        "})();";
+    
+    web.evaluateJavascript(scriptLoader, null);
+  }
+  
   private void setupBottomNavigation() {
     LinearLayout navHome = findViewById(R.id.navHome);
     LinearLayout navShorts = findViewById(R.id.navShorts);
@@ -636,7 +616,7 @@ public class MainActivity extends Activity {
       registerReceiver(broadcastReceiver, new IntentFilter("TRACKS_TRACKS"));
     }
   }
-
+  
   @Override
   protected void onPause() {
     super.onPause();
@@ -652,20 +632,6 @@ public class MainActivity extends Activity {
     if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
       getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
-  }
-
-  private void checkScriptStatus() {
-    web.evaluateJavascript(
-        "(function() {" +
-        "  return JSON.stringify({" +
-        "    loaded: window.YTPRO_LOADED || false," +
-        "    hasMainScript: typeof YTProVer !== 'undefined'," +
-        "    hasInnerTube: typeof window.getDownloadStreams !== 'undefined'," +
-        "    hasBgPlay: typeof window.initBgPlay !== 'undefined'" +
-        "  });" +
-        "})();",
-        value -> Log.d("YTPRO Status", "📊 Script Status: " + value)
-    );
   }
 
   private boolean isNetworkAvailable() {
