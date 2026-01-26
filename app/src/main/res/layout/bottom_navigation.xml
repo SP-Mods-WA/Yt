@@ -26,6 +26,7 @@
             android:id="@+id/iconHome"
             android:layout_width="26dp"
             android:layout_height="26dp"
+            android:tint="#FFFFFF"
             android:src="@drawable/ic_home"/>
         
         <TextView
@@ -54,6 +55,7 @@
             android:id="@+id/iconShorts"
             android:layout_width="26dp"
             android:layout_height="26dp"
+            android:tint="#FFFFFF"
             android:src="@drawable/ic_shorts"/>
         
         <TextView
@@ -104,6 +106,7 @@
             android:id="@+id/iconSubscriptions"
             android:layout_width="26dp"
             android:layout_height="26dp"
+            android:tint="#FFFFFF"
             android:src="@drawable/ic_subscriptions"/>
         
         <TextView
@@ -132,6 +135,7 @@
             android:id="@+id/iconYou"
             android:layout_width="26dp"
             android:layout_height="26dp"
+            android:tint="#FFFFFF"
             android:src="@drawable/ic_you"/>
         
         <TextView
