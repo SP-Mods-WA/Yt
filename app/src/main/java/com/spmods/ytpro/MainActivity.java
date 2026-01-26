@@ -31,6 +31,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.SeekBar;
 import androidx.appcompat.widget.SwitchCompat;
+import android.widget.Switch;
 
 public class MainActivity extends Activity {
 
@@ -627,7 +628,7 @@ public class MainActivity extends Activity {
 
 private void setupSoundControlDialog() {
     ImageView btnClose = soundControlDialog.findViewById(R.id.btnClose);
-    SwitchCompat toggleSwitch = soundControlDialog.findViewById(R.id.toggleSwitch);
+    Switch toggleSwitch = soundControlDialog.findViewById(R.id.toggleSwitch);
     View statusDot = soundControlDialog.findViewById(R.id.statusDot);
     
     // Close button
