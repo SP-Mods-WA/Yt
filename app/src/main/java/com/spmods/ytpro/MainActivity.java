@@ -24,12 +24,20 @@ import javax.net.ssl.HttpsURLConnection;
 import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.SeekBar;
+import androidx.appcompat.widget.SwitchCompat;
 
 public class MainActivity extends Activity {
 
   private boolean portrait = false;
   private BroadcastReceiver broadcastReceiver;
   private AudioManager audioManager;
+  private Dialog soundControlDialog;
 
   private String icon = "";
   private String title = "";
@@ -404,8 +412,8 @@ public class MainActivity extends Activity {
     });
     
     navUpload.setOnClickListener(v -> {
-        Toast.makeText(MainActivity.this, "Upload feature coming soon! 🎥", Toast.LENGTH_SHORT).show();
-    });
+    showSoundControlDialog();
+});
     
     navSubscriptions.setOnClickListener(v -> {
         userNavigated = true; // ✅ User clicked
@@ -602,6 +610,244 @@ public class MainActivity extends Activity {
   }
 
   // ✅ PART 2 අවසානයි
+  
+  private void showSoundControlDialog() {
+    soundControlDialog = new Dialog(this);
+    soundControlDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+    soundControlDialog.setContentView(R.layout.dialog_sound_control);
+    soundControlDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+    soundControlDialog.getWindow().setLayout(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.WRAP_CONTENT
+    );
+    
+    setupSoundControlDialog();
+    soundControlDialog.show();
+}
+
+private void setupSoundControlDialog() {
+    ImageView btnClose = soundControlDialog.findViewById(R.id.btnClose);
+    SwitchCompat toggleSwitch = soundControlDialog.findViewById(R.id.toggleSwitch);
+    View statusDot = soundControlDialog.findViewById(R.id.statusDot);
+    
+    // Close button
+    btnClose.setOnClickListener(v -> soundControlDialog.dismiss());
+    
+    // Toggle switch
+    toggleSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        if (isChecked) {
+            statusDot.setBackgroundResource(R.drawable.status_dot_active);
+            injectSoundControlScript();
+        } else {
+            statusDot.setBackgroundResource(R.drawable.status_dot_inactive);
+            disableSoundControl();
+        }
+    });
+    
+    setupVolumeControl();
+    setupBassControl();
+    setupTrebleControl();
+    setupBalanceControl();
+    setupEqualizer();
+    setupPresets();
+}
+
+private void setupVolumeControl() {
+    SeekBar volumeSeek = soundControlDialog.findViewById(R.id.seekVolume);
+    TextView volumeVal = soundControlDialog.findViewById(R.id.volumeValue);
+    
+    volumeSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            volumeVal.setText(progress + "%");
+            web.evaluateJavascript(
+                "if(window.audioControls) window.audioControls.gainNode.gain.value = " + (progress / 100.0) + ";",
+                null
+            );
+        }
+        @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+        @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+    });
+}
+
+private void setupBassControl() {
+    SeekBar bassSeek = soundControlDialog.findViewById(R.id.seekBass);
+    TextView bassVal = soundControlDialog.findViewById(R.id.bassValue);
+    
+    bassSeek.setProgress(12); // Center position (0 dB)
+    
+    bassSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            int value = progress - 12; // -12 to +12
+            String sign = value >= 0 ? "+" : "";
+            bassVal.setText(sign + value + " dB");
+            web.evaluateJavascript(
+                "if(window.audioControls) window.audioControls.bassFilter.gain.value = " + value + ";",
+                null
+            );
+        }
+        @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+        @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+    });
+}
+
+private void setupTrebleControl() {
+    SeekBar trebleSeek = soundControlDialog.findViewById(R.id.seekTreble);
+    TextView trebleVal = soundControlDialog.findViewById(R.id.trebleValue);
+    
+    trebleSeek.setProgress(12);
+    
+    trebleSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            int value = progress - 12;
+            String sign = value >= 0 ? "+" : "";
+            trebleVal.setText(sign + value + " dB");
+            web.evaluateJavascript(
+                "if(window.audioControls) window.audioControls.trebleFilter.gain.value = " + value + ";",
+                null
+            );
+        }
+        @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+        @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+    });
+}
+
+private void setupBalanceControl() {
+    SeekBar balanceSeek = soundControlDialog.findViewById(R.id.seekBalance);
+    TextView balanceVal = soundControlDialog.findViewById(R.id.balanceValue);
+    
+    balanceSeek.setProgress(100);
+    
+    balanceSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            float value = (progress - 100) / 100.0f; // -1 to +1
+            String text = "Center";
+            if (value < -0.1) text = "Left " + Math.abs((int)(value * 100)) + "%";
+            else if (value > 0.1) text = "Right " + (int)(value * 100) + "%";
+            balanceVal.setText(text);
+            web.evaluateJavascript(
+                "if(window.audioControls) window.audioControls.panNode.pan.value = " + value + ";",
+                null
+            );
+        }
+        @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+        @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+    });
+}
+
+private void setupEqualizer() {
+    int[] eqIds = {R.id.eq60, R.id.eq170, R.id.eq310, R.id.eq600, R.id.eq1k, R.id.eq3k, R.id.eq6k, R.id.eq12k};
+    
+    for (int i = 0; i < eqIds.length; i++) {
+        SeekBar eqSeek = soundControlDialog.findViewById(eqIds[i]);
+        final int index = i;
+        eqSeek.setProgress(12);
+        
+        eqSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = progress - 12;
+                web.evaluateJavascript(
+                    "if(window.audioControls && window.audioControls.eqFilters[" + index + "]) " +
+                    "window.audioControls.eqFilters[" + index + "].gain.value = " + value + ";",
+                    null
+                );
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+    }
+}
+
+private void setupPresets() {
+    soundControlDialog.findViewById(R.id.btnFlat).setOnClickListener(v -> applyPreset(new int[]{0,0,0,0,0,0,0,0}));
+    soundControlDialog.findViewById(R.id.btnBass).setOnClickListener(v -> applyPreset(new int[]{8,6,4,2,0,-2,-3,-4}));
+    soundControlDialog.findViewById(R.id.btnVocal).setOnClickListener(v -> applyPreset(new int[]{-2,-1,2,4,4,3,1,0}));
+    soundControlDialog.findViewById(R.id.btnRock).setOnClickListener(v -> applyPreset(new int[]{5,3,-2,-3,-1,2,4,5}));
+}
+
+private void applyPreset(int[] values) {
+    int[] eqIds = {R.id.eq60, R.id.eq170, R.id.eq310, R.id.eq600, R.id.eq1k, R.id.eq3k, R.id.eq6k, R.id.eq12k};
+    
+    for (int i = 0; i < eqIds.length; i++) {
+        SeekBar eqSeek = soundControlDialog.findViewById(eqIds[i]);
+        eqSeek.setProgress(values[i] + 12);
+    }
+}
+
+private void injectSoundControlScript() {
+    String script = 
+        "(function() {" +
+        "  if (window.soundControlActive) return;" +
+        "  window.soundControlActive = true;" +
+        "  " +
+        "  const video = document.querySelector('video');" +
+        "  if (!video) { console.log('No video found'); return; }" +
+        "  " +
+        "  try {" +
+        "    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();" +
+        "    const source = audioCtx.createMediaElementSource(video);" +
+        "    const analyser = audioCtx.createAnalyser();" +
+        "    const gainNode = audioCtx.createGain();" +
+        "    const bassFilter = audioCtx.createBiquadFilter();" +
+        "    const trebleFilter = audioCtx.createBiquadFilter();" +
+        "    const panNode = audioCtx.createStereoPanner();" +
+        "    " +
+        "    analyser.fftSize = 128;" +
+        "    bassFilter.type = 'lowshelf';" +
+        "    bassFilter.frequency.value = 200;" +
+        "    trebleFilter.type = 'highshelf';" +
+        "    trebleFilter.frequency.value = 3000;" +
+        "    " +
+        "    const frequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000];" +
+        "    const eqFilters = [];" +
+        "    frequencies.forEach(freq => {" +
+        "      const filter = audioCtx.createBiquadFilter();" +
+        "      filter.type = 'peaking';" +
+        "      filter.frequency.value = freq;" +
+        "      filter.Q.value = 1;" +
+        "      filter.gain.value = 0;" +
+        "      eqFilters.push(filter);" +
+        "    });" +
+        "    " +
+        "    let current = source;" +
+        "    eqFilters.forEach(filter => {" +
+        "      current.connect(filter);" +
+        "      current = filter;" +
+        "    });" +
+        "    current.connect(bassFilter);" +
+        "    bassFilter.connect(trebleFilter);" +
+        "    trebleFilter.connect(panNode);" +
+        "    panNode.connect(gainNode);" +
+        "    gainNode.connect(analyser);" +
+        "    analyser.connect(audioCtx.destination);" +
+        "    " +
+        "    window.audioControls = {" +
+        "      gainNode: gainNode," +
+        "      bassFilter: bassFilter," +
+        "      trebleFilter: trebleFilter," +
+        "      panNode: panNode," +
+        "      analyser: analyser," +
+        "      eqFilters: eqFilters" +
+        "    };" +
+        "    console.log('Sound control initialized ✅');" +
+        "  } catch(e) {" +
+        "    console.error('Sound control error:', e);" +
+        "  }" +
+        "})();";
+    
+    web.evaluateJavascript(script, null);
+}
+
+private void disableSoundControl() {
+    web.evaluateJavascript(
+        "if(window.audioControls) { window.soundControlActive = false; }",
+        null
+    );
+}
   // ✅ PART 3/3 - අවසාන කොටස
 
   public void setReceiver() {
