@@ -45,6 +45,10 @@ public class MainActivity extends Activity {
   
   private RelativeLayout offlineLayout;
   private boolean isOffline = false;
+  
+  // ✅ NEW: Track user-initiated navigation
+  private boolean userNavigated = false;
+  private String lastUrl = "";
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -104,25 +108,24 @@ public class MainActivity extends Activity {
     String action = intent.getAction();
     Uri data = intent.getData();
     
-    // ✅ ALWAYS default to home page
     String url = "https://m.youtube.com/";
     
-    // Only override if there's a specific intent
     if (Intent.ACTION_VIEW.equals(action) && data != null) {
       url = data.toString();
-      Log.d("MainActivity", "📲 Opened from external link: " + url);
+      userNavigated = true;
+      Log.d("MainActivity", "📲 External link: " + url);
     } else if (Intent.ACTION_SEND.equals(action)) {
       String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
       if (sharedText != null && (sharedText.contains("youtube.com") || sharedText.contains("youtu.be"))) {
         url = sharedText;
-        Log.d("MainActivity", "📤 Shared link: " + url);
+        userNavigated = true;
+        Log.d("MainActivity", "📤 Shared: " + url);
       }
     } else {
-      // Normal app launch - force home page
-      Log.d("MainActivity", "🏠 Default launch - loading home page");
-      url = "https://m.youtube.com/";
+      Log.d("MainActivity", "🏠 Default: Home page");
     }
     
+    lastUrl = url;
     web.loadUrl(url);
     web.addJavascriptInterface(new WebAppInterface(this), "Android");
     web.setWebChromeClient(new CustomWebClient());
@@ -134,6 +137,25 @@ public class MainActivity extends Activity {
     }
 
     web.setWebViewClient(new WebViewClient() {
+      
+      // ✅ BLOCK AUTO-REDIRECTS TO SHORTS
+      @Override
+      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        String newUrl = request.getUrl().toString();
+        
+        // Block auto-redirect to shorts
+        if (newUrl.contains("/shorts") && !userNavigated) {
+          String currentUrl = view.getUrl();
+          if (currentUrl != null && !currentUrl.contains("/shorts")) {
+            Log.d("WebView", "🛑 Blocked auto-redirect to shorts");
+            return true; // Block navigation
+          }
+        }
+        
+        userNavigated = false; // Reset flag
+        return false;
+      }
+      
       @Override
       public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         String url = request.getUrl().toString();
@@ -237,14 +259,40 @@ public class MainActivity extends Activity {
             null
         );
         
-        // Hide YouTube bottom nav and add padding
+        // ✅ Block JavaScript redirects to shorts
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var originalPushState = history.pushState;" +
+            "  history.pushState = function(state, title, url) {" +
+            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+            "      console.log('🛑 Blocked JS redirect to shorts');" +
+            "      return;" +
+            "    }" +
+            "    return originalPushState.apply(this, arguments);" +
+            "  };" +
+            "  var originalReplaceState = history.replaceState;" +
+            "  history.replaceState = function(state, title, url) {" +
+            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+            "      console.log('🛑 Blocked JS replace to shorts');" +
+            "      return;" +
+            "    }" +
+            "    return originalReplaceState.apply(this, arguments);" +
+            "  };" +
+            "  window.addEventListener('popstate', function(e) {" +
+            "    if (window.location.href.includes('/shorts')) {" +
+            "      console.log('🛑 Blocked popstate to shorts');" +
+            "      history.back();" +
+            "    }" +
+            "  });" +
+            "})();",
+            null
+        );
+        
+        // Hide YouTube bottom nav
         web.evaluateJavascript(
             "(function() {" +
             "  var style = document.createElement('style');" +
-            "  style.innerHTML = '" +
-            "    ytm-pivot-bar-renderer { display: none !important; }" +
-            "    body { padding-bottom: 65px !important; }" +
-            "  ';" +
+            "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
             "  document.head.appendChild(style);" +
             "})();",
             null
@@ -253,59 +301,30 @@ public class MainActivity extends Activity {
         // Load YTPRO scripts
         String scriptLoader = 
             "(function() {" +
-            "  if(window.YTPRO_LOADED) { console.log('✅ YTPRO already loaded'); return; }" +
-            "  console.log('🔄 Loading YTPRO scripts...');" +
+            "  if(window.YTPRO_LOADED) return;" +
             "  function loadScript(src, name) {" +
             "    return new Promise((resolve, reject) => {" +
-            "      console.log('📥 Loading ' + name + ': ' + src);" +
             "      var script = document.createElement('script');" +
             "      script.src = src;" +
             "      script.async = false;" +
-            "      script.onload = function() {" +
-            "        console.log('✅ Loaded ' + name);" +
-            "        resolve();" +
-            "      };" +
-            "      script.onerror = function(e) {" +
-            "        console.error('❌ Failed to load ' + name + ':', e);" +
-            "        reject(new Error('Failed to load ' + name));" +
-            "      };" +
+            "      script.onload = () => resolve();" +
+            "      script.onerror = (e) => reject(e);" +
             "      document.body.appendChild(script);" +
             "    });" +
             "  }" +
-            "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main Script')" +
-            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG Play'))" +
-            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'InnerTube'))" +
-            "    .then(() => {" +
-            "      console.log('✅ All YTPRO scripts loaded!');" +
-            "      window.YTPRO_LOADED = true;" +
-            "    })" +
-            "    .catch((error) => {" +
-            "      console.error('❌ YTPRO script loading failed:', error);" +
-            "      window.YTPRO_LOADED = false;" +
-            "    });" +
+            "  loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js', 'Main')" +
+            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js', 'BG'))" +
+            "    .then(() => loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js', 'IT'))" +
+            "    .then(() => { window.YTPRO_LOADED = true; })" +
+            "    .catch((e) => console.error('❌ Load failed:', e));" +
             "})();";
         
-        web.evaluateJavascript(scriptLoader, new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String value) {
-                Log.d("WebView", "📜 Script loader injected for: " + url);
-            }
-        });
+        web.evaluateJavascript(scriptLoader, null);
 
         if (dL) {
-            web.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    web.evaluateJavascript(
-                        "if (typeof window.ytproDownVid === 'function') {" +
-                        "  window.location.hash='download';" +
-                        "} else {" +
-                        "  console.error('❌ ytproDownVid not available yet');" +
-                        "}",
-                        null
-                    );
-                    dL = false;
-                }
+            web.postDelayed(() -> {
+                web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
+                dL = false;
             }, 2000);
         }
 
@@ -320,15 +339,8 @@ public class MainActivity extends Activity {
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-          if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
-              errorCode == WebViewClient.ERROR_CONNECT || 
-              errorCode == WebViewClient.ERROR_TIMEOUT) {
-              runOnUiThread(new Runnable() {
-                  @Override
-                  public void run() {
-                      showOfflineScreen();
-                  }
-              });
+          if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
+              runOnUiThread(() -> showOfflineScreen());
           }
           super.onReceivedError(view, errorCode, description, failingUrl);
       }
@@ -338,15 +350,8 @@ public class MainActivity extends Activity {
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
               if (request.isForMainFrame()) {
                   int errorCode = error.getErrorCode();
-                  if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
-                      errorCode == WebViewClient.ERROR_CONNECT || 
-                      errorCode == WebViewClient.ERROR_TIMEOUT) {
-                      runOnUiThread(new Runnable() {
-                          @Override
-                          public void run() {
-                              showOfflineScreen();
-                          }
-                      });
+                  if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
+                      runOnUiThread(() -> showOfflineScreen());
                   }
               }
           }
@@ -358,21 +363,75 @@ public class MainActivity extends Activity {
 
     if (android.os.Build.VERSION.SDK_INT >= 33) {
       OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
-      backCallback = new OnBackInvokedCallback() {
-          @Override
-          public void onBackInvoked() {
-              if (web.canGoBack()) {
-                web.goBack();
-              } else {
-                finish();
-              }
-          }
+      backCallback = () -> {
+          if (web.canGoBack()) web.goBack();
+          else finish();
       };
       dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
     }
   }
 
-// ✅ PART 2 මෙතනින් පටන් ගන්නවා
+  // ✅ PART 1 අවසානයි
+  // ✅ PART 2 - COMPLETE FIX
+
+  private void setupBottomNavigation() {
+    LinearLayout navHome = findViewById(R.id.navHome);
+    LinearLayout navShorts = findViewById(R.id.navShorts);
+    LinearLayout navUpload = findViewById(R.id.navUpload);
+    LinearLayout navSubscriptions = findViewById(R.id.navSubscriptions);
+    LinearLayout navYou = findViewById(R.id.navYou);
+    
+    final ImageView iconHome = findViewById(R.id.iconHome);
+    final ImageView iconShorts = findViewById(R.id.iconShorts);
+    final ImageView iconSubscriptions = findViewById(R.id.iconSubscriptions);
+    final ImageView iconYou = findViewById(R.id.iconYou);
+    
+    final TextView textHome = findViewById(R.id.textHome);
+    final TextView textShorts = findViewById(R.id.textShorts);
+    final TextView textSubscriptions = findViewById(R.id.textSubscriptions);
+    final TextView textYou = findViewById(R.id.textYou);
+    
+    navHome.setOnClickListener(v -> {
+        userNavigated = true; // ✅ User clicked
+        setActiveTab(iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions, iconYou, textYou);
+        web.loadUrl("https://m.youtube.com/");
+    });
+    
+    navShorts.setOnClickListener(v -> {
+        userNavigated = true; // ✅ User clicked
+        setActiveTab(iconShorts, textShorts, iconHome, textHome, iconSubscriptions, textSubscriptions, iconYou, textYou);
+        web.loadUrl("https://m.youtube.com/shorts");
+    });
+    
+    navUpload.setOnClickListener(v -> {
+        Toast.makeText(MainActivity.this, "Upload feature coming soon! 🎥", Toast.LENGTH_SHORT).show();
+    });
+    
+    navSubscriptions.setOnClickListener(v -> {
+        userNavigated = true; // ✅ User clicked
+        setActiveTab(iconSubscriptions, textSubscriptions, iconHome, textHome, iconShorts, textShorts, iconYou, textYou);
+        web.loadUrl("https://m.youtube.com/feed/subscriptions");
+    });
+    
+    navYou.setOnClickListener(v -> {
+        userNavigated = true; // ✅ User clicked
+        setActiveTab(iconYou, textYou, iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions);
+        web.loadUrl("https://m.youtube.com/feed/account");
+    });
+  }
+
+  private void setActiveTab(ImageView activeIcon, TextView activeText, Object... inactiveElements) {
+    activeIcon.setColorFilter(Color.parseColor("#FF0000"));
+    activeText.setTextColor(Color.WHITE);
+    
+    for (Object element : inactiveElements) {
+        if (element instanceof ImageView) {
+            ((ImageView) element).setColorFilter(Color.parseColor("#AAAAAA"));
+        } else if (element instanceof TextView) {
+            ((TextView) element).setTextColor(Color.parseColor("#AAAAAA"));
+        }
+    }
+  }
 
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -409,106 +468,25 @@ public class MainActivity extends Activity {
 
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    web.loadUrl(isInPictureInPictureMode ?
-      "javascript:PIPlayer();" :
-      "javascript:removePIP();",null);
-      
-    if(isInPictureInPictureMode){
-        isPip=true;
-    }else{
-        isPip=false;
-    }
+    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
+    isPip = isInPictureInPictureMode;
   }
 
   @Override
   protected void onUserLeaveHint() {
     super.onUserLeaveHint();
-   
-    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch")) {
-      if(isPlaying){
+    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch") && isPlaying) {
         try {
           PictureInPictureParams params;
           isPip=true;
           if (portrait) {
             params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(9, 16)).build();
-            enterPictureInPictureMode(params);
           } else{
             params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build();
-            enterPictureInPictureMode(params);
           }
+          enterPictureInPictureMode(params);
         } catch (IllegalStateException e) {
           e.printStackTrace();
-        }
-      }
-    }
-  }
-
-  private void setupBottomNavigation() {
-    LinearLayout navHome = findViewById(R.id.navHome);
-    LinearLayout navShorts = findViewById(R.id.navShorts);
-    LinearLayout navUpload = findViewById(R.id.navUpload);
-    LinearLayout navSubscriptions = findViewById(R.id.navSubscriptions);
-    LinearLayout navYou = findViewById(R.id.navYou);
-    
-    final ImageView iconHome = findViewById(R.id.iconHome);
-    final ImageView iconShorts = findViewById(R.id.iconShorts);
-    final ImageView iconSubscriptions = findViewById(R.id.iconSubscriptions);
-    final ImageView iconYou = findViewById(R.id.iconYou);
-    
-    final TextView textHome = findViewById(R.id.textHome);
-    final TextView textShorts = findViewById(R.id.textShorts);
-    final TextView textSubscriptions = findViewById(R.id.textSubscriptions);
-    final TextView textYou = findViewById(R.id.textYou);
-    
-    navHome.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            setActiveTab(iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions, iconYou, textYou);
-            web.loadUrl("https://m.youtube.com/");
-        }
-    });
-    
-    navShorts.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            setActiveTab(iconShorts, textShorts, iconHome, textHome, iconSubscriptions, textSubscriptions, iconYou, textYou);
-            web.loadUrl("https://m.youtube.com/shorts");
-        }
-    });
-    
-    navUpload.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            Toast.makeText(MainActivity.this, "Upload feature coming soon! 🎥", Toast.LENGTH_SHORT).show();
-        }
-    });
-    
-    navSubscriptions.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            setActiveTab(iconSubscriptions, textSubscriptions, iconHome, textHome, iconShorts, textShorts, iconYou, textYou);
-            web.loadUrl("https://m.youtube.com/feed/subscriptions");
-        }
-    });
-    
-    navYou.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            setActiveTab(iconYou, textYou, iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions);
-            web.loadUrl("https://m.youtube.com/feed/account");
-        }
-    });
-  }
-
-  private void setActiveTab(ImageView activeIcon, TextView activeText, Object... inactiveElements) {
-    activeIcon.setColorFilter(Color.parseColor("#FF0000"));
-    activeText.setTextColor(Color.WHITE);
-    
-    for (Object element : inactiveElements) {
-        if (element instanceof ImageView) {
-            ((ImageView) element).setColorFilter(Color.parseColor("#AAAAAA"));
-        } else if (element instanceof TextView) {
-            ((TextView) element).setTextColor(Color.parseColor("#AAAAAA"));
         }
     }
   }
@@ -523,26 +501,19 @@ public class MainActivity extends Activity {
     public CustomWebClient() {}
 
     public Bitmap getDefaultVideoPoster() {
-      if (MainActivity.this == null) {
-        return null;
-      }
+      if (MainActivity.this == null) return null;
       return BitmapFactory.decodeResource(MainActivity.this.getApplicationContext().getResources(), 2130837573);
     }
 
     public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback viewCallback) {
-      this.mOriginalOrientation = portrait ?
-        android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT :
-        android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
-      
+      this.mOriginalOrientation = portrait ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
       if (isPip) this.mOriginalOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
-
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         WindowManager.LayoutParams params = MainActivity.this.getWindow().getAttributes();
         params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         MainActivity.this.getWindow().setAttributes(params);
       }
-
       if (this.mCustomView != null) {
         onHideCustomView();
         return;
@@ -563,15 +534,11 @@ public class MainActivity extends Activity {
         params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
         MainActivity.this.getWindow().setAttributes(params);
       }
-
       ((FrameLayout) MainActivity.this.getWindow().getDecorView()).removeView(this.mCustomView);
       this.mCustomView = null;
       MainActivity.this.getWindow().getDecorView().setSystemUiVisibility(this.mOriginalSystemUiVisibility);
       MainActivity.this.setRequestedOrientation(this.mOriginalOrientation);
-      this.mOriginalOrientation = portrait ?
-        android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT :
-        android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
-
+      this.mOriginalOrientation = portrait ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
       this.mCustomViewCallback = null;
       web.clearFocus();
     }
@@ -589,251 +556,53 @@ public class MainActivity extends Activity {
   }
 
   private void downloadFile(String filename, String url, String mtype) {
-    if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && 
-        checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+    if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
       runOnUiThread(() -> Toast.makeText(getApplicationContext(), R.string.grant_storage, Toast.LENGTH_SHORT).show());
       requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, 1);
     }
-    
     try {
       String encodedFileName = URLEncoder.encode(filename, "UTF-8").replaceAll("\\+", "%20");
       DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
       DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-      request.setTitle(filename)
-        .setDescription(filename)
-        .setMimeType(mtype)
-        .setAllowedOverMetered(true)
-        .setAllowedOverRoaming(true)
+      request.setTitle(filename).setDescription(filename).setMimeType(mtype).setAllowedOverMetered(true).setAllowedOverRoaming(true)
         .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, encodedFileName)
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE |
-          DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE | DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
       downloadManager.enqueue(request);
       Toast.makeText(this, getString(R.string.dl_started), Toast.LENGTH_SHORT).show();
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    } catch (Exception ignored) {
-      Toast.makeText(this, ignored.toString(), Toast.LENGTH_SHORT).show();
+    } catch (Exception e) {
+      Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
     }
   }
 
   public class WebAppInterface {
     Context mContext;
-    WebAppInterface(Context c) {
-      mContext = c;
-    }
+    WebAppInterface(Context c) { mContext = c; }
 
-    @JavascriptInterface
-    public void showToast(String txt) {
-      Toast.makeText(getApplicationContext(), txt + "", Toast.LENGTH_SHORT).show();
-    }
-
-    @JavascriptInterface
-    public void gohome(String x) {
-      Intent startMain = new Intent(Intent.ACTION_MAIN);
-      startMain.addCategory(Intent.CATEGORY_HOME);
-      startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      startActivity(startMain);
-    }
-
-    @JavascriptInterface
-    public void downvid(String name, String url, String m) {
-      downloadFile(name, url, m);
-    }
-
-    @JavascriptInterface
-    public void fullScreen(boolean value) {
-      portrait = value;
-    }
-
-    @JavascriptInterface
-    public void oplink(String url) {
-      Intent i = new Intent();
-      i.setAction(Intent.ACTION_VIEW);
-      i.setData(Uri.parse(url));
-      startActivity(i);
-    }
-
-    @JavascriptInterface
-    public String getInfo() {
-      PackageManager manager = getApplicationContext().getPackageManager();
-      try {
-        PackageInfo info = manager.getPackageInfo(getApplicationContext().getPackageName(), PackageManager.GET_ACTIVITIES);
-        return info.versionName + "";
-      } catch (PackageManager.NameNotFoundException e) {
-        return "1.0";
-      }
-    }
-
-    @JavascriptInterface
-    public void setBgPlay(boolean bgplay) {
-      SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
-      prefs.edit().putBoolean("bgplay", bgplay).apply();
-    }
-
-    @JavascriptInterface
-    public void bgStart(String iconn, String titlen, String subtitlen, long dura) {
-      icon = iconn;
-      title = titlen;
-      subtitle = subtitlen;
-      duration = dura;
-      isPlaying = true;
-      mediaSession=true;
-
-      Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
-      intent.putExtra("icon", icon);
-      intent.putExtra("title", title);
-      intent.putExtra("subtitle", subtitle);
-      intent.putExtra("duration", duration);
-      intent.putExtra("currentPosition", 0);
-      intent.putExtra("action", "play");
-      startService(intent);
-    }
-
-    @JavascriptInterface
-    public void bgUpdate(String iconn, String titlen, String subtitlen, long dura) {
-      icon = iconn;
-      title = titlen;
-      subtitle = subtitlen;
-      duration = (long)(dura);
-      isPlaying=true;
-
-      getApplicationContext().sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-        .putExtra("icon", icon)
-        .putExtra("title", title)
-        .putExtra("subtitle", subtitle)
-        .putExtra("duration", duration)
-        .putExtra("currentPosition", 0)
-        .putExtra("action", "pause")
-      );
-    }
-
-    @JavascriptInterface
-    public void bgStop() {
-      isPlaying = false;
-      mediaSession=false;
-      stopService(new Intent(getApplicationContext(), ForegroundService.class));
-    }
-
-    @JavascriptInterface
-    public void bgPause(long ct) {
-      isPlaying=false;
-      getApplicationContext().sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-        .putExtra("icon", icon)
-        .putExtra("title", title)
-        .putExtra("subtitle", subtitle)
-        .putExtra("duration", duration)
-        .putExtra("currentPosition", ct)
-        .putExtra("action", "pause")
-      );
-    }
-
-    @JavascriptInterface
-    public void bgPlay(long ct) {
-      isPlaying=true;
-      getApplicationContext().sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-        .putExtra("icon", icon)
-        .putExtra("title", title)
-        .putExtra("subtitle", subtitle)
-        .putExtra("duration", duration)
-        .putExtra("currentPosition", ct)
-        .putExtra("action", "play")
-      );
-    }
-
-    @JavascriptInterface
-    public void bgBuffer(long ct) {
-      isPlaying=true;
-      getApplicationContext().sendBroadcast(new Intent("UPDATE_NOTIFICATION")
-        .putExtra("icon", icon)
-        .putExtra("title", title)
-        .putExtra("subtitle", subtitle)
-        .putExtra("duration", duration)
-        .putExtra("currentPosition", ct)
-        .putExtra("action", "buffer")
-      );
-    }
-
-    @JavascriptInterface
-    public void getSNlM0e(String cookies) {
-      new Thread(() -> {
-        String response = GeminiWrapper.getSNlM0e(cookies);
-        runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null));
-      }).start();
-    }
-
-    @JavascriptInterface
-    public void GeminiClient(String url, String headers, String body) {
-      new Thread(() -> {
-        JSONObject response = GeminiWrapper.getStream(url, headers, body);
-        runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null));
-      }).start();
-    }
-
-    @JavascriptInterface
-    public String getAllCookies(String url) {
-      String cookies = CookieManager.getInstance().getCookie(url);
-      return cookies;
-    }
-
-    @JavascriptInterface
-    public float getVolume() {
-      int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-      int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-      return (float) currentVolume / maxVolume;
-    }
-
-    @JavascriptInterface
-    public void setVolume(float volume) {
-      int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-      int targetVolume = (int) (max * volume);
-      audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0);
-    }
-
-    @JavascriptInterface
-    public float getBrightness() {
-      float brightnessPercent;
-      try {
-        int sysBrightness = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS);
-        brightnessPercent = (sysBrightness / 255f) * 100f;
-      } catch (Settings.SettingNotFoundException e) {
-        brightnessPercent = 50f;
-      }
-      return brightnessPercent;
-    }
-
-    @JavascriptInterface
-    public void setBrightness(final float brightnessValue){
-      runOnUiThread(new Runnable() {
-        @Override
-        public void run() {
-          final float brightness = Math.max(0f, Math.min(brightnessValue, 1f));
-          WindowManager.LayoutParams layout = getWindow().getAttributes();
-          layout.screenBrightness = brightness;
-          getWindow().setAttributes(layout);
-        }
-      });
-    }
-
-    @JavascriptInterface
-    public void pipvid(String x) {
-      if (android.os.Build.VERSION.SDK_INT >= 26) {
-        try {
-          PictureInPictureParams params;
-          if (x.equals("portrait")) {
-            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(9, 16)).build();
-          } else {
-            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build();
-          }
-          enterPictureInPictureMode(params);
-        } catch (IllegalStateException e) {
-          e.printStackTrace();
-        }
-      } else {
-        Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show();
-      }
-    }
+    @JavascriptInterface public void showToast(String txt) { Toast.makeText(getApplicationContext(), txt, Toast.LENGTH_SHORT).show(); }
+    @JavascriptInterface public void gohome(String x) { Intent i = new Intent(Intent.ACTION_MAIN); i.addCategory(Intent.CATEGORY_HOME); i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); }
+    @JavascriptInterface public void downvid(String name, String url, String m) { downloadFile(name, url, m); }
+    @JavascriptInterface public void fullScreen(boolean value) { portrait = value; }
+    @JavascriptInterface public void oplink(String url) { Intent i = new Intent(); i.setAction(Intent.ACTION_VIEW); i.setData(Uri.parse(url)); startActivity(i); }
+    @JavascriptInterface public String getInfo() { try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "1.0"; } }
+    @JavascriptInterface public void setBgPlay(boolean bgplay) { getSharedPreferences("YTPRO", MODE_PRIVATE).edit().putBoolean("bgplay", bgplay).apply(); }
+    @JavascriptInterface public void bgStart(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; mediaSession=true; Intent intent = new Intent(getApplicationContext(), ForegroundService.class); intent.putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "play"); startService(intent); }
+    @JavascriptInterface public void bgUpdate(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "pause")); }
+    @JavascriptInterface public void bgStop() { isPlaying=false; mediaSession=false; stopService(new Intent(getApplicationContext(), ForegroundService.class)); }
+    @JavascriptInterface public void bgPause(long ct) { isPlaying=false; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "pause")); }
+    @JavascriptInterface public void bgPlay(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "play")); }
+    @JavascriptInterface public void bgBuffer(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "buffer")); }
+    @JavascriptInterface public void getSNlM0e(String cookies) { new Thread(() -> { String response = GeminiWrapper.getSNlM0e(cookies); runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null)); }).start(); }
+    @JavascriptInterface public void GeminiClient(String url, String headers, String body) { new Thread(() -> { JSONObject response = GeminiWrapper.getStream(url, headers, body); runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null)); }).start(); }
+    @JavascriptInterface public String getAllCookies(String url) { return CookieManager.getInstance().getCookie(url); }
+    @JavascriptInterface public float getVolume() { return (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC); }
+    @JavascriptInterface public void setVolume(float volume) { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume), 0); }
+    @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
+    @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
+    @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
   }
-// ✅ PART 3 - අවසාන කොටස
+
+  // ✅ PART 2 අවසානයි
+  // ✅ PART 3/3 - අවසාන කොටස
 
   public void setReceiver() {
     broadcastReceiver = new BroadcastReceiver() {
@@ -845,11 +614,9 @@ public class MainActivity extends Activity {
         switch (action) {
           case "PLAY_ACTION":
             web.evaluateJavascript("playVideo();",null);
-            Log.e("play", "play called");
             break;
           case "PAUSE_ACTION":
             web.evaluateJavascript("pauseVideo();",null);
-            Log.e("pause", "pause called");
             break;
           case "NEXT_ACTION":
             web.evaluateJavascript("playNext();",null);
@@ -898,12 +665,7 @@ public class MainActivity extends Activity {
         "    hasBgPlay: typeof window.initBgPlay !== 'undefined'" +
         "  });" +
         "})();",
-        new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String value) {
-                Log.d("YTPRO Status", "📊 Script Status: " + value);
-            }
-        }
+        value -> Log.d("YTPRO Status", "📊 Script Status: " + value)
     );
   }
 
@@ -1004,16 +766,13 @@ public class MainActivity extends Activity {
     
     LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(dpToPx(200), dpToPx(50));
     retryButton.setLayoutParams(btnParams);
-    retryButton.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            if (isNetworkAvailable()) {
-                hideOfflineScreen();
-                load(false);
-                setupBottomNavigation();
-            } else {
-                Toast.makeText(MainActivity.this, "Still no connection", Toast.LENGTH_SHORT).show();
-            }
+    retryButton.setOnClickListener(v -> {
+        if (isNetworkAvailable()) {
+            hideOfflineScreen();
+            load(false);
+            setupBottomNavigation();
+        } else {
+            Toast.makeText(MainActivity.this, "Still no connection", Toast.LENGTH_SHORT).show();
         }
     });
     
@@ -1038,13 +797,10 @@ public class MainActivity extends Activity {
   }
 
   private void checkForAppUpdate() {
-    new android.os.Handler().postDelayed(new Runnable() {
-        @Override
-        public void run() {
-            if (isNetworkAvailable()) {
-                UpdateChecker updateChecker = new UpdateChecker(MainActivity.this);
-                updateChecker.checkForUpdate();
-            }
+    new android.os.Handler().postDelayed(() -> {
+        if (isNetworkAvailable()) {
+            UpdateChecker updateChecker = new UpdateChecker(MainActivity.this);
+            updateChecker.checkForUpdate();
         }
     }, 2000);
   }
@@ -1086,3 +842,4 @@ public class MainActivity extends Activity {
   }
 }
 
+// ✅ සම්පූර්ණයි! All 3 parts එකතු කරන්න ඔයාගේ MainActivity.java එකට!
