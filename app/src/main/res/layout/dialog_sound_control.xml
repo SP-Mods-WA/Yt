@@ -32,14 +32,11 @@
             android:layout_marginStart="12dp"
             android:fontFamily="sans-serif-medium" />
 
-        <androidx.appcompat.widget.SwitchCompat
+        <Switch
     android:id="@+id/toggleSwitch"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginEnd="12dp"
-    android:text=""
-    android:checked="false"
-    android:showText="false" />
+    android:layout_marginEnd="12dp" />
 
         <ImageView
             android:id="@+id/btnClose"
