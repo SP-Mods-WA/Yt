@@ -33,10 +33,14 @@
             android:fontFamily="sans-serif-medium" />
 
         <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/toggleSwitch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp" />
+    android:id="@+id/toggleSwitch"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="12dp"
+    android:text="Enable"
+    android:textOff="OFF"
+    android:textOn="ON"
+    android:showText="false" />
 
         <ImageView
             android:id="@+id/btnClose"
