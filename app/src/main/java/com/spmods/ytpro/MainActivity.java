@@ -485,111 +485,172 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ✅ UPDATED PIP MODE METHOD
-    @Override
-    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+@Override
+public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+    
+    Log.d("PIP", "🔄 PIP state: " + isInPictureInPictureMode);
+    
+    isPip = isInPictureInPictureMode;
+    isPipRequested = false;
+    
+    if (isInPictureInPictureMode) {
+        Log.d("PIP", "🎬 ENTERING PIP");
         
-        Log.d("PIP", "🔄 PIP state: " + isInPictureInPictureMode);
-        
-        // ✅ CRITICAL: Reset flags FIRST
-        isPip = isInPictureInPictureMode;
-        isPipRequested = false;
-        
-        if (isInPictureInPictureMode) {
-            // ✅ Entering PIP
-            Log.d("PIP", "🎬 ENTERING PIP");
-            
-            // WakeLock acquire කරන්න
-            if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
-                try {
-                    wakeLock.acquire(10 * 60 * 1000L);
-                    Log.d("WakeLock", "✅ Acquired for PIP");
-                } catch (Exception e) {
-                    Log.e("WakeLock", "❌ Failed: " + e.getMessage());
-                }
+        if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
+            try {
+                wakeLock.acquire(10 * 60 * 1000L);
+                Log.d("WakeLock", "✅ Acquired for PIP");
+            } catch (Exception e) {
+                Log.e("WakeLock", "❌ Failed: " + e.getMessage());
             }
-            
-            // UI hide කරන්න
+        }
+        
+        handler.postDelayed(() -> {
             runOnUiThread(() -> {
                 web.evaluateJavascript(
                     "(function() {" +
-                    "  console.log('🎬 PIP UI setup...');" +
+                    "  console.log('🎬 PIP: Setting up video...');" +
                     "  " +
                     "  var video = document.querySelector('video');" +
-                    "  if (video) {" +
-                    "    window.wasPlayingBeforePIP = !video.paused;" +
-                    "    if (window.wasPlayingBeforePIP && video.paused) {" +
-                    "      video.play().catch(e => console.log('PIP play:', e));" +
-                    "    }" +
+                    "  if (!video) {" +
+                    "    console.log('❌ No video element found');" +
+                    "    return;" +
                     "  }" +
                     "  " +
-                    "  // UI elements hide කරන්න" +
-                    "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer', " +
-                    "   '.ytp-chrome-top', '.ytp-chrome-bottom'].forEach(sel => {" +
+                    "  window.wasPlayingBeforePIP = !video.paused;" +
+                    "  window.pipMode = true;" +
+                    "  console.log('📼 Was playing:', window.wasPlayingBeforePIP);" +
+                    "  " +
+                    "  video.setAttribute('playsinline', 'true');" +
+                    "  video.muted = false;" +
+                    "  " +
+                    "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer'].forEach(sel => {" +
                     "    var el = document.querySelector(sel);" +
                     "    if (el) el.style.display = 'none';" +
                     "  });" +
                     "  " +
-                    "  console.log('✅ PIP ready');" +
-                    "})();",
-                    null
-                );
-            });
-            
-        } else {
-            // ✅ Exiting PIP
-            Log.d("PIP", "🏠 EXITING PIP");
-            
-            // WakeLock release කරන්න (safely)
-            try {
-                if (wakeLock != null && wakeLock.isHeld()) {
-                    wakeLock.release();
-                    Log.d("WakeLock", "❌ Released");
-                }
-            } catch (Exception e) {
-                Log.e("WakeLock", "❌ Release error: " + e.getMessage());
-            }
-            
-            // UI restore කරන්න
-            runOnUiThread(() -> {
-                web.evaluateJavascript(
-                    "(function() {" +
-                    "  console.log('🔄 Restoring UI...');" +
+                    "  video.style.position = 'fixed';" +
+                    "  video.style.top = '0';" +
+                    "  video.style.left = '0';" +
+                    "  video.style.width = '100%';" +
+                    "  video.style.height = '100%';" +
+                    "  video.style.zIndex = '999999';" +
+                    "  video.style.objectFit = 'contain';" +
+                    "  video.style.backgroundColor = '#000';" +
                     "  " +
-                    "  // UI elements show කරන්න" +
-                    "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer', " +
-                    "   '.ytp-chrome-top', '.ytp-chrome-bottom'].forEach(sel => {" +
-                    "    var el = document.querySelector(sel);" +
-                    "    if (el) el.style.display = '';" +
-                    "  });" +
-                    "  " +
-                    "  // Video state restore කරන්න" +
-                    "  var video = document.querySelector('video');" +
-                    "  if (video && window.wasPlayingBeforePIP && video.paused) {" +
-                    "    setTimeout(() => {" +
-                    "      video.play().catch(e => {" +
-                    "        console.log('Resume failed, clicking button');" +
-                    "        var btn = document.querySelector('.ytp-play-button');" +
-                    "        if (btn) btn.click();" +
-                    "      });" +
-                    "    }, 500);" +
+                    "  if (window.wasPlayingBeforePIP && video.paused) {" +
+                    "    console.log('🔄 Resuming playback...');" +
+                    "    video.play().then(() => {" +
+                    "      console.log('✅ Video resumed in PIP');" +
+                    "    }).catch(e => {" +
+                    "      console.log('⚠️ Resume failed:', e);" +
+                    "    });" +
+                    "  } else {" +
+                    "    console.log('⏸️ Video was paused, keeping paused');" +
                     "  }" +
                     "  " +
-                    "  window.wasPlayingBeforePIP = undefined;" +
-                    "  console.log('✅ UI restored');" +
+                    "  var userPaused = false;" +
+                    "  var lastPauseTime = 0;" +
+                    "  " +
+                    "  video.addEventListener('pause', function(e) {" +
+                    "    var now = Date.now();" +
+                    "    if (now - lastPauseTime > 500) {" +
+                    "      userPaused = true;" +
+                    "      window.wasPlayingBeforePIP = false;" +
+                    "      console.log('⏸️ User paused video');" +
+                    "    }" +
+                    "    lastPauseTime = now;" +
+                    "  });" +
+                    "  " +
+                    "  video.addEventListener('play', function(e) {" +
+                    "    userPaused = false;" +
+                    "    window.wasPlayingBeforePIP = true;" +
+                    "    console.log('▶️ User played video');" +
+                    "  });" +
+                    "  " +
+                    "  window.pipPlayInterval = setInterval(() => {" +
+                    "    if (!userPaused && window.wasPlayingBeforePIP && video.paused) {" +
+                    "      var timeSincePause = Date.now() - lastPauseTime;" +
+                    "      if (timeSincePause > 2000) {" +
+                    "        console.log('⚠️ Unexpected pause detected, recovering...');" +
+                    "        video.play().catch(e => console.log('Recovery failed:', e));" +
+                    "      }" +
+                    "    }" +
+                    "  }, 3000);" +
+                    "  " +
+                    "  console.log('✅ PIP setup complete with user controls');" +
                     "})();",
                     null
                 );
-                
-                // WebView refresh කරන්න
-                handler.postDelayed(() -> {
-                    web.requestLayout();
-                    web.invalidate();
-                }, 300);
             });
+        }, 300);
+        
+    } else {
+        Log.d("PIP", "🏠 EXITING PIP");
+        
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+                Log.d("WakeLock", "❌ Released");
+            }
+        } catch (Exception e) {
+            Log.e("WakeLock", "❌ Release error: " + e.getMessage());
         }
+        
+        runOnUiThread(() -> {
+            web.evaluateJavascript(
+                "(function() {" +
+                "  console.log('🔄 Restoring UI after PIP...');" +
+                "  " +
+                "  window.pipMode = false;" +
+                "  " +
+                "  if (window.pipPlayInterval) {" +
+                "    clearInterval(window.pipPlayInterval);" +
+                "    window.pipPlayInterval = null;" +
+                "  }" +
+                "  " +
+                "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer'].forEach(sel => {" +
+                "    var el = document.querySelector(sel);" +
+                "    if (el) el.style.display = '';" +
+                "  });" +
+                "  " +
+                "  var video = document.querySelector('video');" +
+                "  if (video) {" +
+                "    video.style.position = '';" +
+                "    video.style.top = '';" +
+                "    video.style.left = '';" +
+                "    video.style.width = '';" +
+                "    video.style.height = '';" +
+                "    video.style.zIndex = '';" +
+                "    video.style.objectFit = '';" +
+                "    video.style.backgroundColor = '';" +
+                "    " +
+                "    if (window.wasPlayingBeforePIP && video.paused) {" +
+                "      setTimeout(() => {" +
+                "        video.play().catch(e => {" +
+                "          console.log('Auto-resume failed, trying button click');" +
+                "          var playBtn = document.querySelector('.ytp-play-button');" +
+                "          if (playBtn) playBtn.click();" +
+                "        });" +
+                "      }, 500);" +
+                "    }" +
+                "  }" +
+                "  " +
+                "  window.wasPlayingBeforePIP = undefined;" +
+                "  console.log('✅ UI restored');" +
+                "})();",
+                null
+            );
+            
+            handler.postDelayed(() -> {
+                web.requestLayout();
+                web.invalidate();
+            }, 300);
+        });
     }
+}
+
 
     // ✅ UPDATED USER LEAVE HINT METHOD
     @Override
