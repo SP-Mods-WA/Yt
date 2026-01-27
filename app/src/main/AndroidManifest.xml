@@ -16,9 +16,18 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     
+    <!-- ✅ Play Protect Bypass Permissions -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    
     <!-- Storage permissions for older versions -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
         android:maxSdkVersion="28" />
+    
+    <!-- ✅ Add this for better compatibility -->
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
     
     <application
         android:allowBackup="true"
@@ -27,7 +36,11 @@
         android:roundIcon="@mipmap/app_icon"
         android:largeHeap="true"
         android:usesCleartextTraffic="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:requestLegacyExternalStorage="true"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:debuggable="false">
         
         <!-- ✅ SPLASH ACTIVITY -->
         <activity
@@ -42,7 +55,7 @@
             </intent-filter>
         </activity>
         
-        <!-- ✅ MAIN ACTIVITY (එකක් පමණක්!) -->
+        <!-- ✅ MAIN ACTIVITY -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode"
