@@ -88,6 +88,21 @@
 				<data android:mimeType="text/plain" />
 			</intent-filter>
 		</activity>
+
+
+		<!-- PIP support -->
+<activity
+    android:name=".MainActivity"
+    android:supportsPictureInPicture="true"
+    android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+    android:resizeableActivity="true"
+    android:launchMode="singleTask">
+    
+    <!-- PIP නිවැරදි විදිහට work කරන්න theme එක -->
+    <meta-data
+        android:name="android.apppicture_in_picture"
+        android:value="true" />
+</activity>
 		
 		<!-- Foreground Service -->
 		<service
@@ -117,3 +132,4 @@
 		
 	</application>
 </manifest>
+
