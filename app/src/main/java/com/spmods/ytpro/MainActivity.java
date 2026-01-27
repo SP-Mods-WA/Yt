@@ -25,7 +25,6 @@ import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.os.PowerManager;
-import android.os.Handler;
 
 public class MainActivity extends Activity {
 
@@ -464,71 +463,56 @@ public class MainActivity extends Activity {
       super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
       
       isPip = isInPictureInPictureMode;
-      Log.d("PIP", "🔄 PIP mode changed to: " + isPip);
+      Log.d("PIP", "🔄 PIP mode changed: " + isPip);
       
       if (isInPictureInPictureMode) {
-          // ✅ ENTERING PIP MODE
-          Log.d("PIP", "🎬 ENTERING PIP MODE");
+          // ✅ ENTERING PIP
+          Log.d("PIP", "🎬 Entering PIP Mode");
           
           // ✅ 1. Acquire WakeLock
           if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
               wakeLock.acquire(10 * 60 * 1000L); // 10 minutes
-              Log.d("WakeLock", "✅ Acquired WakeLock for PIP");
+              Log.d("WakeLock", "✅ WakeLock acquired");
           }
           
-          // ✅ 2. Hide ALL navigation elements
+          // ✅ 2. Hide navigation and prepare video
           web.evaluateJavascript(
               "(function() {" +
-              "  console.log('🎬 PIP Mode: Hiding navigation...');" +
+              "  console.log('🎬 Preparing for PIP...');" +
               "  " +
-              "  // Hide mobile navigation" +
-              "  var mobileNav = document.querySelector('ytm-pivot-bar-renderer');" +
-              "  if (mobileNav) mobileNav.style.display = 'none';" +
-              "  " +
-              "  // Hide desktop navigation" +
-              "  var desktopNav = document.querySelector('#guide');" +
-              "  if (desktopNav) desktopNav.style.display = 'none';" +
-              "  " +
-              "  // Hide top bar" +
-              "  var topBar = document.querySelector('ytm-mobile-topbar-renderer');" +
-              "  if (topBar) topBar.style.display = 'none';" +
-              "  " +
-              "  // Hide YouTube player controls" +
-              "  var ytpControls = document.querySelectorAll('.ytp-chrome-top, .ytp-chrome-bottom, .ytp-gradient-top, .ytp-gradient-bottom');" +
-              "  ytpControls.forEach(function(el) { el.style.display = 'none'; });" +
-              "  " +
-              "  // Ensure video is visible and playing" +
+              "  // Store play state" +
               "  var video = document.querySelector('video');" +
               "  if (video) {" +
-              "    video.style.zIndex = '9999';" +
-              "    video.style.position = 'fixed';" +
-              "    video.style.top = '0';" +
-              "    video.style.left = '0';" +
-              "    video.style.width = '100%';" +
-              "    video.style.height = '100%';" +
-              "    video.style.backgroundColor = '#000';" +
+              "    window.wasPlayingBeforePIP = !video.paused;" +
+              "    console.log('📼 Play state saved:', window.wasPlayingBeforePIP);" +
               "    " +
-              "    // Make sure video continues playing" +
-              "    if (window.wasPlayingBeforePIP !== false && video.paused) {" +
-              "      video.play().then(function() {" +
-              "        console.log('▶️ Video resumed in PIP');" +
-              "      }).catch(function(e) {" +
-              "        console.error('❌ Play failed:', e);" +
-              "      });" +
+              "    // Ensure video continues playing" +
+              "    if (window.wasPlayingBeforePIP) {" +
+              "      video.play().catch(e => console.log('Play error:', e));" +
               "    }" +
               "  }" +
               "  " +
-              "  // Hide body overflow" +
-              "  document.body.style.overflow = 'hidden';" +
+              "  // Hide UI elements" +
+              "  var elementsToHide = [" +
+              "    'ytm-pivot-bar-renderer'," +
+              "    'ytm-mobile-topbar-renderer'," +
+              "    '.ytp-chrome-top'," +
+              "    '.ytp-chrome-bottom'" +
+              "  ];" +
               "  " +
-              "  console.log('✅ PIP Mode Ready');" +
+              "  elementsToHide.forEach(selector => {" +
+              "    var el = document.querySelector(selector);" +
+              "    if (el) el.style.display = 'none';" +
+              "  });" +
+              "  " +
+              "  console.log('✅ PIP Ready');" +
               "})();",
               null
           );
           
       } else {
-          // ✅ EXITING PIP MODE
-          Log.d("PIP", "🏠 EXITING PIP MODE");
+          // ✅ EXITING PIP
+          Log.d("PIP", "🏠 Exiting PIP Mode");
           
           // ✅ 1. Release WakeLock
           if (wakeLock != null && wakeLock.isHeld()) {
@@ -536,59 +520,37 @@ public class MainActivity extends Activity {
               Log.d("WakeLock", "❌ WakeLock released");
           }
           
-          // ✅ 2. RESTORE EVERYTHING properly
+          // ✅ 2. RESTORE UI properly
           web.evaluateJavascript(
               "(function() {" +
               "  console.log('🔄 Restoring UI after PIP...');" +
               "  " +
-              "  // 1. Show all navigation elements" +
-              "  var mobileNav = document.querySelector('ytm-pivot-bar-renderer');" +
-              "  if (mobileNav) mobileNav.style.display = '';" +
+              "  // Show UI elements" +
+              "  var elementsToShow = [" +
+              "    'ytm-pivot-bar-renderer'," +
+              "    'ytm-mobile-topbar-renderer'," +
+              "    '.ytp-chrome-top'," +
+              "    '.ytp-chrome-bottom'" +
+              "  ];" +
               "  " +
-              "  var desktopNav = document.querySelector('#guide');" +
-              "  if (desktopNav) desktopNav.style.display = '';" +
+              "  elementsToShow.forEach(selector => {" +
+              "    var el = document.querySelector(selector);" +
+              "    if (el) el.style.display = '';" +
+              "  });" +
               "  " +
-              "  var topBar = document.querySelector('ytm-mobile-topbar-renderer');" +
-              "  if (topBar) topBar.style.display = '';" +
-              "  " +
-              "  // Show YouTube player controls" +
-              "  var ytpControls = document.querySelectorAll('.ytp-chrome-top, .ytp-chrome-bottom, .ytp-gradient-top, .ytp-gradient-bottom');" +
-              "  ytpControls.forEach(function(el) { el.style.display = ''; });" +
-              "  " +
-              "  // 2. Restore video styling" +
+              "  // Restore video if it was playing" +
               "  var video = document.querySelector('video');" +
-              "  if (video) {" +
-              "    video.style.cssText = '';" + // Reset ALL styles
-              "    video.offsetHeight;" + // Force reflow
-              "    " +
-              "    // Try to resume playback if it was playing" +
-              "    if (window.wasPlayingBeforePIP === true && video.paused) {" +
-              "      setTimeout(function() {" +
-              "        video.play().then(function() {" +
-              "          console.log('▶️ Video resumed after PIP');" +
-              "        }).catch(function(e) {" +
-              "          console.log('⚠️ Auto-play blocked, using button');" +
-              "          var playBtn = document.querySelector('.ytp-play-button');" +
-              "          if (playBtn) playBtn.click();" +
-              "        });" +
-              "      }, 300);" +
-              "    }" +
+              "  if (video && window.wasPlayingBeforePIP && video.paused) {" +
+              "    setTimeout(() => {" +
+              "      video.play().catch(e => {" +
+              "        console.log('Auto-play failed, trying button');" +
+              "        var playBtn = document.querySelector('.ytp-play-button');" +
+              "        if (playBtn) playBtn.click();" +
+              "      });" +
+              "    }, 300);" +
               "  }" +
               "  " +
-              "  // 3. Restore body styling" +
-              "  document.body.style.overflow = '';" +
-              "  " +
-              "  // 4. Force YouTube player to redraw" +
-              "  var player = document.querySelector('.html5-video-player');" +
-              "  if (player) {" +
-              "    player.style.display = 'none';" +
-              "    player.offsetHeight;" + // Trigger reflow
-              "    player.style.display = '';" +
-              "    player.classList.remove('ytp-pip-mode');" +
-              "    player.classList.remove('ytp-pip');" +
-              "  }" +
-              "  " +
-              "  // Clear stored state" +
+              "  // Clean up" +
               "  window.wasPlayingBeforePIP = undefined;" +
               "  " +
               "  console.log('✅ UI Restored');" +
@@ -600,77 +562,75 @@ public class MainActivity extends Activity {
           handler.postDelayed(() -> {
               web.requestLayout();
               web.invalidate();
-              Log.d("PIP", "🔄 WebView layout refreshed");
           }, 500);
       }
   }
 
   @Override
   protected void onUserLeaveHint() {
-      super.onUserLeaveHint();
-      
-      // ✅ Check if we're on a video page and playing
-      String currentUrl = web.getUrl();
-      boolean isVideoPage = currentUrl != null && currentUrl.contains("watch");
-      
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && 
-          isVideoPage && 
-          isPlaying && 
-          !isPip) {
-          
-          try {
-              Log.d("PIP", "🔄 Entering PIP from user leave hint...");
-              
-              // ✅ 1. Store current play state BEFORE entering PIP
-              web.evaluateJavascript(
-                  "(function() {" +
-                  "  var video = document.querySelector('video');" +
-                  "  if (video) {" +
-                  "    window.wasPlayingBeforePIP = !video.paused;" +
-                  "    console.log('🎬 Video playing state stored:', window.wasPlayingBeforePIP);" +
-                  "  }" +
-                  "})();",
-                  null
-              );
-              
-              // ✅ 2. Hide navigation bars BEFORE PIP
-              web.evaluateJavascript(
-                  "(function() {" +
-                  "  var mobileNav = document.querySelector('ytm-pivot-bar-renderer');" +
-                  "  if (mobileNav) mobileNav.style.display = 'none';" +
-                  "  " +
-                  "  var topBar = document.querySelector('ytm-mobile-topbar-renderer');" +
-                  "  if (topBar) topBar.style.display = 'none';" +
-                  "})();",
-                  null
-              );
-              
-              // ✅ 3. Enter PIP with proper aspect ratio
-              PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
-              
-              if (portrait) {
-                  builder.setAspectRatio(new Rational(9, 16));
-              } else {
-                  builder.setAspectRatio(new Rational(16, 9));
-              }
-              
-              PictureInPictureParams params = builder.build();
-              
-              // ✅ Small delay to ensure UI is hidden
-              handler.postDelayed(() -> {
-                  try {
-                      isPip = true;
-                      enterPictureInPictureMode(params);
-                      Log.d("PIP", "✅ Successfully entered PIP mode");
-                  } catch (IllegalStateException e) {
-                      Log.e("PIP", "❌ Failed to enter PIP: " + e.getMessage());
-                  }
-              }, 100);
-              
-          } catch (Exception e) {
-              Log.e("PIP", "❌ Error in onUserLeaveHint: " + e.getMessage());
-          }
-      }
+    super.onUserLeaveHint();
+    
+    // ✅ CRITICAL FIX: Use EXACT same condition as before
+    if (android.os.Build.VERSION.SDK_INT >= 26 && 
+        web.getUrl() != null && 
+        web.getUrl().contains("watch") && 
+        isPlaying) {
+        
+        Log.d("PIP", "🏠 Home button pressed - Entering PIP");
+        
+        try {
+            // ✅ Store play state
+            web.evaluateJavascript(
+                "(function() {" +
+                "  var video = document.querySelector('video');" +
+                "  if (video) {" +
+                "    window.wasPlayingBeforePIP = !video.paused;" +
+                "  }" +
+                "})();",
+                null
+            );
+            
+            // ✅ Hide navigation before PIP
+            web.evaluateJavascript(
+                "var navBar = document.querySelector('ytm-pivot-bar-renderer');" +
+                "if (navBar) navBar.style.display = 'none';",
+                null
+            );
+            
+            PictureInPictureParams params;
+            isPip = true;
+            
+            if (portrait) {
+                params = new PictureInPictureParams.Builder()
+                    .setAspectRatio(new Rational(9, 16))
+                    .build();
+            } else {
+                params = new PictureInPictureParams.Builder()
+                    .setAspectRatio(new Rational(16, 9))
+                    .build();
+            }
+            
+            // Small delay
+            handler.postDelayed(() -> {
+                try {
+                    enterPictureInPictureMode(params);
+                    Log.d("PIP", "✅ PIP entered successfully");
+                } catch (IllegalStateException e) {
+                    Log.e("PIP", "❌ PIP failed: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }, 100);
+            
+        } catch (Exception e) {
+            Log.e("PIP", "❌ Error in onUserLeaveHint: " + e.getMessage());
+            e.printStackTrace();
+        }
+    } else {
+        Log.d("PIP", "⏸️ Not entering PIP:");
+        Log.d("PIP", "   - Android 8.0+: " + (android.os.Build.VERSION.SDK_INT >= 26));
+        Log.d("PIP", "   - URL contains 'watch': " + (web.getUrl() != null && web.getUrl().contains("watch")));
+        Log.d("PIP", "   - Is playing: " + isPlaying);
+    }
   }
 
   public class CustomWebClient extends WebChromeClient {
@@ -783,7 +743,7 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void pipvid(String x) { 
         if (Build.VERSION.SDK_INT >= 26) { 
             try { 
-                // Store play state before PIP
+                // ✅ Store play state before PIP
                 web.evaluateJavascript(
                     "(function() {" +
                     "  var video = document.querySelector('video');" +
@@ -792,20 +752,28 @@ public class MainActivity extends Activity {
                     null
                 );
                 
-                // Hide navigation before PIP
+                // ✅ Hide navigation before PIP
                 web.evaluateJavascript(
-                    "var mobileNav = document.querySelector('ytm-pivot-bar-renderer');" +
-                    "if (mobileNav) mobileNav.style.display = 'none';",
+                    "var navBar = document.querySelector('ytm-pivot-bar-renderer');" +
+                    "if (navBar) navBar.style.display = 'none';",
                     null
                 );
                 
-                new Handler().postDelayed(() -> {
+                handler.postDelayed(() -> {
                     try {
-                        enterPictureInPictureMode(new PictureInPictureParams.Builder()
-                            .setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9))
-                            .build());
+                        isPip = true;
+                        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
+                        
+                        if (x.equals("portrait")) {
+                            builder.setAspectRatio(new Rational(9, 16));
+                        } else {
+                            builder.setAspectRatio(new Rational(16, 9));
+                        }
+                        
+                        enterPictureInPictureMode(builder.build());
+                        Log.d("PIP", "✅ Manual PIP via JavaScript");
                     } catch (Exception e) {
-                        Log.e("PIP", "Error entering PIP: " + e.getMessage());
+                        Log.e("PIP", "❌ Manual PIP failed: " + e.getMessage());
                     }
                 }, 100);
             } catch (Exception e) {
@@ -814,25 +782,6 @@ public class MainActivity extends Activity {
         } else { 
             Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); 
         } 
-    }
-    
-    @JavascriptInterface 
-    public void prepareForPIP() {
-        runOnUiThread(() -> {
-            Log.d("PIP", "🎬 Preparing for PIP from JavaScript");
-            web.evaluateJavascript(
-                "(function() {" +
-                "  var video = document.querySelector('video');" +
-                "  if (video) {" +
-                "    window.wasPlayingBeforePIP = !video.paused;" +
-                "    console.log('✅ Prepared for PIP, was playing:', window.wasPlayingBeforePIP);" +
-                "    return true;" +
-                "  }" +
-                "  return false;" +
-                "})();",
-                null
-            );
-        });
     }
   }
   
