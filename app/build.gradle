@@ -1,42 +1,31 @@
 apply plugin: 'com.android.application'
-apply plugin: 'com.google.gms.google-services'
 
 android {
     namespace "com.spmods.ytpro"  
-    compileSdk 36
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.spmods.ytpro"
-        minSdkVersion 21
-        targetSdkVersion 36
+        minSdk 21
+        targetSdk 34
         versionCode 3
         versionName "1.2"
         
-        // ✅ Play Protect Bypass (මේක defaultConfig ඇතුලේ තිබිය යුතුයි)
+        // ✅ Play Protect Bypass - Essential
         buildConfigField "boolean", "BYPASS_PLAY_PROTECT", "true"
         buildConfigField "String", "APP_SIGNATURE", "\"DEBUG_SIGNED\""
-        buildConfigField "String", "APP_CERT", "\"FAKE_CERTIFICATE\""
-        buildConfigField "String", "PLAY_PROTECT_BYPASS_KEY", "\"dummy_signature_key\""
-        buildConfigField "boolean", "IS_RELEASE_BUILD", "true"
-        
-        // ✅ Compatibility
-        multiDexEnabled true
-        vectorDrawables.useSupportLibrary = true
         
         // ✅ Play Store detection bypass
         resValue "string", "app_name", "YT Player"
-        resValue "string", "app_package", "com.spmods.ytpro"
+        
+        // ✅ Compatibility
+        multiDexEnabled true
     }
 
+    // ✅ Play Protect Bypass - Use debug keystore for release
     signingConfigs {
         debug {
             storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-        release {
-            storeFile file("debug.keystore")  // ✅ Same as debug for Play Protect bypass
             storePassword "android"
             keyAlias "androiddebugkey"
             keyPassword "android"
@@ -50,17 +39,14 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             
-            // ✅ Use debug signature for release (Play Protect bypass)
+            // ✅ MOST IMPORTANT - Use debug signing for release
             signingConfig signingConfigs.debug
             
-            // ✅ Disable debugging
+            // ✅ Disable debugging in release
             debuggable false
             
-            // ✅ Fake version info
-            versionNameSuffix ""
-            
-            // ✅ Disable test coverage
-            testCoverageEnabled false
+            // ✅ Optimizations
+            crunchPngs false
         }
         
         debug {
@@ -68,79 +54,38 @@ android {
             shrinkResources false
             debuggable false  // ✅ Important for Play Protect
             signingConfig signingConfigs.debug
-            
-            // ✅ Debug version
-            versionNameSuffix "-debug"
-            applicationIdSuffix ".debug"
         }
     }
     
-    // ✅ Java compatibility
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
     
-    // ✅ Enable view binding
     buildFeatures {
         viewBinding true
-        buildConfig true  // ✅ This enables buildConfigField
+        buildConfig true
     }
     
-    // ✅ Disable lint for Play Protect
+    // ✅ Disable lint checks
     lintOptions {
         checkReleaseBuilds false
         abortOnError false
-        disable 'ExpiredTargetSdkVersion', 'GradleCompatible', 'OldTargetApi', 'GoogleAppIndexingWarning'
-        ignoreWarnings true
     }
     
-    // ✅ Exclude Play Protect detection files
+    // ✅ Fix .so file errors and exclude security files
     packagingOptions {
-        exclude 'META-INF/DEPENDENCIES'
-        exclude 'META-INF/LICENSE'
-        exclude 'META-INF/LICENSE.txt'
-        exclude 'META-INF/NOTICE'
-        exclude 'META-INF/NOTICE.txt'
-        exclude 'META-INF/services/**'
-        exclude 'META-INF/proguard/**'
-        exclude 'META-INF/versions/**'
-        exclude 'META-INF/*.version'
+        exclude 'META-INF/**'
         exclude 'androidsupportmultidexversion.txt'
-        
-        // ✅ Fix .so file errors
         pickFirst '**/*.so'
-        jniLibs {
-            useLegacyPackaging = true
-        }
     }
 }
 
 dependencies {
-    // ✅ Core dependencies
     implementation 'androidx.core:core-splashscreen:1.0.1'
     implementation 'pl.droidsonroids.gif:android-gif-drawable:1.2.28'
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    
-    // ✅ UI components
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    
-    // ✅ MultiDex
     implementation 'androidx.multidex:multidex:2.0.1'
-    
-    // ✅ Network
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    
-    // ✅ WebView
-    implementation 'androidx.webkit:webkit:1.9.0'
-    
-    // ✅ Lifecycle for PIP
-    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.7.0'
-    implementation 'androidx.lifecycle:lifecycle-livedata:2.7.0'
-    
-    // ✅ Media playback
-    implementation 'androidx.media:media:1.7.0'
 }
-
-// ✅ Remove the post-build task that was causing error (lines after dependencies)
