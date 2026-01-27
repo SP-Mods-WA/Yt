@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android" 
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.spmods.ytpro">
     
     <!-- ✅ අවශ්‍ය Permissions -->
@@ -16,7 +17,7 @@
     <!-- ✅ Play Protect Bypass -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     
-    <!-- Storage permissions (optional - අවශ්‍ය නම් තබන්න) -->
+    <!-- Storage permissions -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
@@ -30,14 +31,16 @@
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@mipmap/app_icon"
+        android:roundIcon="@mipmap/app_icon"
         android:largeHeap="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme"
         android:requestLegacyExternalStorage="true"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        tools:ignore="GoogleAppIndexingWarning"
+        tools:targetApi="34">
         
         <!-- ✅ SPLASH ACTIVITY -->
         <activity
@@ -69,7 +72,7 @@
                 android:name="android.app.picture_in_picture"
                 android:value="true" />
             
-            <!-- YouTube links -->
+            <!-- YouTube links handle කරන්න -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -77,9 +80,8 @@
                 <data android:scheme="http" />
                 <data android:scheme="https" />
                 <data android:host="youtube.com" />
-                <data android:host="www.youtube.com" />
+                <data android:host="*.youtube.com" />
                 <data android:host="youtu.be" />
-                <data android:host="m.youtube.com" />
             </intent-filter>
             
             <intent-filter>
@@ -94,6 +96,7 @@
             android:name=".DownloadFromIntentFilter"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             android:hardwareAccelerated="true"
+            android:supportsPictureInPicture="true"
             android:theme="@style/AppTheme"
             android:exported="true"
             android:screenOrientation="unspecified">
@@ -104,7 +107,7 @@
                 <data android:scheme="http" />
                 <data android:scheme="https" />
                 <data android:host="youtube.com" />
-                <data android:host="www.youtube.com" />
+                <data android:host="*.youtube.com" />
                 <data android:host="youtu.be" />
             </intent-filter>
             <intent-filter android:label="@string/dl">
@@ -118,28 +121,25 @@
         <service
             android:name=".ForegroundService"
             android:enabled="true"
-            android:exported="false"
+            android:exported="true"
             android:foregroundServiceType="mediaPlayback" />
 
         <!-- Notification Receiver -->
-        <receiver 
-            android:name=".NotificationActionService"
-            android:exported="false" />
+        <receiver android:name=".NotificationActionService"/>
 
-        <!-- Notification Check Service -->
+        <!-- ✅ Notification Check Service -->
         <service
             android:name=".NotificationCheckService"
             android:enabled="true"
             android:exported="false" />
 
-        <!-- Notification Boot Receiver -->
+        <!-- ✅ Notification Boot Receiver -->
         <receiver
             android:name=".NotificationBootReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
         
