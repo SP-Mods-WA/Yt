@@ -12,75 +12,50 @@ android {
         versionName "1.2"
         
         // Play Protect Bypass
-                buildConfigField "boolean", "IS_SYSTEM_APP", "false"
-        buildConfigField "String", "SIGNATURE_HASH", "\"fake_signature_hash\""
-        buildConfigField "int", "SDK_OVERRIDE", "29"
+        buildConfigField "boolean", "BYPASS_PLAY_PROTECT", "true"
         
-        // Disable certain features
-        resConfigs "en", "xx"  // ✅ Fake locale
-        resValue "string", "app_name", "YouTube Player"  // ✅ Fake name
-        resValue "bool", "is_debuggable", "false"
-        
+        // Compatibility
         multiDexEnabled true
 
         // ✅ Native library support
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
-    
     }
 
     buildTypes {
         release {
-            // ✅ Advanced obfuscation
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            
-            // ✅ Fake signing (important)
-            signingConfig signingConfigs.debug
-            
-            // ✅ Disable everything Play Protect checks
+            // ✅ signingConfig ඉවත් කරන්න
             debuggable false
-            testCoverageEnabled false
-            pseudoLocalesEnabled false
-            crunchPngs false
-            
-            
+        }
+        
+        debug {
+            minifyEnabled false
+            debuggable false
         }
     }
-        
-       
     
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11  // ✅ Java 11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
     
     buildFeatures {
-        viewBinding false  // Disable initially
-        dataBinding false
+        viewBinding true
         buildConfig true
     }
     
-        lintOptions {
+    lintOptions {
         checkReleaseBuilds false
         abortOnError false
-        ignoreWarnings true
-        disable 'ExpiredTargetSdkVersion', 'GradleCompatible', 'OldTargetApi'
     }
     
     packagingOptions {
         exclude 'META-INF/**'
-        exclude 'androidsupportmultidexversion.txt'
-        exclude 'kotlin/**'
-        exclude 'okhttp3/**'
         pickFirst '**/*.so'
-        
-        // Exclude signature files
-        exclude 'META-INF/*.sf'
-        exclude 'META-INF/*.rsa'
-        exclude 'META-INF/*.mf'
     }
 }
 
@@ -94,6 +69,3 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
-
-
-
