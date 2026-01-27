@@ -24,6 +24,10 @@ import javax.net.ssl.HttpsURLConnection;
 import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
+import java.util.Map;
+import java.util.HashMap;
+import android.content.res.AssetManager;
+import android.util.Base64;
 
 public class MainActivity extends Activity {
 
@@ -50,6 +54,15 @@ public class MainActivity extends Activity {
   private String lastUrl = "";
   
   private boolean scriptsInjected = false;
+  
+  // ✅ NEW: Script management
+  private static final String[] YTPRO_SCRIPTS = {
+      "scripts/script.js",
+      "scripts/bgplay.js", 
+      "scripts/innertube.js"
+  };
+  private Map<String, String> cachedScripts = new HashMap<>();
+  private boolean scriptsLoaded = false;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +77,9 @@ public class MainActivity extends Activity {
     
     requestNotificationPermission();
     
+    // ✅ Load scripts first
+    preloadScriptsFromAssets();
+    
     if (!isNetworkAvailable()) {
         showOfflineScreen();
     } else {
@@ -76,6 +92,43 @@ public class MainActivity extends Activity {
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
+  
+  // ✅ NEW: Preload scripts from assets
+  private void preloadScriptsFromAssets() {
+    new Thread(() -> {
+        try {
+            AssetManager assetManager = getAssets();
+            
+            for (String scriptPath : YTPRO_SCRIPTS) {
+                String scriptContent = readAssetFile(assetManager, scriptPath);
+                cachedScripts.put(scriptPath, scriptContent);
+                Log.d("ScriptLoader", "✅ Loaded: " + scriptPath);
+            }
+            
+            scriptsLoaded = true;
+            Log.d("ScriptLoader", "✅ All scripts preloaded successfully");
+            
+        } catch (Exception e) {
+            Log.e("ScriptLoader", "❌ Failed to preload scripts: " + e.getMessage());
+            scriptsLoaded = false;
+        }
+    }).start();
+  }
+
+  // ✅ NEW: Read asset file helper
+  private String readAssetFile(AssetManager assetManager, String fileName) throws Exception {
+    InputStream is = assetManager.open(fileName);
+    BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+    StringBuilder sb = new StringBuilder();
+    String line;
+    
+    while ((line = reader.readLine()) != null) {
+        sb.append(line).append("\n");
+    }
+    
+    is.close();
+    return sb.toString();
+  }
 
   public void load(boolean dl) {
     web = findViewById(R.id.web);
@@ -86,32 +139,32 @@ public class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
     
-    // ✅ FIXED: Remove deprecated APIs that cause build errors
+    // ✅ FIXED: Cache settings
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
     
-    // ✅ Hardware acceleration for smooth video playback
+    // ✅ Hardware acceleration
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
     
-    // ✅ Video playback optimization - CRITICAL for smooth YouTube
+    // ✅ Video playback optimization
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setLoadsImagesAutomatically(true);
     settings.setBlockNetworkImage(false);
     settings.setBlockNetworkLoads(false);
     
-    // ✅ Viewport & Layout - optimized for mobile YouTube
+    // ✅ Viewport & Layout
     settings.setUseWideViewPort(true);
     settings.setLoadWithOverviewMode(true);
     settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
-    settings.setSupportZoom(false); // YouTube handles its own zoom
+    settings.setSupportZoom(false);
     
     // ✅ File & Content Access
     settings.setAllowFileAccess(true);
     settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
     
-    // ✅ Mixed content for video streaming
+    // ✅ Mixed content
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
     }
@@ -119,7 +172,7 @@ public class MainActivity extends Activity {
     // ✅ Smooth scrolling
     web.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
     
-    // ✅ Database path for proper caching
+    // ✅ Database path
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
         settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
     }
@@ -155,7 +208,7 @@ public class MainActivity extends Activity {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         cookieManager.setAcceptThirdPartyCookies(web, true);
     }
-
+    
     web.setWebViewClient(new WebViewClient() {
       
       @Override
@@ -174,93 +227,65 @@ public class MainActivity extends Activity {
         return false;
       }
       
-      @Override
-      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-        String url = request.getUrl().toString();
-
-        // ✅ CRITICAL FIX: Only intercept YTPRO scripts - let YouTube videos load natively
-        if (!url.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
-            return null; // Let WebView handle all YouTube video requests normally
-        }
-
-        Log.d("WebView", "🔧 Intercepting YTPRO script: " + url);
-
-        String modifiedUrl = null;
-
-        if (url.contains("innertube.js")) {
-            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js";
-        } else if (url.contains("bgplay.js")) {
-            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
-        } else if (url.contains("script.js")) {
-            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
-        }
-        
-        if (modifiedUrl == null) {
-            return null;
-        }
-        
-        try {
-            URL newUrl = new URL(modifiedUrl);
-            HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
-            connection.setRequestProperty("Accept", "*/*");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
-            connection.setRequestMethod("GET");
-            connection.connect();
-
-            int responseCode = connection.getResponseCode();
-            
-            if (responseCode != 200) {
-                Log.e("CDN", "❌ Failed: " + responseCode);
-                return null;
-            }
-
-            return new WebResourceResponse(
-                "application/javascript",
-                "utf-8",
-                connection.getInputStream()
-            );
-
-        } catch (Exception e) {
-            Log.e("CDN Error", "❌ Exception: " + e.getMessage());
-            return null;
-        }
-      }
+      // ✅ REMOVED: shouldInterceptRequest - no longer needed with local scripts
       
       @Override
-      public void onPageStarted(WebView p1, String p2, Bitmap p3) {
-        super.onPageStarted(p1, p2, p3);
+      public void onPageStarted(WebView view, String url, Bitmap favicon) {
+        super.onPageStarted(view, url, favicon);
         scriptsInjected = false;
+        
+        // ✅ Inject Trusted Types policy early
+        if (url.contains("youtube.com")) {
+            injectTrustedTypesPolicy();
+        }
       }
 
       @Override
-      public void onPageFinished(WebView p1, String url) {
-        // ✅ CRITICAL FIX: Inject scripts immediately for smooth playback
-        if (!scriptsInjected) {
-            injectYTProScripts();
+      public void onPageFinished(WebView view, String url) {
+        // ✅ CRITICAL FIX: Inject local scripts immediately
+        if (!scriptsInjected && scriptsLoaded) {
+            injectLocalYTProScripts();
             scriptsInjected = true;
+        } else if (!scriptsLoaded) {
+            Log.w("WebView", "⚠️ Scripts not loaded yet, retrying...");
+            // Retry after 500ms
+            web.postDelayed(() -> {
+                if (scriptsLoaded && !scriptsInjected) {
+                    injectLocalYTProScripts();
+                    scriptsInjected = true;
+                }
+            }, 500);
         }
         
-        // ✅ Hide YouTube bottom nav immediately
+        // ✅ Hide YouTube bottom nav
         web.evaluateJavascript(
             "(function() {" +
             "  var style = document.createElement('style');" +
-            "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
+            "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } " +
+            "                     body { padding-bottom: 65px !important; }';" +
             "  document.head.appendChild(style);" +
             "})();",
             null
         );
         
-        // ✅ Block shorts auto-redirect
+        // ✅ IMPROVED: Block shorts auto-redirect (both methods)
         web.evaluateJavascript(
             "(function() {" +
             "  var originalPushState = history.pushState;" +
+            "  var originalReplaceState = history.replaceState;" +
             "  history.pushState = function(state, title, url) {" +
             "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+            "      console.log('🛑 Blocked pushState to shorts');" +
             "      return;" +
             "    }" +
             "    return originalPushState.apply(this, arguments);" +
+            "  };" +
+            "  history.replaceState = function(state, title, url) {" +
+            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+            "      console.log('🛑 Blocked replaceState to shorts');" +
+            "      return;" +
+            "    }" +
+            "    return originalReplaceState.apply(this, arguments);" +
             "  };" +
             "})();",
             null
@@ -279,12 +304,14 @@ public class MainActivity extends Activity {
             stopService(new Intent(getApplicationContext(), ForegroundService.class));
         }
 
-        super.onPageFinished(p1, url);
+        super.onPageFinished(view, url);
       }
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-          if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
+          if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+              errorCode == WebViewClient.ERROR_CONNECT || 
+              errorCode == WebViewClient.ERROR_TIMEOUT) {
               runOnUiThread(() -> showOfflineScreen());
           }
           super.onReceivedError(view, errorCode, description, failingUrl);
@@ -295,7 +322,9 @@ public class MainActivity extends Activity {
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
               if (request.isForMainFrame()) {
                   int errorCode = error.getErrorCode();
-                  if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
+                  if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+                      errorCode == WebViewClient.ERROR_CONNECT || 
+                      errorCode == WebViewClient.ERROR_TIMEOUT) {
                       runOnUiThread(() -> showOfflineScreen());
                   }
               }
@@ -316,44 +345,75 @@ public class MainActivity extends Activity {
     }
   }
   
-  // ✅ CRITICAL FIX: Optimized script injection
-  private void injectYTProScripts() {
-    // Trusted Types policy first
+  // ✅ NEW: Inject Trusted Types policy
+  private void injectTrustedTypesPolicy() {
     web.evaluateJavascript(
-        "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
-        "  window.trustedTypes.createPolicy('default', {" +
-        "    createHTML: (string) => string," +
-        "    createScriptURL: string => string," +
-        "    createScript: string => string" +
-        "  });" +
-        "}",
+        "(function() {" +
+        "  if (window.trustedTypes && window.trustedTypes.createPolicy) {" +
+        "    if (!window.trustedTypes.defaultPolicy) {" +
+        "      try {" +
+        "        window.trustedTypes.createPolicy('default', {" +
+        "          createHTML: (string) => string," +
+        "          createScriptURL: (string) => string," +
+        "          createScript: (string) => string" +
+        "        });" +
+        "        console.log('✅ Trusted Types policy created');" +
+        "      } catch(e) {" +
+        "        console.warn('⚠️ Trusted Types policy exists');" +
+        "      }" +
+        "    }" +
+        "  }" +
+        "})();",
         null
     );
-    
-    // ✅ Load scripts with proper async loading
-    String scriptLoader = 
-        "(function() {" +
-        "  if(window.YTPRO_LOADED) return;" +
-        "  function loadScript(src) {" +
-        "    return new Promise((resolve, reject) => {" +
-        "      var script = document.createElement('script');" +
-        "      script.src = src;" +
-        "      script.async = false;" + // Sequential loading for dependencies
-        "      script.onload = () => resolve();" +
-        "      script.onerror = (e) => reject(e);" +
-        "      document.body.appendChild(script);" +
-        "    });" +
-        "  }" +
-        "  Promise.all([" +
-        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js')," +
-        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js')," +
-        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js')" +
-        "  ])" +
-        "  .then(() => { window.YTPRO_LOADED = true; console.log('✅ YTPRO loaded'); })" +
-        "  .catch((e) => console.error('❌ YTPRO load failed:', e));" +
-        "})();";
-    
-    web.evaluateJavascript(scriptLoader, null);
+  }
+
+  // ✅ NEW: Inject local scripts from assets
+  private void injectLocalYTProScripts() {
+    if (!scriptsLoaded) {
+        Log.e("ScriptInjection", "❌ Scripts not loaded yet!");
+        return;
+    }
+
+    Log.d("ScriptInjection", "📝 Injecting YTPRO scripts from assets");
+
+    // ✅ Inject in correct order (dependencies matter!)
+    for (String scriptPath : YTPRO_SCRIPTS) {
+        String scriptContent = cachedScripts.get(scriptPath);
+        
+        if (scriptContent != null) {
+            // ✅ Use Base64 encoding to avoid escaping issues
+            String base64Script = Base64.encodeToString(
+                scriptContent.getBytes(), 
+                Base64.NO_WRAP
+            );
+            
+            web.evaluateJavascript(
+                "(function() {" +
+                "  try {" +
+                "    var script = document.createElement('script');" +
+                "    var decoded = atob('" + base64Script + "');" +
+                "    script.textContent = decoded;" +
+                "    document.head.appendChild(script);" +
+                "    console.log('✅ Injected: " + scriptPath + "');" +
+                "  } catch(e) {" +
+                "    console.error('❌ Failed to inject " + scriptPath + ":', e);" +
+                "  }" +
+                "})();",
+                null
+            );
+            
+            Log.d("ScriptInjection", "✅ Injected: " + scriptPath);
+        } else {
+            Log.e("ScriptInjection", "❌ Script not found: " + scriptPath);
+        }
+    }
+
+    // ✅ Mark as loaded
+    web.evaluateJavascript(
+        "window.YTPRO_LOADED = true; console.log('✅ All YTPRO scripts loaded');", 
+        null
+    );
   }
   
   private void setupBottomNavigation() {
@@ -414,7 +474,7 @@ public class MainActivity extends Activity {
         }
     }
   }
-
+  
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -450,7 +510,7 @@ public class MainActivity extends Activity {
 
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
+    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();", null);
     isPip = isInPictureInPictureMode;
   }
 
@@ -460,10 +520,10 @@ public class MainActivity extends Activity {
     if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch") && isPlaying) {
         try {
           PictureInPictureParams params;
-          isPip=true;
+          isPip = true;
           if (portrait) {
             params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(9, 16)).build();
-          } else{
+          } else {
             params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build();
           }
           enterPictureInPictureMode(params);
@@ -538,7 +598,8 @@ public class MainActivity extends Activity {
   }
 
   private void downloadFile(String filename, String url, String mtype) {
-    if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+    if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && 
+        checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
       runOnUiThread(() -> Toast.makeText(getApplicationContext(), R.string.grant_storage, Toast.LENGTH_SHORT).show());
       requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, 1);
     }
@@ -560,27 +621,171 @@ public class MainActivity extends Activity {
     Context mContext;
     WebAppInterface(Context c) { mContext = c; }
 
-    @JavascriptInterface public void showToast(String txt) { Toast.makeText(getApplicationContext(), txt, Toast.LENGTH_SHORT).show(); }
-    @JavascriptInterface public void gohome(String x) { Intent i = new Intent(Intent.ACTION_MAIN); i.addCategory(Intent.CATEGORY_HOME); i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); }
-    @JavascriptInterface public void downvid(String name, String url, String m) { downloadFile(name, url, m); }
-    @JavascriptInterface public void fullScreen(boolean value) { portrait = value; }
-    @JavascriptInterface public void oplink(String url) { Intent i = new Intent(); i.setAction(Intent.ACTION_VIEW); i.setData(Uri.parse(url)); startActivity(i); }
-    @JavascriptInterface public String getInfo() { try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "1.0"; } }
-    @JavascriptInterface public void setBgPlay(boolean bgplay) { getSharedPreferences("YTPRO", MODE_PRIVATE).edit().putBoolean("bgplay", bgplay).apply(); }
-    @JavascriptInterface public void bgStart(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; mediaSession=true; Intent intent = new Intent(getApplicationContext(), ForegroundService.class); intent.putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "play"); startService(intent); }
-    @JavascriptInterface public void bgUpdate(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "pause")); }
-    @JavascriptInterface public void bgStop() { isPlaying=false; mediaSession=false; stopService(new Intent(getApplicationContext(), ForegroundService.class)); }
-    @JavascriptInterface public void bgPause(long ct) { isPlaying=false; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "pause")); }
-    @JavascriptInterface public void bgPlay(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "play")); }
-    @JavascriptInterface public void bgBuffer(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "buffer")); }
-    @JavascriptInterface public void getSNlM0e(String cookies) { new Thread(() -> { String response = GeminiWrapper.getSNlM0e(cookies); runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null)); }).start(); }
-    @JavascriptInterface public void GeminiClient(String url, String headers, String body) { new Thread(() -> { JSONObject response = GeminiWrapper.getStream(url, headers, body); runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null)); }).start(); }
-    @JavascriptInterface public String getAllCookies(String url) { return CookieManager.getInstance().getCookie(url); }
-    @JavascriptInterface public float getVolume() { return (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC); }
-    @JavascriptInterface public void setVolume(float volume) { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume), 0); }
-    @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
-    @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
-    @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
+    @JavascriptInterface 
+    public void showToast(String txt) { 
+      Toast.makeText(getApplicationContext(), txt, Toast.LENGTH_SHORT).show(); 
+    }
+    
+    @JavascriptInterface 
+    public void gohome(String x) { 
+      Intent i = new Intent(Intent.ACTION_MAIN); 
+      i.addCategory(Intent.CATEGORY_HOME); 
+      i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK); 
+      startActivity(i); 
+    }
+    
+    @JavascriptInterface 
+    public void downvid(String name, String url, String m) { 
+      downloadFile(name, url, m); 
+    }
+    
+    @JavascriptInterface 
+    public void fullScreen(boolean value) { 
+      portrait = value; 
+    }
+    
+    @JavascriptInterface 
+    public void oplink(String url) { 
+      Intent i = new Intent(); 
+      i.setAction(Intent.ACTION_VIEW); 
+      i.setData(Uri.parse(url)); 
+      startActivity(i); 
+    }
+    
+    @JavascriptInterface 
+    public String getInfo() { 
+      try { 
+        return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; 
+      } catch (Exception e) { 
+        return "1.0"; 
+      } 
+    }
+    
+    @JavascriptInterface 
+    public void setBgPlay(boolean bgplay) { 
+      getSharedPreferences("YTPRO", MODE_PRIVATE).edit().putBoolean("bgplay", bgplay).apply(); 
+    }
+    
+    @JavascriptInterface 
+    public void bgStart(String iconn, String titlen, String subtitlen, long dura) { 
+      icon = iconn; 
+      title = titlen; 
+      subtitle = subtitlen; 
+      duration = dura; 
+      isPlaying = true; 
+      mediaSession = true; 
+      Intent intent = new Intent(getApplicationContext(), ForegroundService.class); 
+      intent.putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle)
+           .putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "play"); 
+      startService(intent); 
+    }
+    
+    @JavascriptInterface 
+    public void bgUpdate(String iconn, String titlen, String subtitlen, long dura) { 
+      icon = iconn; 
+      title = titlen; 
+      subtitle = subtitlen; 
+      duration = dura; 
+      isPlaying = true; 
+      sendBroadcast(new Intent("UPDATE_NOTIFICATION")
+        .putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle)
+        .putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "pause")); 
+    }
+    
+    @JavascriptInterface 
+    public void bgStop() { 
+      isPlaying = false; 
+      mediaSession = false; 
+      stopService(new Intent(getApplicationContext(), ForegroundService.class)); 
+    }
+    
+    @JavascriptInterface 
+    public void bgPause(long ct) { 
+      isPlaying = false; 
+      sendBroadcast(new Intent("UPDATE_NOTIFICATION")
+        .putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle)
+        .putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "pause")); 
+    }
+    
+    @JavascriptInterface 
+    public void bgPlay(long ct) { 
+      isPlaying = true; 
+      sendBroadcast(new Intent("UPDATE_NOTIFICATION")
+        .putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle)
+        .putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "play")); 
+    }
+    
+    @JavascriptInterface 
+    public void bgBuffer(long ct) { 
+      isPlaying = true; 
+      sendBroadcast(new Intent("UPDATE_NOTIFICATION")
+        .putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle)
+        .putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "buffer")); 
+    }
+    
+    @JavascriptInterface 
+    public void getSNlM0e(String cookies) { 
+      new Thread(() -> { 
+        String response = GeminiWrapper.getSNlM0e(cookies); 
+        runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null)); 
+      }).start(); 
+    }
+    
+    @JavascriptInterface 
+    public void GeminiClient(String url, String headers, String body) { 
+      new Thread(() -> { 
+        JSONObject response = GeminiWrapper.getStream(url, headers, body); 
+        runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null)); 
+      }).start(); 
+    }
+    
+    @JavascriptInterface 
+    public String getAllCookies(String url) { 
+      return CookieManager.getInstance().getCookie(url); 
+    }
+    
+    @JavascriptInterface 
+    public float getVolume() { 
+      return (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / 
+             audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC); 
+    }
+    
+    @JavascriptInterface 
+    public void setVolume(float volume) { 
+      audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 
+        (int) (audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume), 0); 
+    }
+    
+    @JavascriptInterface 
+    public float getBrightness() { 
+      try { 
+        return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; 
+      } catch (Exception e) { 
+        return 50f; 
+      } 
+    }
+    
+    @JavascriptInterface 
+    public void setBrightness(final float value) { 
+      runOnUiThread(() -> { 
+        WindowManager.LayoutParams layout = getWindow().getAttributes(); 
+        layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); 
+        getWindow().setAttributes(layout); 
+      }); 
+    }
+    
+    @JavascriptInterface 
+    public void pipvid(String x) { 
+      if (Build.VERSION.SDK_INT >= 26) { 
+        try { 
+          enterPictureInPictureMode(new PictureInPictureParams.Builder()
+            .setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9))
+            .build()); 
+        } catch (Exception e) {} 
+      } else { 
+        Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); 
+      } 
+    }
   }
   
   public void setReceiver() {
@@ -592,19 +797,19 @@ public class MainActivity extends Activity {
 
         switch (action) {
           case "PLAY_ACTION":
-            web.evaluateJavascript("playVideo();",null);
+            web.evaluateJavascript("playVideo();", null);
             break;
           case "PAUSE_ACTION":
-            web.evaluateJavascript("pauseVideo();",null);
+            web.evaluateJavascript("pauseVideo();", null);
             break;
           case "NEXT_ACTION":
-            web.evaluateJavascript("playNext();",null);
+            web.evaluateJavascript("playNext();", null);
             break;
           case "PREV_ACTION":
-            web.evaluateJavascript("playPrev();",null);
+            web.evaluateJavascript("playPrev();", null);
             break;
           case "SEEKTO":
-            web.evaluateJavascript("seekTo('" + intent.getExtras().getString("pos") + "');",null);
+            web.evaluateJavascript("seekTo('" + intent.getExtras().getString("pos") + "');", null);
             break;
         }
       }
