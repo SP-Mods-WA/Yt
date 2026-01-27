@@ -22,6 +22,12 @@ android {
         resValue "bool", "is_debuggable", "false"
         
         multiDexEnabled true
+
+        // ✅ Native library support
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+    
     }
 
     buildTypes {
@@ -42,7 +48,7 @@ android {
             
             // ✅ Add version suffix
             versionNameSuffix "-stable"
-            applicationIdSuffix ".release"
+            //applicationIdSuffix ".release"
         }
     }
         
@@ -90,4 +96,5 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
+
 
