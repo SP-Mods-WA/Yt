@@ -62,7 +62,6 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-        // ✅ Play Protect Bypass - Disable signature verification warnings
         disablePlayProtectWarnings();
         
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -93,23 +92,16 @@ public class MainActivity extends Activity {
         MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
-    // ✅ Play Protect Bypass Methods
     private void disablePlayProtectWarnings() {
         try {
-            // Method 1: Disable package verification
             Settings.Global.putInt(getContentResolver(), "verifier_verify_adb_installs", 0);
             Settings.Global.putInt(getContentResolver(), "package_verifier_enable", 0);
             Settings.Secure.putInt(getContentResolver(), "install_non_market_apps", 1);
-            
-            // Method 2: Use reflection to bypass
             disablePackageVerificationViaReflection();
-            
-            // Method 3: Fake app signature
             fakeAppSignature();
-            
             Log.d("PlayProtect", "✅ Play Protect warnings disabled");
         } catch (Exception e) {
-            Log.e("PlayProtect", "❌ Failed to disable Play Protect: " + e.getMessage());
+            Log.e("PlayProtect", "❌ Failed: " + e.getMessage());
         }
     }
     
@@ -121,20 +113,15 @@ public class MainActivity extends Activity {
                 "setInstallerPackageName", String.class, String.class
             );
             setInstallerPackageName.invoke(pm, getPackageName(), "com.android.vending");
-        } catch (Exception e) {
-            // Ignore
-        }
+        } catch (Exception e) {}
     }
     
     private void fakeAppSignature() {
         try {
             SharedPreferences prefs = getSharedPreferences("YTPro_Security", MODE_PRIVATE);
             if (!prefs.getBoolean("signature_faked", false)) {
-                // Simulate legitimate app behavior
                 PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
                 String signature = pInfo.signatures[0].toCharsString();
-                
-                // Store fake verification
                 prefs.edit()
                     .putBoolean("signature_faked", true)
                     .putString("fake_signature", "MIIE...FAKE_SIGNATURE...")
@@ -142,9 +129,7 @@ public class MainActivity extends Activity {
                     .putLong("last_update_time", System.currentTimeMillis())
                     .apply();
             }
-        } catch (Exception e) {
-            // Ignore
-        }
+        } catch (Exception e) {}
     }
 
     public void load(boolean dl) {
@@ -155,7 +140,6 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -166,12 +150,10 @@ public class MainActivity extends Activity {
         settings.setLoadsImagesAutomatically(true);
         settings.setBlockNetworkImage(false);
         settings.setBlockNetworkLoads(false);
-        
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
         settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
         settings.setSupportZoom(false);
-        
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
@@ -469,7 +451,7 @@ public class MainActivity extends Activity {
             }
         }
     }
-
+    
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -503,207 +485,200 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ✅ UPDATED PIP MODE METHOD
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         
-        Log.d("PIP", "🔄 System PIP changed to: " + isInPictureInPictureMode);
+        Log.d("PIP", "🔄 PIP state: " + isInPictureInPictureMode);
+        
+        // ✅ CRITICAL: Reset flags FIRST
         isPip = isInPictureInPictureMode;
         isPipRequested = false;
         
         if (isInPictureInPictureMode) {
-            // ✅ Entering PIP Mode
-            Log.d("PIP", "🎬 ENTERING PIP MODE");
+            // ✅ Entering PIP
+            Log.d("PIP", "🎬 ENTERING PIP");
             
-            // Acquire WakeLock
+            // WakeLock acquire කරන්න
             if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
                 try {
-                    wakeLock.acquire(10 * 60 * 1000L); // 10 minutes
-                    Log.d("WakeLock", "✅ WakeLock acquired for PIP");
+                    wakeLock.acquire(10 * 60 * 1000L);
+                    Log.d("WakeLock", "✅ Acquired for PIP");
                 } catch (Exception e) {
-                    Log.e("WakeLock", "❌ Failed to acquire: " + e.getMessage());
+                    Log.e("WakeLock", "❌ Failed: " + e.getMessage());
                 }
             }
             
-            // Prepare UI for PIP
-            web.evaluateJavascript(
-                "(function() {" +
-                "  console.log('🎬 Preparing UI for PIP...');" +
-                "  " +
-                "  // Store play state" +
-                "  var video = document.querySelector('video');" +
-                "  if (video) {" +
-                "    window.wasPlayingBeforePIP = !video.paused;" +
-                "    console.log('📼 Play state saved:', window.wasPlayingBeforePIP);" +
-                "    " +
-                "    // Ensure video keeps playing" +
-                "    if (window.wasPlayingBeforePIP && video.paused) {" +
-                "      video.play().catch(e => console.log('Auto-play in PIP:', e));" +
-                "    }" +
-                "  }" +
-                "  " +
-                "  // Hide UI elements" +
-                "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer', '.ytp-chrome-top', '.ytp-chrome-bottom'].forEach(selector => {" +
-                "    var el = document.querySelector(selector);" +
-                "    if (el) el.style.display = 'none';" +
-                "  });" +
-                "  " +
-                "  // Make video prominent" +
-                "  if (video) {" +
-                "    video.style.zIndex = '9999';" +
-                "    video.style.backgroundColor = '#000';" +
-                "  }" +
-                "  " +
-                "  console.log('✅ PIP UI ready');" +
-                "})();",
-                null
-            );
-            
-        } else {
-            // ✅ Exiting PIP Mode
-            Log.d("PIP", "🏠 EXITING PIP MODE");
-            
-            // Release WakeLock
-            if (wakeLock != null && wakeLock.isHeld()) {
-                wakeLock.release();
-                Log.d("WakeLock", "❌ WakeLock released");
-            }
-            
-            // Restore UI
-            web.evaluateJavascript(
-                "(function() {" +
-                "  console.log('🔄 Restoring UI after PIP...');" +
-                "  " +
-                "  // Show UI elements" +
-                "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer', '.ytp-chrome-top', '.ytp-chrome-bottom'].forEach(selector => {" +
-                "    var el = document.querySelector(selector);" +
-                "    if (el) el.style.display = '';" +
-                "  });" +
-                "  " +
-                "  // Restore video state" +
-                "  var video = document.querySelector('video');" +
-                "  if (video && window.wasPlayingBeforePIP && video.paused) {" +
-                "    setTimeout(() => {" +
-                "      video.play().catch(e => {" +
-                "        console.log('Auto-play failed, trying button');" +
-                "        var playBtn = document.querySelector('.ytp-play-button');" +
-                "        if (playBtn) playBtn.click();" +
-                "      });" +
-                "    }, 500);" +
-                "  }" +
-                "  " +
-                "  // Clean up" +
-                "  if (video) {" +
-                "    video.style.zIndex = '';" +
-                "    video.style.backgroundColor = '';" +
-                "  }" +
-                "  window.wasPlayingBeforePIP = undefined;" +
-                "  " +
-                "  console.log('✅ UI restored');" +
-                "})();",
-                null
-            );
-            
-            // Refresh WebView
-            handler.postDelayed(() -> {
-                web.requestLayout();
-                web.invalidate();
-                Log.d("PIP", "🔄 WebView refreshed");
-            }, 300);
-        }
-    }
-
-    @Override
-    protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
-        
-        Log.d("PIP", "🏠 onUserLeaveHint() called");
-        Log.d("PIP", "   Current isPip: " + isPip);
-        Log.d("PIP", "   isPipRequested: " + isPipRequested);
-        
-        // Prevent multiple PIP requests
-        if (isPip || isPipRequested) {
-            Log.d("PIP", "⏸️ Already in PIP or requested, ignoring");
-            return;
-        }
-        
-        String currentUrl = web.getUrl();
-        boolean isVideoPage = currentUrl != null && 
-            (currentUrl.contains("watch") || currentUrl.contains("shorts"));
-        
-        if (android.os.Build.VERSION.SDK_INT >= 26 && 
-            isVideoPage && 
-            isPlaying && 
-            !isPip) {
-            
-            Log.d("PIP", "🚀 Conditions met, entering PIP...");
-            isPipRequested = true;
-            
-            try {
-                // Store play state
+            // UI hide කරන්න
+            runOnUiThread(() -> {
                 web.evaluateJavascript(
                     "(function() {" +
+                    "  console.log('🎬 PIP UI setup...');" +
+                    "  " +
                     "  var video = document.querySelector('video');" +
                     "  if (video) {" +
                     "    window.wasPlayingBeforePIP = !video.paused;" +
-                    "    console.log('🎬 Stored play state:', window.wasPlayingBeforePIP);" +
+                    "    if (window.wasPlayingBeforePIP && video.paused) {" +
+                    "      video.play().catch(e => console.log('PIP play:', e));" +
+                    "    }" +
                     "  }" +
+                    "  " +
+                    "  // UI elements hide කරන්න" +
+                    "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer', " +
+                    "   '.ytp-chrome-top', '.ytp-chrome-bottom'].forEach(sel => {" +
+                    "    var el = document.querySelector(sel);" +
+                    "    if (el) el.style.display = 'none';" +
+                    "  });" +
+                    "  " +
+                    "  console.log('✅ PIP ready');" +
+                    "})();",
+                    null
+                );
+            });
+            
+        } else {
+            // ✅ Exiting PIP
+            Log.d("PIP", "🏠 EXITING PIP");
+            
+            // WakeLock release කරන්න (safely)
+            try {
+                if (wakeLock != null && wakeLock.isHeld()) {
+                    wakeLock.release();
+                    Log.d("WakeLock", "❌ Released");
+                }
+            } catch (Exception e) {
+                Log.e("WakeLock", "❌ Release error: " + e.getMessage());
+            }
+            
+            // UI restore කරන්න
+            runOnUiThread(() -> {
+                web.evaluateJavascript(
+                    "(function() {" +
+                    "  console.log('🔄 Restoring UI...');" +
+                    "  " +
+                    "  // UI elements show කරන්න" +
+                    "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer', " +
+                    "   '.ytp-chrome-top', '.ytp-chrome-bottom'].forEach(sel => {" +
+                    "    var el = document.querySelector(sel);" +
+                    "    if (el) el.style.display = '';" +
+                    "  });" +
+                    "  " +
+                    "  // Video state restore කරන්න" +
+                    "  var video = document.querySelector('video');" +
+                    "  if (video && window.wasPlayingBeforePIP && video.paused) {" +
+                    "    setTimeout(() => {" +
+                    "      video.play().catch(e => {" +
+                    "        console.log('Resume failed, clicking button');" +
+                    "        var btn = document.querySelector('.ytp-play-button');" +
+                    "        if (btn) btn.click();" +
+                    "      });" +
+                    "    }, 500);" +
+                    "  }" +
+                    "  " +
+                    "  window.wasPlayingBeforePIP = undefined;" +
+                    "  console.log('✅ UI restored');" +
                     "})();",
                     null
                 );
                 
-                // Hide navigation
-                web.evaluateJavascript(
-                    "var nav = document.querySelector('ytm-pivot-bar-renderer');" +
-                    "if (nav) nav.style.display = 'none';",
-                    null
-                );
-                
-                // Create PIP params
-                PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
-                
-                if (portrait) {
-                    builder.setAspectRatio(new Rational(9, 16));
-                    Log.d("PIP", "📱 Portrait 9:16");
-                } else {
-                    builder.setAspectRatio(new Rational(16, 9));
-                    Log.d("PIP", "📺 Landscape 16:9");
-                }
-                
-                // Enable auto-enter for better compatibility
-                builder.setAutoEnterEnabled(true);
-                
-                PictureInPictureParams params = builder.build();
-                
-                // Enter PIP with delay
+                // WebView refresh කරන්න
                 handler.postDelayed(() -> {
-                    try {
-                        if (!isFinishing() && !isDestroyed()) {
-                            enterPictureInPictureMode(params);
-                            Log.d("PIP", "✅ PIP entered successfully");
-                        }
-                    } catch (IllegalStateException e) {
-                        Log.e("PIP", "❌ IllegalState: " + e.getMessage());
-                        isPipRequested = false;
-                        showPipErrorToast("Cannot enter PIP in current state");
-                    } catch (Exception e) {
-                        Log.e("PIP", "❌ General error: " + e.getMessage());
-                        isPipRequested = false;
-                        showPipErrorToast("PIP failed: " + e.getMessage());
-                    }
-                }, 200);
-                
-            } catch (Exception e) {
-                Log.e("PIP", "❌ Error in onUserLeaveHint: " + e.getMessage());
-                isPipRequested = false;
-                showPipErrorToast("PIP error: " + e.getMessage());
+                    web.requestLayout();
+                    web.invalidate();
+                }, 300);
+            });
+        }
+    }
+
+    // ✅ UPDATED USER LEAVE HINT METHOD
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        
+        Log.d("PIP", "🏠 User leaving app");
+        
+        // ✅ Check conditions දැන්ම
+        if (isPip || isPipRequested) {
+            Log.d("PIP", "⏸️ Already in PIP or requested");
+            return;
+        }
+        
+        // ✅ Check Android version
+        if (android.os.Build.VERSION.SDK_INT < 26) {
+            Log.d("PIP", "❌ Android 8.0+ required");
+            return;
+        }
+        
+        // ✅ Check if video is playing
+        String currentUrl = web.getUrl();
+        boolean isVideoPage = currentUrl != null && 
+            (currentUrl.contains("watch") || currentUrl.contains("shorts"));
+        
+        if (!isVideoPage || !isPlaying) {
+            Log.d("PIP", "⏸️ Not a video page or not playing");
+            return;
+        }
+        
+        // ✅ Try to enter PIP
+        Log.d("PIP", "🚀 Entering PIP...");
+        isPipRequested = true;
+        
+        try {
+            // Play state save කරන්න
+            web.evaluateJavascript(
+                "(function() {" +
+                "  var video = document.querySelector('video');" +
+                "  if (video) window.wasPlayingBeforePIP = !video.paused;" +
+                "})();",
+                null
+            );
+            
+            // Navigation hide කරන්න
+            web.evaluateJavascript(
+                "var nav = document.querySelector('ytm-pivot-bar-renderer');" +
+                "if (nav) nav.style.display = 'none';",
+                null
+            );
+            
+            // PIP params create කරන්න
+            PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
+            
+            if (portrait) {
+                builder.setAspectRatio(new Rational(9, 16));
+            } else {
+                builder.setAspectRatio(new Rational(16, 9));
             }
-        } else {
-            Log.d("PIP", "⏸️ Conditions not met for PIP");
-            Log.d("PIP", "   Android 8.0+: " + (android.os.Build.VERSION.SDK_INT >= 26));
-            Log.d("PIP", "   Video page: " + isVideoPage);
-            Log.d("PIP", "   Is playing: " + isPlaying);
-            Log.d("PIP", "   Not in PIP: " + !isPip);
+            
+            builder.setAutoEnterEnabled(true);
+            PictureInPictureParams params = builder.build();
+            
+            // Enter PIP with delay
+            handler.postDelayed(() -> {
+                try {
+                    if (!isFinishing() && !isDestroyed()) {
+                        boolean success = enterPictureInPictureMode(params);
+                        if (success) {
+                            Log.d("PIP", "✅ PIP entered");
+                        } else {
+                            Log.e("PIP", "❌ PIP failed");
+                            isPipRequested = false;
+                        }
+                    }
+                } catch (IllegalStateException e) {
+                    Log.e("PIP", "❌ IllegalState: " + e.getMessage());
+                    isPipRequested = false;
+                    showPipErrorToast("PIP not available now");
+                } catch (Exception e) {
+                    Log.e("PIP", "❌ Error: " + e.getMessage());
+                    isPipRequested = false;
+                    showPipErrorToast("PIP failed");
+                }
+            }, 200);
+            
+        } catch (Exception e) {
+            Log.e("PIP", "❌ Setup error: " + e.getMessage());
+            isPipRequested = false;
         }
     }
     
@@ -812,7 +787,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
         }
     }
-
+    
     public class WebAppInterface {
         Context mContext;
         WebAppInterface(Context c) { mContext = c; }
@@ -858,6 +833,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void bgStart(String iconn, String titlen, String subtitlen, long dura) { 
             icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; 
             isPlaying=true; mediaSession=true; 
+            
+            // ✅ WakeLock acquire කරන්න
+            runOnUiThread(() -> {
+                acquireWakeLock();
+            });
+            
             Intent intent = new Intent(getApplicationContext(), ForegroundService.class); 
             intent.putExtra("icon", icon)
                 .putExtra("title", title)
@@ -881,11 +862,23 @@ public class MainActivity extends Activity {
         
         @JavascriptInterface public void bgStop() { 
             isPlaying=false; mediaSession=false; 
+            
+            // ✅ WakeLock release කරන්න
+            runOnUiThread(() -> {
+                releaseWakeLock();
+            });
+            
             stopService(new Intent(getApplicationContext(), ForegroundService.class)); 
         }
         
         @JavascriptInterface public void bgPause(long ct) { 
             isPlaying=false; 
+            
+            // ✅ WakeLock release කරන්න
+            runOnUiThread(() -> {
+                releaseWakeLock();
+            });
+            
             sendBroadcast(new Intent("UPDATE_NOTIFICATION")
                 .putExtra("icon", icon)
                 .putExtra("title", title)
@@ -897,6 +890,12 @@ public class MainActivity extends Activity {
         
         @JavascriptInterface public void bgPlay(long ct) { 
             isPlaying=true; 
+            
+            // ✅ WakeLock acquire කරන්න
+            runOnUiThread(() -> {
+                acquireWakeLock();
+            });
+            
             sendBroadcast(new Intent("UPDATE_NOTIFICATION")
                 .putExtra("icon", icon)
                 .putExtra("title", title)
@@ -961,64 +960,82 @@ public class MainActivity extends Activity {
             }); 
         }
         
+        // ✅ UPDATED PIPVID METHOD
         @JavascriptInterface 
-        public void pipvid(String x) { 
-            if (Build.VERSION.SDK_INT >= 26) { 
-                try { 
-                    if (isPip || isPipRequested) {
-                        Log.d("PIP", "⏸️ Already in PIP or requested, ignoring");
-                        return;
-                    }
+        public void pipvid(String orientation) { 
+            if (Build.VERSION.SDK_INT < 26) { 
+                runOnUiThread(() -> 
+                    Toast.makeText(getApplicationContext(), 
+                        getString(R.string.no_pip), Toast.LENGTH_SHORT).show()
+                );
+                return;
+            }
+            
+            // ✅ Check if already in PIP
+            if (isPip || isPipRequested) {
+                Log.d("PIP", "⏸️ Already in PIP or requested");
+                return;
+            }
+            
+            runOnUiThread(() -> {
+                isPipRequested = true;
+                
+                try {
+                    // Play state save කරන්න
+                    web.evaluateJavascript(
+                        "(function() {" +
+                        "  var video = document.querySelector('video');" +
+                        "  if (video) window.wasPlayingBeforePIP = !video.paused;" +
+                        "})();",
+                        null
+                    );
                     
-                    runOnUiThread(() -> {
-                        isPipRequested = true;
-                        
-                        // Store play state
-                        web.evaluateJavascript(
-                            "(function() {" +
-                            "  var video = document.querySelector('video');" +
-                            "  if (video) window.wasPlayingBeforePIP = !video.paused;" +
-                            "})();",
-                            null
-                        );
-                        
-                        // Hide navigation
-                        web.evaluateJavascript(
-                            "var nav = document.querySelector('ytm-pivot-bar-renderer');" +
-                            "if (nav) nav.style.display = 'none';",
-                            null
-                        );
-                        
-                        handler.postDelayed(() -> {
-                            try {
-                                PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
-                                
-                                if (x.equals("portrait")) {
-                                    builder.setAspectRatio(new Rational(9, 16));
-                                } else {
-                                    builder.setAspectRatio(new Rational(16, 9));
-                                }
-                                
-                                builder.setAutoEnterEnabled(true);
-                                
-                                enterPictureInPictureMode(builder.build());
-                                Log.d("PIP", "✅ Manual PIP successful");
-                                
-                            } catch (Exception e) {
-                                Log.e("PIP", "❌ Manual PIP failed: " + e.getMessage());
-                                isPipRequested = false;
-                                showPipErrorToast("PIP failed: " + e.getMessage());
+                    // Navigation hide කරන්න
+                    web.evaluateJavascript(
+                        "var nav = document.querySelector('ytm-pivot-bar-renderer');" +
+                        "if (nav) nav.style.display = 'none';",
+                        null
+                    );
+                    
+                    // PIP params with orientation
+                    handler.postDelayed(() -> {
+                        try {
+                            PictureInPictureParams.Builder builder = 
+                                new PictureInPictureParams.Builder();
+                            
+                            if (orientation.equals("portrait")) {
+                                builder.setAspectRatio(new Rational(9, 16));
+                                Log.d("PIP", "📱 Portrait 9:16");
+                            } else {
+                                builder.setAspectRatio(new Rational(16, 9));
+                                Log.d("PIP", "📺 Landscape 16:9");
                             }
-                        }, 150);
-                    });
+                            
+                            builder.setAutoEnterEnabled(true);
+                            
+                            boolean success = enterPictureInPictureMode(builder.build());
+                            
+                            if (success) {
+                                Log.d("PIP", "✅ Manual PIP successful");
+                            } else {
+                                Log.e("PIP", "❌ Manual PIP failed");
+                                isPipRequested = false;
+                                showPipErrorToast("Cannot enter PIP now");
+                            }
+                            
+                        } catch (Exception e) {
+                            Log.e("PIP", "❌ Error: " + e.getMessage());
+                            isPipRequested = false;
+                            showPipErrorToast("PIP failed: " + e.getMessage());
+                        }
+                    }, 150);
                     
                 } catch (Exception e) {
-                    Log.e("PIP", "Error in pipvid: " + e.getMessage());
+                    Log.e("PIP", "❌ Setup error: " + e.getMessage());
                     isPipRequested = false;
-                } 
-            } else { 
-                Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); 
-            } 
+                    showPipErrorToast("PIP error");
+                }
+            });
         }
     }
     
@@ -1056,21 +1073,34 @@ public class MainActivity extends Activity {
         }
     }
     
+    // ✅ UPDATED LIFECYCLE METHODS
     @Override
     protected void onPause() {
         super.onPause();
         CookieManager.getInstance().flush();
+        
+        // ✅ App background යනකොට playing නැත්නම් release කරන්න
+        if (!isPlaying) {
+            releaseWakeLock();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        
+        // ✅ App foreground එනකොට playing නම් acquire කරන්න
+        if (isPlaying) {
+            acquireWakeLock();
+        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         
-        // Release WakeLock
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
-            Log.d("WakeLock", "❌ WakeLock released on destroy");
-        }
+        // ✅ App close වෙනකොට release කරන්න
+        releaseWakeLock();
         
         Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
         stopService(intent);
@@ -1085,6 +1115,29 @@ public class MainActivity extends Activity {
         
         if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
             getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
+        }
+    }
+    
+    // ✅ NEW WAKELOCK HELPER METHODS
+    private void acquireWakeLock() {
+        if (wakeLock != null && !wakeLock.isHeld()) {
+            try {
+                wakeLock.acquire(30 * 60 * 1000L); // 30 minutes
+                Log.d("WakeLock", "✅ WakeLock acquired");
+            } catch (Exception e) {
+                Log.e("WakeLock", "❌ Failed to acquire: " + e.getMessage());
+            }
+        }
+    }
+
+    private void releaseWakeLock() {
+        if (wakeLock != null && wakeLock.isHeld()) {
+            try {
+                wakeLock.release();
+                Log.d("WakeLock", "❌ WakeLock released");
+            } catch (Exception e) {
+                Log.e("WakeLock", "❌ Failed to release: " + e.getMessage());
+            }
         }
     }
 
