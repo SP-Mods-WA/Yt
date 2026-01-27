@@ -455,11 +455,23 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
     isPip = isInPictureInPictureMode;
     
     if (isInPictureInPictureMode) {
-        // ✅ Entering PIP
+        // ✅ Entering PIP - Acquire WakeLock
         web.evaluateJavascript("PIPlayer();", null);
+        
+        if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
+            wakeLock.acquire(10 * 60 * 1000L);
+            Log.d("WakeLock", "✅ Acquired on PIP enter");
+        }
+        
         Log.d("PIP", "✅ Entered PIP mode");
     } else {
-        // ✅ Exiting PIP - CRITICAL FIX
+        // ✅ Exiting PIP - Release WakeLock
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+            Log.d("WakeLock", "❌ Released on PIP exit");
+        }
+        
+        // ✅ CRITICAL FIX - UI Reset කරන්න
         web.evaluateJavascript(
             "(function() {" +
             "  console.log('🔄 Exiting PIP...');" +
@@ -472,23 +484,42 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             "  var player = document.querySelector('.html5-video-player');" +
             "  " +
             "  if (video && player) {" +
-            "    // Reset video state" +
+            "    // ✅ Reset video container dimensions" +
+            "    video.style.position = '';" +
+            "    video.style.width = '';" +
+            "    video.style.height = '';" +
+            "    video.style.top = '';" +
+            "    video.style.left = '';" +
+            "    video.style.transform = '';" +
+            "    " +
+            "    // ✅ Reset video state" +
             "    video.style.pointerEvents = 'auto';" +
             "    video.removeAttribute('disabled');" +
             "    " +
-            "    // Reset player state" +
+            "    // ✅ Reset player container" +
+            "    player.style.position = '';" +
+            "    player.style.width = '';" +
+            "    player.style.height = '';" +
+            "    player.style.transform = '';" +
             "    player.style.pointerEvents = 'auto';" +
+            "    " +
+            "    // ✅ Remove PIP classes" +
             "    player.classList.remove('ytp-pip-mode');" +
             "    player.classList.remove('paused-mode');" +
+            "    player.classList.remove('ytp-pip');" +
             "    " +
-            "    // Force play if paused" +
+            "    // ✅ Force layout recalculation" +
+            "    player.style.display = 'none';" +
+            "    player.offsetHeight;" + // Trigger reflow
+            "    player.style.display = '';" +
+            "    " +
+            "    // ✅ Force play if paused" +
             "    setTimeout(function() {" +
             "      if (video.paused) {" +
             "        video.play().then(function() {" +
             "          console.log('✅ Video resumed after PIP');" +
             "        }).catch(function(e) {" +
             "          console.error('❌ Play failed:', e);" +
-            "          // Trigger click event as fallback" +
             "          var playBtn = document.querySelector('.ytp-play-button');" +
             "          if (playBtn) playBtn.click();" +
             "        });" +
@@ -498,6 +529,12 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             "})();",
             null
         );
+        
+        // ✅ WebView එකත් reset කරන්න
+        web.post(() -> {
+            web.requestLayout();
+            web.invalidate();
+        });
         
         Log.d("PIP", "✅ Exited PIP mode");
     }
