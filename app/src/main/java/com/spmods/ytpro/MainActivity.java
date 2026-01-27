@@ -27,7 +27,6 @@ import android.window.OnBackInvokedDispatcher;
 import java.util.Map;
 import java.util.HashMap;
 import android.content.res.AssetManager;
-import android.util.Base64;
 
 public class MainActivity extends Activity {
 
@@ -55,7 +54,7 @@ public class MainActivity extends Activity {
   
   private boolean scriptsInjected = false;
   
-  // ✅ NEW: Script management
+  // ✅ Script management
   private static final String[] YTPRO_SCRIPTS = {
       "scripts/script.js",
       "scripts/bgplay.js", 
@@ -77,7 +76,7 @@ public class MainActivity extends Activity {
     
     requestNotificationPermission();
     
-    // ✅ Load scripts first
+    // ✅ Preload scripts immediately
     preloadScriptsFromAssets();
     
     if (!isNetworkAvailable()) {
@@ -93,41 +92,33 @@ public class MainActivity extends Activity {
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
   
-  // ✅ NEW: Preload scripts from assets
+  // ✅ OPTIMIZED: Synchronous script loading for instant availability
   private void preloadScriptsFromAssets() {
-    new Thread(() -> {
-        try {
-            AssetManager assetManager = getAssets();
+    try {
+        AssetManager assetManager = getAssets();
+        
+        for (String scriptPath : YTPRO_SCRIPTS) {
+            InputStream is = assetManager.open(scriptPath);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            String line;
             
-            for (String scriptPath : YTPRO_SCRIPTS) {
-                String scriptContent = readAssetFile(assetManager, scriptPath);
-                cachedScripts.put(scriptPath, scriptContent);
-                Log.d("ScriptLoader", "✅ Loaded: " + scriptPath);
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\n");
             }
             
-            scriptsLoaded = true;
-            Log.d("ScriptLoader", "✅ All scripts preloaded successfully");
-            
-        } catch (Exception e) {
-            Log.e("ScriptLoader", "❌ Failed to preload scripts: " + e.getMessage());
-            scriptsLoaded = false;
+            cachedScripts.put(scriptPath, sb.toString());
+            is.close();
+            Log.d("ScriptLoader", "✅ Loaded: " + scriptPath);
         }
-    }).start();
-  }
-
-  // ✅ NEW: Read asset file helper
-  private String readAssetFile(AssetManager assetManager, String fileName) throws Exception {
-    InputStream is = assetManager.open(fileName);
-    BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-    StringBuilder sb = new StringBuilder();
-    String line;
-    
-    while ((line = reader.readLine()) != null) {
-        sb.append(line).append("\n");
+        
+        scriptsLoaded = true;
+        Log.d("ScriptLoader", "✅ All scripts preloaded successfully");
+        
+    } catch (Exception e) {
+        Log.e("ScriptLoader", "❌ Failed to preload scripts: " + e.getMessage());
+        scriptsLoaded = false;
     }
-    
-    is.close();
-    return sb.toString();
   }
 
   public void load(boolean dl) {
@@ -135,47 +126,61 @@ public class MainActivity extends Activity {
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
     WebSettings settings = web.getSettings();
+    
+    // ✅ CRITICAL: Enable JavaScript first
     settings.setJavaScriptEnabled(true);
+    
+    // ✅ PERFORMANCE: Aggressive caching
+    settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+    settings.setAppCacheEnabled(true);
+    settings.setAppCachePath(getCacheDir().getAbsolutePath());
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
     
-    // ✅ FIXED: Cache settings
-    settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-    
-    // ✅ Hardware acceleration
+    // ✅ SPEED: Hardware acceleration
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
+    web.setWebContentsDebuggingEnabled(false); // Disable debugging overhead
     
-    // ✅ Video playback optimization
+    // ✅ VIDEO: Critical playback settings
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setLoadsImagesAutomatically(true);
     settings.setBlockNetworkImage(false);
     settings.setBlockNetworkLoads(false);
     
-    // ✅ Viewport & Layout
+    // ✅ RENDERING: Fast rendering
+    settings.setRenderPriority(WebSettings.RenderPriority.HIGH);
     settings.setUseWideViewPort(true);
     settings.setLoadWithOverviewMode(true);
     settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
     settings.setSupportZoom(false);
+    settings.setBuiltInZoomControls(false);
+    settings.setDisplayZoomControls(false);
     
-    // ✅ File & Content Access
+    // ✅ ACCESS: Required permissions
     settings.setAllowFileAccess(true);
     settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
     
-    // ✅ Mixed content
+    // ✅ SECURITY: Mixed content for video
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
     }
     
-    // ✅ Smooth scrolling
+    // ✅ UI: Smooth scrolling
     web.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+    web.setOverScrollMode(View.OVER_SCROLL_NEVER);
     
-    // ✅ Database path
+    // ✅ DATABASE: Cache path
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
         settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
     }
+
+    // ✅ USER AGENT: Use desktop for better video quality options
+    settings.setUserAgentString(
+        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    );
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -199,10 +204,10 @@ public class MainActivity extends Activity {
     }
     
     lastUrl = url;
-    web.loadUrl(url);
     web.addJavascriptInterface(new WebAppInterface(this), "Android");
     web.setWebChromeClient(new CustomWebClient());
 
+    // ✅ COOKIES: Enable for login
     CookieManager cookieManager = CookieManager.getInstance();
     cookieManager.setAcceptCookie(true);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -227,37 +232,26 @@ public class MainActivity extends Activity {
         return false;
       }
       
-      // ✅ REMOVED: shouldInterceptRequest - no longer needed with local scripts
-      
       @Override
       public void onPageStarted(WebView view, String url, Bitmap favicon) {
         super.onPageStarted(view, url, favicon);
         scriptsInjected = false;
         
-        // ✅ Inject Trusted Types policy early
-        if (url.contains("youtube.com")) {
+        // ✅ CRITICAL: Inject scripts BEFORE page loads
+        if (url.contains("youtube.com") && scriptsLoaded) {
             injectTrustedTypesPolicy();
         }
       }
 
       @Override
       public void onPageFinished(WebView view, String url) {
-        // ✅ CRITICAL FIX: Inject local scripts immediately
+        // ✅ FAST: Inject scripts immediately
         if (!scriptsInjected && scriptsLoaded) {
             injectLocalYTProScripts();
             scriptsInjected = true;
-        } else if (!scriptsLoaded) {
-            Log.w("WebView", "⚠️ Scripts not loaded yet, retrying...");
-            // Retry after 500ms
-            web.postDelayed(() -> {
-                if (scriptsLoaded && !scriptsInjected) {
-                    injectLocalYTProScripts();
-                    scriptsInjected = true;
-                }
-            }, 500);
         }
         
-        // ✅ Hide YouTube bottom nav
+        // ✅ UI: Hide YouTube bottom nav
         web.evaluateJavascript(
             "(function() {" +
             "  var style = document.createElement('style');" +
@@ -268,7 +262,7 @@ public class MainActivity extends Activity {
             null
         );
         
-        // ✅ IMPROVED: Block shorts auto-redirect (both methods)
+        // ✅ BLOCK: Shorts auto-redirect
         web.evaluateJavascript(
             "(function() {" +
             "  var originalPushState = history.pushState;" +
@@ -343,9 +337,12 @@ public class MainActivity extends Activity {
       };
       dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
     }
+    
+    // ✅ LOAD URL LAST - after all setup
+    web.loadUrl(url);
   }
   
-  // ✅ NEW: Inject Trusted Types policy
+  // ✅ OPTIMIZED: Trusted Types policy
   private void injectTrustedTypesPolicy() {
     web.evaluateJavascript(
         "(function() {" +
@@ -368,7 +365,7 @@ public class MainActivity extends Activity {
     );
   }
 
-  // ✅ NEW: Inject local scripts from assets
+  // ✅ FASTEST: Plain text injection - NO encoding overhead
   private void injectLocalYTProScripts() {
     if (!scriptsLoaded) {
         Log.e("ScriptInjection", "❌ Scripts not loaded yet!");
@@ -377,43 +374,24 @@ public class MainActivity extends Activity {
 
     Log.d("ScriptInjection", "📝 Injecting YTPRO scripts from assets");
 
-    // ✅ Inject in correct order (dependencies matter!)
+    // ✅ CRITICAL: Direct injection - FASTEST method
     for (String scriptPath : YTPRO_SCRIPTS) {
         String scriptContent = cachedScripts.get(scriptPath);
         
         if (scriptContent != null) {
-            // ✅ Use Base64 encoding to avoid escaping issues
-            String base64Script = Base64.encodeToString(
-                scriptContent.getBytes(), 
-                Base64.NO_WRAP
-            );
-            
-            web.evaluateJavascript(
-                "(function() {" +
-                "  try {" +
-                "    var script = document.createElement('script');" +
-                "    var decoded = atob('" + base64Script + "');" +
-                "    script.textContent = decoded;" +
-                "    document.head.appendChild(script);" +
-                "    console.log('✅ Injected: " + scriptPath + "');" +
-                "  } catch(e) {" +
-                "    console.error('❌ Failed to inject " + scriptPath + ":', e);" +
-                "  }" +
-                "})();",
-                null
-            );
-            
-            Log.d("ScriptInjection", "✅ Injected: " + scriptPath);
-        } else {
-            Log.e("ScriptInjection", "❌ Script not found: " + scriptPath);
+            try {
+                // ✅ PLAIN TEXT - No Base64, no escaping, pure speed
+                web.loadUrl("javascript:" + scriptContent);
+                Log.d("ScriptInjection", "✅ Injected: " + scriptPath);
+            } catch (Exception e) {
+                Log.e("ScriptInjection", "❌ Failed: " + scriptPath);
+            }
         }
     }
 
     // ✅ Mark as loaded
-    web.evaluateJavascript(
-        "window.YTPRO_LOADED = true; console.log('✅ All YTPRO scripts loaded');", 
-        null
-    );
+    web.loadUrl("javascript:window.YTPRO_LOADED=true;console.log('✅ YTPRO loaded');");
+    Log.d("ScriptInjection", "✅ All scripts injected");
   }
   
   private void setupBottomNavigation() {
@@ -532,7 +510,7 @@ public class MainActivity extends Activity {
         }
     }
   }
-
+  
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
     private WebChromeClient.CustomViewCallback mCustomViewCallback;
@@ -838,7 +816,7 @@ public class MainActivity extends Activity {
       getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
   }
-
+  
   private boolean isNetworkAvailable() {
     ConnectivityManager connectivityManager = 
         (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
