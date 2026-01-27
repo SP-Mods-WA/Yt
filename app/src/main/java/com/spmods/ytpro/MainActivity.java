@@ -24,6 +24,7 @@ import javax.net.ssl.HttpsURLConnection;
 import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
+import android.os.PowerManager;
 
 public class MainActivity extends Activity {
 
@@ -55,6 +56,12 @@ public class MainActivity extends Activity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
+    
+    PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+    wakeLock = powerManager.newWakeLock(
+        PowerManager.PARTIAL_WAKE_LOCK,
+        "YTPro::VideoPlaybackLock"
+    );
 
     SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
 
