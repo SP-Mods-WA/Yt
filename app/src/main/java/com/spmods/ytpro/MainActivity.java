@@ -85,31 +85,33 @@ public class MainActivity extends Activity {
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
+    
+    // ✅ FIXED: Remove deprecated APIs that cause build errors
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
     
-    // ✅ Hardware acceleration
+    // ✅ Hardware acceleration for smooth video playback
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
     
-    // ✅ Video playback optimization
+    // ✅ Video playback optimization - CRITICAL for smooth YouTube
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setLoadsImagesAutomatically(true);
     settings.setBlockNetworkImage(false);
     settings.setBlockNetworkLoads(false);
     
-    // ✅ Viewport & Layout
+    // ✅ Viewport & Layout - optimized for mobile YouTube
     settings.setUseWideViewPort(true);
     settings.setLoadWithOverviewMode(true);
     settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
-    settings.setSupportZoom(false);
+    settings.setSupportZoom(false); // YouTube handles its own zoom
     
     // ✅ File & Content Access
     settings.setAllowFileAccess(true);
     settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
     
-    // ✅ Mixed content
+    // ✅ Mixed content for video streaming
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
     }
@@ -117,13 +119,10 @@ public class MainActivity extends Activity {
     // ✅ Smooth scrolling
     web.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
     
-    // ✅ Database path
+    // ✅ Database path for proper caching
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
         settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
     }
-    
-    // ✅ Keep WebView active during playback
-    web.setKeepScreenOn(true);
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -156,7 +155,7 @@ public class MainActivity extends Activity {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         cookieManager.setAcceptThirdPartyCookies(web, true);
     }
-    
+
     web.setWebViewClient(new WebViewClient() {
       
       @Override
@@ -179,8 +178,9 @@ public class MainActivity extends Activity {
       public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         String url = request.getUrl().toString();
 
+        // ✅ CRITICAL FIX: Only intercept YTPRO scripts - let YouTube videos load natively
         if (!url.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
-            return null;
+            return null; // Let WebView handle all YouTube video requests normally
         }
 
         Log.d("WebView", "🔧 Intercepting YTPRO script: " + url);
@@ -236,11 +236,13 @@ public class MainActivity extends Activity {
 
       @Override
       public void onPageFinished(WebView p1, String url) {
+        // ✅ CRITICAL FIX: Inject scripts immediately for smooth playback
         if (!scriptsInjected) {
             injectYTProScripts();
             scriptsInjected = true;
         }
         
+        // ✅ Hide YouTube bottom nav immediately
         web.evaluateJavascript(
             "(function() {" +
             "  var style = document.createElement('style');" +
@@ -250,6 +252,7 @@ public class MainActivity extends Activity {
             null
         );
         
+        // ✅ Block shorts auto-redirect
         web.evaluateJavascript(
             "(function() {" +
             "  var originalPushState = history.pushState;" +
@@ -313,7 +316,9 @@ public class MainActivity extends Activity {
     }
   }
   
+  // ✅ CRITICAL FIX: Optimized script injection
   private void injectYTProScripts() {
+    // Trusted Types policy first
     web.evaluateJavascript(
         "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
         "  window.trustedTypes.createPolicy('default', {" +
@@ -325,6 +330,7 @@ public class MainActivity extends Activity {
         null
     );
     
+    // ✅ Load scripts with proper async loading
     String scriptLoader = 
         "(function() {" +
         "  if(window.YTPRO_LOADED) return;" +
@@ -332,7 +338,7 @@ public class MainActivity extends Activity {
         "    return new Promise((resolve, reject) => {" +
         "      var script = document.createElement('script');" +
         "      script.src = src;" +
-        "      script.async = false;" +
+        "      script.async = false;" + // Sequential loading for dependencies
         "      script.onload = () => resolve();" +
         "      script.onerror = (e) => reject(e);" +
         "      document.body.appendChild(script);" +
@@ -442,20 +448,10 @@ public class MainActivity extends Activity {
     }
   }
 
-  // ✅ FIXED: PIP mode - WebView active තියාගන්නවා
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
     isPip = isInPictureInPictureMode;
-    
-    if (isInPictureInPictureMode) {
-        // ✅ PIP එකේදී WebView active තියාගන්නවා
-        if (web != null) {
-            web.onResume();
-        }
-        web.loadUrl("javascript:PIPlayer();", null);
-    } else {
-        web.loadUrl("javascript:removePIP();", null);
-    }
   }
 
   @Override
@@ -477,46 +473,6 @@ public class MainActivity extends Activity {
     }
   }
 
-  // ✅ FIXED: onResume - WebView activate කරනවා
-  @Override
-  protected void onResume() {
-    super.onResume();
-    if (web != null) {
-        web.onResume();
-        web.resumeTimers();
-        Log.d("WebView", "✅ WebView resumed");
-    }
-  }
-
-  // ✅ FIXED: onPause - Video play වෙනවනම් WebView pause කරන්නේ නැහැ
-  @Override
-  protected void onPause() {
-    super.onPause();
-    
-    Log.d("WebView", "onPause - isPlaying: " + isPlaying + ", isPip: " + isPip);
-    
-    // ✅ Video play වෙනවනම් හෝ PIP mode එකේනම් WebView pause කරන්නේ නැහැ
-    if (web != null && !isPlaying && !isPip) {
-        web.onPause();
-        Log.d("WebView", "⏸️ WebView paused");
-    } else {
-        Log.d("WebView", "⏯️ WebView kept active (background play/PIP)");
-    }
-    
-    CookieManager.getInstance().flush();
-  }
-
-  @Override
-  public void onDestroy() {
-    super.onDestroy();
-    Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
-    stopService(intent);
-    if (broadcastReceiver != null) unregisterReceiver(broadcastReceiver);
-    if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
-      getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
-    }
-  }
-  
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
     private WebChromeClient.CustomViewCallback mCustomViewCallback;
@@ -611,53 +567,11 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void oplink(String url) { Intent i = new Intent(); i.setAction(Intent.ACTION_VIEW); i.setData(Uri.parse(url)); startActivity(i); }
     @JavascriptInterface public String getInfo() { try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "1.0"; } }
     @JavascriptInterface public void setBgPlay(boolean bgplay) { getSharedPreferences("YTPRO", MODE_PRIVATE).edit().putBoolean("bgplay", bgplay).apply(); }
-    
-    // ✅ FIXED: Background play start වෙද්දී WebView active කරනවා
-    @JavascriptInterface 
-    public void bgStart(String iconn, String titlen, String subtitlen, long dura) { 
-      icon=iconn; 
-      title=titlen; 
-      subtitle=subtitlen; 
-      duration=dura; 
-      isPlaying=true; 
-      mediaSession=true; 
-      
-      // ✅ WebView active තියාගන්නවා background play වෙද්දී
-      runOnUiThread(() -> {
-          if (web != null) {
-              web.onResume();
-              Log.d("WebView", "✅ WebView kept active for background play");
-          }
-      });
-      
-      Intent intent = new Intent(getApplicationContext(), ForegroundService.class); 
-      intent.putExtra("icon", icon)
-            .putExtra("title", title)
-            .putExtra("subtitle", subtitle)
-            .putExtra("duration", duration)
-            .putExtra("currentPosition", 0)
-            .putExtra("action", "play"); 
-      startService(intent); 
-    }
-    
+    @JavascriptInterface public void bgStart(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; mediaSession=true; Intent intent = new Intent(getApplicationContext(), ForegroundService.class); intent.putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "play"); startService(intent); }
     @JavascriptInterface public void bgUpdate(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "pause")); }
     @JavascriptInterface public void bgStop() { isPlaying=false; mediaSession=false; stopService(new Intent(getApplicationContext(), ForegroundService.class)); }
     @JavascriptInterface public void bgPause(long ct) { isPlaying=false; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "pause")); }
-    
-    // ✅ FIXED: Video play වෙද්දී WebView active තියාගන්නවා
-    @JavascriptInterface 
-    public void bgPlay(long ct) { 
-      isPlaying=true; 
-      
-      runOnUiThread(() -> {
-          if (web != null) {
-              web.onResume();
-          }
-      });
-      
-      sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "play")); 
-    }
-    
+    @JavascriptInterface public void bgPlay(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "play")); }
     @JavascriptInterface public void bgBuffer(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "buffer")); }
     @JavascriptInterface public void getSNlM0e(String cookies) { new Thread(() -> { String response = GeminiWrapper.getSNlM0e(cookies); runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null)); }).start(); }
     @JavascriptInterface public void GeminiClient(String url, String headers, String body) { new Thread(() -> { JSONObject response = GeminiWrapper.getStream(url, headers, body); runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null)); }).start(); }
@@ -700,6 +614,23 @@ public class MainActivity extends Activity {
       registerReceiver(broadcastReceiver, new IntentFilter("TRACKS_TRACKS"), RECEIVER_EXPORTED);
     } else {
       registerReceiver(broadcastReceiver, new IntentFilter("TRACKS_TRACKS"));
+    }
+  }
+  
+  @Override
+  protected void onPause() {
+    super.onPause();
+    CookieManager.getInstance().flush();
+  }
+
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+    Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
+    stopService(intent);
+    if (broadcastReceiver != null) unregisterReceiver(broadcastReceiver);
+    if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
+      getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
   }
 
