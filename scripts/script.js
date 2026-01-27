@@ -62,7 +62,63 @@ var sens=0.005;
 var vol=Android.getVolume();
 var brt = Android.getBrightness()/100;
 
+// යටින් තියෙන navigation bar විතරක් hide කරන්න
+function hideBottomNavigation() {
+    const style = document.createElement('style');
+    style.id = 'ytpro-hide-bottom-nav';
+    style.textContent = `
+        ytm-pivot-bar-renderer,
+        .pivot-bar-renderer,
+        ytm-app > ytm-pivot-bar-renderer,
+        ytm-app > [slot="pivot-bar"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+        }
+        
+        ytm-app,
+        ytm-browse,
+        ytm-watch,
+        ytm-shorts {
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* Video player එක sticky කරන්න - scroll කරද්දිත් top එකේ තියෙයි */
+        #player-container-id {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 100 !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* Tags section එක player එකට යටින් තියන්න */
+        ytm-chip-cloud-renderer {
+            position: relative !important;
+            top: 0 !important;
+        }
+    `;
+    
+    const existingStyle = document.getElementById('ytpro-hide-bottom-nav');
+    if (existingStyle) existingStyle.remove();
+    
+    document.head.appendChild(style);
+}
 
+// Immediately execute
+hideBottomNavigation();
+
+// Page load වෙද්දිත් apply කරන්න
+window.addEventListener('load', hideBottomNavigation);
+
+// Page changes වලදීත් apply කරන්න
+if (typeof navigation !== 'undefined') {
+    navigation.addEventListener("navigate", () => {
+        setTimeout(hideBottomNavigation, 100);
+    });
+}
+
+  // hide navigation bar
 
 
 if(localStorage.getItem("saveCInfo") == null  || localStorage.getItem("gesC") == null || localStorage.getItem("gesM") == null || localStorage.getItem("bgplay") == null){
