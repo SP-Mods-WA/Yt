@@ -52,6 +52,10 @@ public class MainActivity extends Activity {
   
   private boolean scriptsInjected = false;
 
+    private PowerManager.WakeLock wakeLock;
+  private BroadcastReceiver screenReceiver;
+
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -899,3 +903,4 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
     });
   }
 }
+
