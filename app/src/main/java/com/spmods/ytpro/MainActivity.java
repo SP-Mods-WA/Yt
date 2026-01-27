@@ -448,11 +448,60 @@ public class MainActivity extends Activity {
     }
   }
 
-  @Override
-  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
+@Override
+public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+    
     isPip = isInPictureInPictureMode;
-  }
+    
+    if (isInPictureInPictureMode) {
+        // ✅ Entering PIP
+        web.evaluateJavascript("PIPlayer();", null);
+        Log.d("PIP", "✅ Entered PIP mode");
+    } else {
+        // ✅ Exiting PIP - CRITICAL FIX
+        web.evaluateJavascript(
+            "(function() {" +
+            "  console.log('🔄 Exiting PIP...');" +
+            "  " +
+            "  // Remove PIP state" +
+            "  removePIP();" +
+            "  " +
+            "  // Get video element" +
+            "  var video = document.querySelector('video');" +
+            "  var player = document.querySelector('.html5-video-player');" +
+            "  " +
+            "  if (video && player) {" +
+            "    // Reset video state" +
+            "    video.style.pointerEvents = 'auto';" +
+            "    video.removeAttribute('disabled');" +
+            "    " +
+            "    // Reset player state" +
+            "    player.style.pointerEvents = 'auto';" +
+            "    player.classList.remove('ytp-pip-mode');" +
+            "    player.classList.remove('paused-mode');" +
+            "    " +
+            "    // Force play if paused" +
+            "    setTimeout(function() {" +
+            "      if (video.paused) {" +
+            "        video.play().then(function() {" +
+            "          console.log('✅ Video resumed after PIP');" +
+            "        }).catch(function(e) {" +
+            "          console.error('❌ Play failed:', e);" +
+            "          // Trigger click event as fallback" +
+            "          var playBtn = document.querySelector('.ytp-play-button');" +
+            "          if (playBtn) playBtn.click();" +
+            "        });" +
+            "      }" +
+            "    }, 300);" +
+            "  }" +
+            "})();",
+            null
+        );
+        
+        Log.d("PIP", "✅ Exited PIP mode");
+    }
+}
 
   @Override
   protected void onUserLeaveHint() {
