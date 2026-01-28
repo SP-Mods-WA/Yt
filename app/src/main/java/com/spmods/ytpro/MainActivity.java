@@ -26,9 +26,6 @@ import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.os.PowerManager;
 import android.os.Handler;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.BlurMaskFilter;
-import android.graphics.Paint;
 
 public class MainActivity extends Activity {
 
@@ -60,30 +57,12 @@ public class MainActivity extends Activity {
     private Handler handler = new Handler();
     private boolean isPipRequested = false;
     
-    // Premium features
-    private boolean sponsorBlockEnabled = true;
-    private boolean autoSkipIntro = true;
-    private boolean autoSkipOutro = true;
-    private boolean autoSkipAds = true;
-    private boolean returnDislikeCount = true;
-    private boolean hideComments = false;
-    private boolean theaterMode = false;
-    private boolean hdrEnabled = true;
-    
-    // Theme
-    private boolean darkMode = true;
-    private boolean amoledMode = true;
+    private long lastBackPress = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        
-        // Apply AMOLED theme
-        applyAmoledTheme();
-        
-        // Setup navigation bar with blur
-        setupBlurredNavigationBar();
         
         disablePlayProtectWarnings();
         
@@ -100,9 +79,6 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean("bgplay", true).apply();
         }
         
-        // Load premium settings
-        loadPremiumSettings();
-        
         requestNotificationPermission();
         
         if (!isNetworkAvailable()) {
@@ -116,321 +92,6 @@ public class MainActivity extends Activity {
         }
         
         MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        setupPremiumFeatures();
-    }
-
-    private void applyAmoledTheme() {
-        View rootView = findViewById(android.R.id.content);
-        rootView.setBackgroundColor(Color.BLACK);
-        
-        Window window = getWindow();
-        window.setNavigationBarColor(Color.BLACK);
-        window.setStatusBarColor(Color.BLACK);
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            View decorView = window.getDecorView();
-            decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-                View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-            );
-        }
-    }
-
-    private void setupBlurredNavigationBar() {
-        LinearLayout bottomNav = findViewById(R.id.bottomNavigation);
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ සඳහා material you blur effect
-            bottomNav.setBackground(new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{
-                    Color.parseColor("#20000000"),
-                    Color.parseColor("#40000000")
-                }
-            ));
-            
-            // Add blur effect
-            bottomNav.setElevation(20f);
-            bottomNav.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
-            bottomNav.setClipToOutline(false);
-            
-        } else {
-            // Older Android versions සඳහා semi-transparent background
-            GradientDrawable gd = new GradientDrawable();
-            gd.setColor(Color.parseColor("#E6000000")); // 90% transparent black
-            gd.setCornerRadius(30);
-            bottomNav.setBackground(gd);
-            
-            // Add shadow for depth
-            bottomNav.setElevation(8f);
-        }
-        
-        // Add glass morphism effect
-        bottomNav.getBackground().setAlpha(180);
-    }
-
-    private void loadPremiumSettings() {
-        SharedPreferences prefs = getSharedPreferences("YTPro_Premium", MODE_PRIVATE);
-        sponsorBlockEnabled = prefs.getBoolean("sponsorBlock", true);
-        autoSkipIntro = prefs.getBoolean("autoSkipIntro", true);
-        autoSkipOutro = prefs.getBoolean("autoSkipOutro", true);
-        autoSkipAds = prefs.getBoolean("autoSkipAds", true);
-        returnDislikeCount = prefs.getBoolean("returnDislike", true);
-        hideComments = prefs.getBoolean("hideComments", false);
-        theaterMode = prefs.getBoolean("theaterMode", false);
-        hdrEnabled = prefs.getBoolean("hdrEnabled", true);
-        darkMode = prefs.getBoolean("darkMode", true);
-        amoledMode = prefs.getBoolean("amoledMode", true);
-    }
-
-    private void savePremiumSettings() {
-        SharedPreferences.Editor editor = getSharedPreferences("YTPro_Premium", MODE_PRIVATE).edit();
-        editor.putBoolean("sponsorBlock", sponsorBlockEnabled);
-        editor.putBoolean("autoSkipIntro", autoSkipIntro);
-        editor.putBoolean("autoSkipOutro", autoSkipOutro);
-        editor.putBoolean("autoSkipAds", autoSkipAds);
-        editor.putBoolean("returnDislike", returnDislikeCount);
-        editor.putBoolean("hideComments", hideComments);
-        editor.putBoolean("theaterMode", theaterMode);
-        editor.putBoolean("hdrEnabled", hdrEnabled);
-        editor.putBoolean("darkMode", darkMode);
-        editor.putBoolean("amoledMode", amoledMode);
-        editor.apply();
-    }
-
-    private void setupPremiumFeatures() {
-        // Setup premium shortcuts
-        ImageView premiumIcon = findViewById(R.id.premiumIcon);
-        if (premiumIcon != null) {
-            premiumIcon.setOnClickListener(v -> showPremiumMenu());
-        }
-        
-        // Add floating action button for quick settings
-        setupFloatingActionButton();
-    }
-
-    private void showPremiumMenu() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("🎬 YouTube Pro Settings");
-        
-        View view = getLayoutInflater().inflate(R.layout.premium_menu, null);
-        
-        SwitchCompat switchSponsorBlock = view.findViewById(R.id.switchSponsorBlock);
-        SwitchCompat switchSkipIntro = view.findViewById(R.id.switchSkipIntro);
-        SwitchCompat switchSkipOutro = view.findViewById(R.id.switchSkipOutro);
-        SwitchCompat switchSkipAds = view.findViewById(R.id.switchSkipAds);
-        SwitchCompat switchDislike = view.findViewById(R.id.switchDislike);
-        SwitchCompat switchHideComments = view.findViewById(R.id.switchHideComments);
-        SwitchCompat switchTheaterMode = view.findViewById(R.id.switchTheaterMode);
-        SwitchCompat switchHDR = view.findViewById(R.id.switchHDR);
-        SwitchCompat switchDarkMode = view.findViewById(R.id.switchDarkMode);
-        SwitchCompat switchAmoled = view.findViewById(R.id.switchAmoled);
-        
-        // Set current values
-        switchSponsorBlock.setChecked(sponsorBlockEnabled);
-        switchSkipIntro.setChecked(autoSkipIntro);
-        switchSkipOutro.setChecked(autoSkipOutro);
-        switchSkipAds.setChecked(autoSkipAds);
-        switchDislike.setChecked(returnDislikeCount);
-        switchHideComments.setChecked(hideComments);
-        switchTheaterMode.setChecked(theaterMode);
-        switchHDR.setChecked(hdrEnabled);
-        switchDarkMode.setChecked(darkMode);
-        switchAmoled.setChecked(amoledMode);
-        
-        builder.setView(view);
-        
-        builder.setPositiveButton("💾 Save", (dialog, which) -> {
-            sponsorBlockEnabled = switchSponsorBlock.isChecked();
-            autoSkipIntro = switchSkipIntro.isChecked();
-            autoSkipOutro = switchSkipOutro.isChecked();
-            autoSkipAds = switchSkipAds.isChecked();
-            returnDislikeCount = switchDislike.isChecked();
-            hideComments = switchHideComments.isChecked();
-            theaterMode = switchTheaterMode.isChecked();
-            hdrEnabled = switchHDR.isChecked();
-            darkMode = switchDarkMode.isChecked();
-            amoledMode = switchAmoled.isChecked();
-            
-            savePremiumSettings();
-            applyPremiumFeaturesToWeb();
-            
-            Toast.makeText(MainActivity.this, "✅ Premium settings saved!", Toast.LENGTH_SHORT).show();
-        });
-        
-        builder.setNegativeButton("Cancel", null);
-        
-        builder.show();
-    }
-
-    private void applyPremiumFeaturesToWeb() {
-        if (web != null) {
-            String js = "(function() {" +
-                "window.YTProSettings = {" +
-                "  sponsorBlock: " + sponsorBlockEnabled + "," +
-                "  autoSkipIntro: " + autoSkipIntro + "," +
-                "  autoSkipOutro: " + autoSkipOutro + "," +
-                "  autoSkipAds: " + autoSkipAds + "," +
-                "  returnDislike: " + returnDislikeCount + "," +
-                "  hideComments: " + hideComments + "," +
-                "  theaterMode: " + theaterMode + "," +
-                "  hdrEnabled: " + hdrEnabled + "," +
-                "  darkMode: " + darkMode + "," +
-                "  amoledMode: " + amoledMode +
-                "};" +
-                
-                "// Apply sponsor block" +
-                "if (window.sponsorBlock) window.sponsorBlock(" + sponsorBlockEnabled + ");" +
-                
-                "// Apply dislike count" +
-                "if (window.returnDislike) window.returnDislike(" + returnDislikeCount + ");" +
-                
-                "// Apply hide comments" +
-                "if (" + hideComments + ") {" +
-                "  var comments = document.getElementById('comments');" +
-                "  if (comments) comments.style.display = 'none';" +
-                "}" +
-                
-                "// Apply theater mode" +
-                "if (window.toggleTheaterMode) window.toggleTheaterMode(" + theaterMode + ");" +
-                
-                "// Apply dark/amoled mode" +
-                "if (" + amoledMode + ") {" +
-                "  document.body.style.backgroundColor = '#000000';" +
-                "  var dark = document.querySelector('ytm-app');" +
-                "  if (dark) dark.style.backgroundColor = '#000000';" +
-                "}" +
-                "})();";
-            
-            web.evaluateJavascript(js, null);
-        }
-    }
-
-    private void setupFloatingActionButton() {
-        // Create FAB for quick actions
-        ImageButton fab = new ImageButton(this);
-        fab.setImageResource(android.R.drawable.ic_menu_preferences);
-        fab.setBackgroundResource(R.drawable.fab_background);
-        
-        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-            dpToPx(56), dpToPx(56)
-        );
-        params.addRule(RelativeLayout.ALIGN_PARENT_END);
-        params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-        params.setMargins(0, 0, dpToPx(16), dpToPx(80));
-        
-        fab.setLayoutParams(params);
-        fab.setOnClickListener(v -> {
-            showQuickActionsMenu(fab);
-        });
-        
-        fab.setOnLongClickListener(v -> {
-            Toast.makeText(this, "⚡ Quick Settings", Toast.LENGTH_SHORT).show();
-            return true;
-        });
-        
-        // Add to main layout
-        RelativeLayout mainLayout = findViewById(R.id.mainLayout);
-        if (mainLayout != null) {
-            mainLayout.addView(fab);
-        }
-    }
-
-    private void showQuickActionsMenu(View anchor) {
-        PopupMenu popup = new PopupMenu(this, anchor);
-        popup.getMenuInflater().inflate(R.menu.quick_actions, popup.getMenu());
-        
-        popup.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            
-            if (id == R.id.action_sponsor_skip) {
-                sponsorBlockEnabled = !sponsorBlockEnabled;
-                applyPremiumFeaturesToWeb();
-                Toast.makeText(this, sponsorBlockEnabled ? "✅ Sponsor Skip ON" : "❌ Sponsor Skip OFF", Toast.LENGTH_SHORT).show();
-                return true;
-            }
-            else if (id == R.id.action_pip) {
-                enterPipMode("landscape");
-                return true;
-            }
-            else if (id == R.id.action_download) {
-                web.evaluateJavascript("if(window.showDownloadMenu) showDownloadMenu();", null);
-                return true;
-            }
-            else if (id == R.id.action_speed) {
-                showPlaybackSpeedDialog();
-                return true;
-            }
-            else if (id == R.id.action_sleep) {
-                showSleepTimerDialog();
-                return true;
-            }
-            else if (id == R.id.action_stats) {
-                showVideoStats();
-                return true;
-            }
-            return false;
-        });
-        
-        popup.show();
-    }
-
-    private void showPlaybackSpeedDialog() {
-        final String[] speeds = {"0.25x", "0.5x", "0.75x", "Normal", "1.25x", "1.5x", "1.75x", "2x"};
-        
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("🎚️ Playback Speed");
-        builder.setItems(speeds, (dialog, which) -> {
-            String speed = speeds[which].replace("x", "").replace("Normal", "1");
-            web.evaluateJavascript(
-                "var video = document.querySelector('video');" +
-                "if(video) video.playbackRate = " + speed + ";",
-                null
-            );
-            Toast.makeText(this, "Speed: " + speeds[which], Toast.LENGTH_SHORT).show();
-        });
-        builder.show();
-    }
-
-    private void showSleepTimerDialog() {
-        final String[] times = {"Off", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "45 minutes", "1 hour"};
-        
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("⏰ Sleep Timer");
-        builder.setItems(times, (dialog, which) -> {
-            if (which == 0) {
-                handler.removeCallbacksAndMessages(null);
-                Toast.makeText(this, "Sleep timer off", Toast.LENGTH_SHORT).show();
-            } else {
-                int minutes = Integer.parseInt(times[which].split(" ")[0]);
-                handler.postDelayed(() -> {
-                    if (isPlaying) {
-                        web.evaluateJavascript("pauseVideo();", null);
-                        Toast.makeText(this, "⏸️ Sleep timer: Video paused", Toast.LENGTH_LONG).show();
-                    }
-                }, minutes * 60 * 1000L);
-                Toast.makeText(this, "Sleep timer: " + times[which], Toast.LENGTH_SHORT).show();
-            }
-        });
-        builder.show();
-    }
-
-    private void showVideoStats() {
-        web.evaluateJavascript(
-            "var video = document.querySelector('video');" +
-            "if(video) {" +
-            "  var stats = '🎬 Video Stats:\\n' +" +
-            "  'Resolution: ' + video.videoWidth + 'x' + video.videoHeight + '\\n' +" +
-            "  'Duration: ' + video.duration.toFixed(2) + 's\\n' +" +
-            "  'Current: ' + video.currentTime.toFixed(2) + 's\\n' +" +
-            "  'Buffered: ' + video.buffered.end(0).toFixed(2) + 's\\n' +" +
-            "  'Playback: ' + video.playbackRate + 'x\\n' +" +
-            "  'Volume: ' + (video.volume * 100).toFixed(0) + '%';" +
-            "  Android.showToast(stats);" +
-            "}",
-            null
-        );
     }
 
     private void disablePlayProtectWarnings() {
@@ -438,39 +99,10 @@ public class MainActivity extends Activity {
             Settings.Global.putInt(getContentResolver(), "verifier_verify_adb_installs", 0);
             Settings.Global.putInt(getContentResolver(), "package_verifier_enable", 0);
             Settings.Secure.putInt(getContentResolver(), "install_non_market_apps", 1);
-            disablePackageVerificationViaReflection();
-            fakeAppSignature();
             Log.d("PlayProtect", "✅ Play Protect warnings disabled");
         } catch (Exception e) {
             Log.e("PlayProtect", "❌ Failed: " + e.getMessage());
         }
-    }
-    
-    private void disablePackageVerificationViaReflection() {
-        try {
-            PackageManager pm = getPackageManager();
-            Class<?> pmClass = pm.getClass();
-            java.lang.reflect.Method setInstallerPackageName = pmClass.getDeclaredMethod(
-                "setInstallerPackageName", String.class, String.class
-            );
-            setInstallerPackageName.invoke(pm, getPackageName(), "com.android.vending");
-        } catch (Exception e) {}
-    }
-    
-    private void fakeAppSignature() {
-        try {
-            SharedPreferences prefs = getSharedPreferences("YTPro_Security", MODE_PRIVATE);
-            if (!prefs.getBoolean("signature_faked", false)) {
-                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
-                String signature = pInfo.signatures[0].toCharsString();
-                prefs.edit()
-                    .putBoolean("signature_faked", true)
-                    .putString("fake_signature", "MIIE...FAKE_SIGNATURE...")
-                    .putLong("first_install_time", System.currentTimeMillis())
-                    .putLong("last_update_time", System.currentTimeMillis())
-                    .apply();
-            }
-        } catch (Exception e) {}
     }
 
     public void load(boolean dl) {
@@ -547,23 +179,12 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String newUrl = request.getUrl().toString();
                 
-                // Block unwanted redirects
                 if (newUrl.contains("/shorts") && !userNavigated) {
                     String currentUrl = view.getUrl();
                     if (currentUrl != null && !currentUrl.contains("/shorts")) {
                         Log.d("WebView", "🛑 Blocked auto-redirect to shorts");
                         return true;
                     }
-                }
-                
-                // Block ads
-                if (autoSkipAds && (
-                    newUrl.contains("doubleclick.net") ||
-                    newUrl.contains("googleads") ||
-                    newUrl.contains("ads.youtube") ||
-                    newUrl.contains("adservice.google"))) {
-                    Log.d("AdBlock", "🚫 Blocked ad URL: " + newUrl);
-                    return true;
                 }
                 
                 userNavigated = false;
@@ -573,19 +194,6 @@ public class MainActivity extends Activity {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-
-                // Block ads at network level
-                if (autoSkipAds) {
-                    if (url.contains("googlesyndication") ||
-                        url.contains("googleads") ||
-                        url.contains("doubleclick") ||
-                        url.contains("pagead") ||
-                        url.contains("adsystem") ||
-                        url.contains("adservice")) {
-                        Log.d("AdBlock", "🚫 Blocked ad: " + url);
-                        return new WebResourceResponse("text/plain", "utf-8", null);
-                    }
-                }
 
                 if (!url.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
                     return null;
@@ -601,10 +209,6 @@ public class MainActivity extends Activity {
                     modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
                 } else if (url.contains("script.js")) {
                     modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
-                } else if (url.contains("sponsorblock.js")) {
-                    modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/sponsorblock.js";
-                } else if (url.contains("dislike.js")) {
-                    modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/dislike.js";
                 }
                 
                 if (modifiedUrl == null) {
@@ -651,61 +255,17 @@ public class MainActivity extends Activity {
                 if (!scriptsInjected) {
                     injectYTProScripts();
                     scriptsInjected = true;
-                    
-                    // Apply premium features
-                    handler.postDelayed(() -> {
-                        applyPremiumFeaturesToWeb();
-                    }, 1000);
                 }
                 
-                // Enhanced CSS for premium look
                 web.evaluateJavascript(
                     "(function() {" +
                     "  var style = document.createElement('style');" +
-                    "  style.innerHTML = '" +
-                    "    ytm-pivot-bar-renderer { display: none !important; } " +
-                    "    body { padding-bottom: 65px !important; } " +
-                    "    .video-ads { display: none !important; } " +
-                    "    ytm-promoted-sparkles-web-renderer { display: none !important; } " +
-                    "    ytm-companion-ad-renderer { display: none !important; } " +
-                    "    .ad-container, .ad-div, .ad-slot { display: none !important; } " +
-                    "    #player-ads { display: none !important; } " +
-                    "    ytm-mealbar-promo-renderer { display: none !important; } " +
-                    "    .ytp-ad-image-overlay, .ytp-ad-text-overlay { display: none !important; } " +
-                    "    ytm-paid-content-overlay-renderer { display: none !important; } " +
-                    "  ';" +
+                    "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
                     "  document.head.appendChild(style);" +
                     "})();",
                     null
                 );
                 
-                // Block YouTube premium prompts
-                web.evaluateJavascript(
-                    "(function() {" +
-                    "  var observer = new MutationObserver(function(mutations) {" +
-                    "    mutations.forEach(function(mutation) {" +
-                    "      if (mutation.addedNodes.length) {" +
-                    "        for (var i = 0; i < mutation.addedNodes.length; i++) {" +
-                    "          var node = mutation.addedNodes[i];" +
-                    "          if (node.nodeType === 1) {" +
-                    "            var text = node.textContent || node.innerText;" +
-                    "            if (text && (text.includes('Try YouTube Premium') || " +
-                    "                        text.includes('No ads') || " +
-                    "                        text.includes('Ad •') || " +
-                    "                        text.includes('skip in'))) {" +
-                    "              node.remove();" +
-                    "            }" +
-                    "          }" +
-                    "        }" +
-                    "      }" +
-                    "    });" +
-                    "  });" +
-                    "  observer.observe(document.body, { childList: true, subtree: true });" +
-                    "})();",
-                    null
-                );
-
-                // Enhanced history pushState blocking
                 web.evaluateJavascript(
                     "(function() {" +
                     "  var originalPushState = history.pushState;" +
@@ -797,15 +357,9 @@ public class MainActivity extends Activity {
             "  Promise.all([" +
             "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js')," +
             "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js')," +
-            "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js')," +
-            "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/sponsorblock.js')," +
-            "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/dislike.js')" +
+            "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js')" +
             "  ])" +
-            "  .then(() => { " +
-            "    window.YTPRO_LOADED = true; " +
-            "    console.log('✅ YTPRO Premium loaded'); " +
-            "    if(window.onYTPROLoaded) onYTPROLoaded();" +
-            "  })" +
+            "  .then(() => { window.YTPRO_LOADED = true; console.log('✅ YTPRO loaded'); })" +
             "  .catch((e) => console.error('❌ YTPRO load failed:', e));" +
             "})();";
         
@@ -813,128 +367,48 @@ public class MainActivity extends Activity {
     }
     
     private void setupBottomNavigation() {
-        LinearLayout navHome = findViewById(R.id.navHome);
-        LinearLayout navShorts = findViewById(R.id.navShorts);
-        LinearLayout navUpload = findViewById(R.id.navUpload);
-        LinearLayout navSubscriptions = findViewById(R.id.navSubscriptions);
-        LinearLayout navYou = findViewById(R.id.navYou);
-        LinearLayout navPremium = findViewById(R.id.navPremium);
+        // ඔබගේ bottom_navigation.xml එකේ IDs අනුව
+        View bottomNav = findViewById(R.id.bottomNavigation);
         
-        final ImageView iconHome = findViewById(R.id.iconHome);
-        final ImageView iconShorts = findViewById(R.id.iconShorts);
-        final ImageView iconSubscriptions = findViewById(R.id.iconSubscriptions);
-        final ImageView iconYou = findViewById(R.id.iconYou);
-        final ImageView iconPremium = findViewById(R.id.iconPremium);
+        // Home button
+        View navHome = bottomNav.findViewById(R.id.navHome);
+        View navShorts = bottomNav.findViewById(R.id.navShorts);
+        View navUpload = bottomNav.findViewById(R.id.navUpload);
+        View navSubscriptions = bottomNav.findViewById(R.id.navSubscriptions);
+        View navYou = bottomNav.findViewById(R.id.navYou);
         
-        final TextView textHome = findViewById(R.id.textHome);
-        final TextView textShorts = findViewById(R.id.textShorts);
-        final TextView textSubscriptions = findViewById(R.id.textSubscriptions);
-        final TextView textYou = findViewById(R.id.textYou);
-        final TextView textPremium = findViewById(R.id.textPremium);
+        if (navHome != null) {
+            navHome.setOnClickListener(v -> {
+                userNavigated = true;
+                web.loadUrl("https://m.youtube.com/");
+            });
+        }
         
-        navHome.setOnClickListener(v -> {
-            userNavigated = true;
-            setActiveTab(iconHome, textHome, 
-                iconShorts, textShorts, 
-                iconSubscriptions, textSubscriptions, 
-                iconYou, textYou,
-                iconPremium, textPremium);
-            web.loadUrl("https://m.youtube.com/");
-        });
+        if (navShorts != null) {
+            navShorts.setOnClickListener(v -> {
+                userNavigated = true;
+                web.loadUrl("https://m.youtube.com/shorts");
+            });
+        }
         
-        navShorts.setOnClickListener(v -> {
-            userNavigated = true;
-            setActiveTab(iconShorts, textShorts, 
-                iconHome, textHome, 
-                iconSubscriptions, textSubscriptions, 
-                iconYou, textYou,
-                iconPremium, textPremium);
-            web.loadUrl("https://m.youtube.com/shorts");
-        });
+        if (navUpload != null) {
+            navUpload.setOnClickListener(v -> {
+                Toast.makeText(MainActivity.this, "Upload feature coming soon! 🎥", Toast.LENGTH_SHORT).show();
+            });
+        }
         
-        navUpload.setOnClickListener(v -> {
-            // Enhanced upload with options
-            showUploadOptions();
-        });
+        if (navSubscriptions != null) {
+            navSubscriptions.setOnClickListener(v -> {
+                userNavigated = true;
+                web.loadUrl("https://m.youtube.com/feed/subscriptions");
+            });
+        }
         
-        navSubscriptions.setOnClickListener(v -> {
-            userNavigated = true;
-            setActiveTab(iconSubscriptions, textSubscriptions, 
-                iconHome, textHome, 
-                iconShorts, textShorts, 
-                iconYou, textYou,
-                iconPremium, textPremium);
-            web.loadUrl("https://m.youtube.com/feed/subscriptions");
-        });
-        
-        navYou.setOnClickListener(v -> {
-            userNavigated = true;
-            setActiveTab(iconYou, textYou, 
-                iconHome, textHome, 
-                iconShorts, textShorts, 
-                iconSubscriptions, textSubscriptions,
-                iconPremium, textPremium);
-            web.loadUrl("https://m.youtube.com/feed/account");
-        });
-        
-        navPremium.setOnClickListener(v -> {
-            setActiveTab(iconPremium, textPremium,
-                iconHome, textHome, 
-                iconShorts, textShorts, 
-                iconSubscriptions, textSubscriptions,
-                iconYou, textYou);
-            showPremiumMenu();
-        });
-    }
-
-    private void showUploadOptions() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("🎥 Upload Options");
-        
-        String[] options = {
-            "📁 Upload Video",
-            "📸 Upload Short",
-            "🎞️ Create Post",
-            "🎬 Go Live",
-            "⚙️ Upload Settings"
-        };
-        
-        builder.setItems(options, (dialog, which) -> {
-            switch (which) {
-                case 0:
-                    Toast.makeText(this, "Video upload feature coming soon!", Toast.LENGTH_SHORT).show();
-                    break;
-                case 1:
-                    web.loadUrl("https://m.youtube.com/shorts");
-                    break;
-                case 2:
-                    Toast.makeText(this, "Post creation coming soon!", Toast.LENGTH_SHORT).show();
-                    break;
-                case 3:
-                    Toast.makeText(this, "Live streaming coming soon!", Toast.LENGTH_SHORT).show();
-                    break;
-                case 4:
-                    Toast.makeText(this, "Upload settings coming soon!", Toast.LENGTH_SHORT).show();
-                    break;
-            }
-        });
-        
-        builder.show();
-    }
-
-    private void setActiveTab(ImageView activeIcon, TextView activeText, Object... inactiveElements) {
-        // Active tab - red color
-        activeIcon.setColorFilter(Color.parseColor("#FF0000"));
-        activeText.setTextColor(Color.parseColor("#FF0000"));
-        
-        // Inactive tabs - grey color
-        for (int i = 0; i < inactiveElements.length; i += 2) {
-            if (inactiveElements[i] instanceof ImageView) {
-                ((ImageView) inactiveElements[i]).setColorFilter(Color.parseColor("#AAAAAA"));
-            }
-            if (inactiveElements[i + 1] instanceof TextView) {
-                ((TextView) inactiveElements[i + 1]).setTextColor(Color.parseColor("#AAAAAA"));
-            }
+        if (navYou != null) {
+            navYou.setOnClickListener(v -> {
+                userNavigated = true;
+                web.loadUrl("https://m.youtube.com/feed/account");
+            });
         }
     }
     
@@ -946,11 +420,11 @@ public class MainActivity extends Activity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 web.loadUrl("https://m.youtube.com");
             } else {
-                Toast.makeText(getApplicationContext(), getString(R.string.grant_mic), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Grant microphone permission", Toast.LENGTH_SHORT).show();
             }
         } else if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                Toast.makeText(getApplicationContext(), getString(R.string.grant_storage), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Grant storage permission", Toast.LENGTH_SHORT).show();
             }
         } else if (requestCode == 102) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -958,11 +432,6 @@ public class MainActivity extends Activity {
                 startNotificationService();
             } else {
                 Log.d("MainActivity", "❌ Notification permission denied");
-            }
-        } else if (requestCode == 103) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // PIP permission granted
-                enterPipMode("landscape");
             }
         }
     }
@@ -972,7 +441,6 @@ public class MainActivity extends Activity {
         if (web.canGoBack()) {
             web.goBack();
         } else {
-            // Double tap to exit
             if (System.currentTimeMillis() - lastBackPress < 2000) {
                 super.onBackPressed();
             } else {
@@ -981,199 +449,118 @@ public class MainActivity extends Activity {
             }
         }
     }
-    
-    private long lastBackPress = 0;
 
-@Override
-public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
-    
-    Log.d("PIP", "🔄 PIP state changed: " + isInPictureInPictureMode);
-    
-    isPip = isInPictureInPictureMode;
-    isPipRequested = false;
-    
-    if (isInPictureInPictureMode) {
-        // ✅ Entering PIP - Optimized
-        Log.d("PIP", "🎬 ENTERING PIP MODE");
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         
-        // Ensure video continues playing
-        handler.postDelayed(() -> {
-            runOnUiThread(() -> {
-                web.evaluateJavascript(
-                    "(function() {" +
-                    "  console.log('🎬 PIP Mode Activated');" +
-                    "  " +
-                    "  var video = document.querySelector('video');" +
-                    "  if (!video) {" +
-                    "    console.error('❌ No video element in PIP');" +
-                    "    return;" +
-                    "  }" +
-                    "  " +
-                    "  // Save current state" +
-                    "  window.wasPlayingBeforePIP = !video.paused;" +
-                    "  window.pipMode = true;" +
-                    "  " +
-                    "  // Ensure video is playing" +
-                    "  if (window.wasPlayingBeforePIP && video.paused) {" +
-                    "    setTimeout(() => {" +
-                    "      video.play().catch(e => console.log('PIP play attempt:', e));" +
-                    "    }, 100);" +
-                    "  }" +
-                    "  " +
-                    "  // Hide unnecessary elements" +
-                    "  var elementsToHide = [" +
-                    "    'ytm-pivot-bar-renderer'," +
-                    "    'ytm-banner-promo-renderer'," +
-                    "    'ytm-mealbar-promo-renderer'," +
-                    "    '.ytp-pause-overlay'," +
-                    "    '.ytp-ce-element'" +
-                    "  ];" +
-                    "  " +
-                    "  elementsToHide.forEach(selector => {" +
-                    "    var el = document.querySelector(selector);" +
-                    "    if (el) el.style.display = 'none';" +
-                    "  });" +
-                    "  " +
-                    "  console.log('✅ PIP Ready');" +
-                    "})();",
-                    null
-                );
-            });
-        }, 150);
+        isPip = isInPictureInPictureMode;
+        isPipRequested = false;
         
-        // Hide navigation bar
-        runOnUiThread(() -> {
+        if (isInPictureInPictureMode) {
+            // Entering PIP
+            handler.postDelayed(() -> {
+                runOnUiThread(() -> {
+                    web.evaluateJavascript(
+                        "(function() {" +
+                        "  var video = document.querySelector('video');" +
+                        "  if (!video) return;" +
+                        "  window.wasPlayingBeforePIP = !video.paused;" +
+                        "  window.pipMode = true;" +
+                        "  if (window.wasPlayingBeforePIP && video.paused) {" +
+                        "    setTimeout(() => { video.play(); }, 100);" +
+                        "  }" +
+                        "})();",
+                        null
+                    );
+                });
+            }, 150);
+            
+            // Hide bottom navigation in PIP
             View bottomNav = findViewById(R.id.bottomNavigation);
             if (bottomNav != null) {
                 bottomNav.setVisibility(View.GONE);
             }
-        });
-        
-    } else {
-        // ✅ Exiting PIP
-        Log.d("PIP", "🏠 EXITING PIP MODE");
-        
-        runOnUiThread(() -> {
-            // Restore navigation bar
-            View bottomNav = findViewById(R.id.bottomNavigation);
-            if (bottomNav != null) {
-                bottomNav.setVisibility(View.VISIBLE);
-            }
             
-            // Restore webview
-            web.evaluateJavascript(
-                "(function() {" +
-                "  console.log('🔄 Exiting PIP');" +
-                "  window.pipMode = false;" +
-                "  " +
-                "  // Restore hidden elements" +
-                "  var elementsToShow = [" +
-                "    'ytm-pivot-bar-renderer'" +
-                "  ];" +
-                "  " +
-                "  elementsToShow.forEach(selector => {" +
-                "    var el = document.querySelector(selector);" +
-                "    if (el) el.style.display = '';" +
-                "  });" +
-                "  " +
-                "  // Resume if was playing" +
-                "  var video = document.querySelector('video');" +
-                "  if (video && window.wasPlayingBeforePIP && video.paused) {" +
-                "    setTimeout(() => {" +
-                "      video.play().catch(e => console.log('Resume after PIP:', e));" +
-                "    }, 300);" +
-                "  }" +
-                "  " +
-                "  window.wasPlayingBeforePIP = undefined;" +
-                "  console.log('✅ PIP Exit Complete');" +
-                "})();",
-                null
-            );
-        });
-    }
-}
-
-    // ✅ OPTIMIZED PIP ENTRY METHOD
-    private void enterPipMode(String orientation) {
-        if (Build.VERSION.SDK_INT < 26) {
-            Toast.makeText(this, "PIP requires Android 8.0+", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        
-        if (isPip || isPipRequested) {
-            return;
-        }
-        
-        runOnUiThread(() -> {
-            if (isFinishing() || isDestroyed()) {
-                return;
-            }
-            
-            isPipRequested = true;
-            Log.d("PIP", "🚀 Requesting PIP mode");
-            
-            try {
-                // Prepare webview
+        } else {
+            // Exiting PIP
+            runOnUiThread(() -> {
+                // Show bottom navigation
+                View bottomNav = findViewById(R.id.bottomNavigation);
+                if (bottomNav != null) {
+                    bottomNav.setVisibility(View.VISIBLE);
+                }
+                
                 web.evaluateJavascript(
                     "(function() {" +
+                    "  window.pipMode = false;" +
                     "  var video = document.querySelector('video');" +
-                    "  if (video) {" +
-                    "    window.wasPlayingBeforePIP = !video.paused;" +
-                    "    console.log('Video state saved:', !video.paused);" +
+                    "  if (video && window.wasPlayingBeforePIP && video.paused) {" +
+                    "    setTimeout(() => { video.play(); }, 300);" +
                     "  }" +
+                    "  window.wasPlayingBeforePIP = undefined;" +
                     "})();",
                     null
                 );
-                
-                // Create PIP params
-                PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
-                
-                if ("portrait".equals(orientation)) {
-                    builder.setAspectRatio(new Rational(9, 16));
-                } else {
-                    builder.setAspectRatio(new Rational(16, 9));
-                }
-                
-                builder.setAutoEnterEnabled(true);
-                
-                // Enter PIP
-                boolean success = enterPictureInPictureMode(builder.build());
-                
-                if (success) {
-                    Log.d("PIP", "✅ PIP entered successfully");
-                } else {
-                    Log.e("PIP", "❌ PIP entry failed");
-                    isPipRequested = false;
-                }
-                
-            } catch (Exception e) {
-                Log.e("PIP", "❌ PIP error: " + e.getMessage());
-                isPipRequested = false;
-                Toast.makeText(this, "PIP failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+            });
+        }
     }
 
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
         
-        if (isPip || isPipRequested) {
-            return;
-        }
+        if (isPip || isPipRequested) return;
         
-        // Auto-PIP when leaving app during video playback
         String currentUrl = web.getUrl();
         boolean isVideoPage = currentUrl != null && 
             (currentUrl.contains("watch") || currentUrl.contains("shorts"));
         
         if (isVideoPage && isPlaying && Build.VERSION.SDK_INT >= 26) {
-            Log.d("PIP", "🏠 Auto-PIP triggered");
             handler.postDelayed(() -> {
                 enterPipMode("landscape");
             }, 300);
         }
+    }
+
+    private void enterPipMode(String orientation) {
+        if (Build.VERSION.SDK_INT < 26) return;
+        if (isPip || isPipRequested) return;
+        
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            
+            isPipRequested = true;
+            
+            try {
+                web.evaluateJavascript(
+                    "(function() {" +
+                    "  var video = document.querySelector('video');" +
+                    "  if (video) window.wasPlayingBeforePIP = !video.paused;" +
+                    "})();",
+                    null
+                );
+                
+                PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
+                
+                if ("portrait".equals(orientation)) {
+                    builder.setAspectRatio(new android.util.Rational(9, 16));
+                } else {
+                    builder.setAspectRatio(new android.util.Rational(16, 9));
+                }
+                
+                builder.setAutoEnterEnabled(true);
+                
+                boolean success = enterPictureInPictureMode(builder.build());
+                
+                if (!success) {
+                    isPipRequested = false;
+                }
+                
+            } catch (Exception e) {
+                isPipRequested = false;
+            }
+        });
     }
 
     public class CustomWebClient extends WebChromeClient {
@@ -1191,10 +578,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         }
 
         public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback viewCallback) {
-            if (isPip) {
-                Log.d("CustomWebClient", "⏸️ In PIP, skipping fullscreen");
-                return;
-            }
+            if (isPip) return;
             
             this.mOriginalOrientation = portrait ? 
                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : 
@@ -1249,21 +633,12 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                 }
             }
         }
-        
-        @Override
-        public void onReceivedTitle(WebView view, String title) {
-            super.onReceivedTitle(view, title);
-            // Update notification with current video title
-            if (title != null && !title.isEmpty() && title.contains("YouTube")) {
-                MainActivity.this.title = title.replace(" - YouTube", "");
-            }
-        }
     }
 
     private void downloadFile(String filename, String url, String mtype) {
         if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R && 
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
-            runOnUiThread(() -> Toast.makeText(getApplicationContext(), R.string.grant_storage, Toast.LENGTH_SHORT).show());
+            runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Grant storage permission", Toast.LENGTH_SHORT).show());
             requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, 1);
         }
         try {
@@ -1271,22 +646,17 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
             request.setTitle(filename)
-                .setDescription("Downloaded via YouTube Pro")
+                .setDescription(filename)
                 .setMimeType(mtype)
                 .setAllowedOverMetered(true)
                 .setAllowedOverRoaming(true)
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, 
-                    "YouTubePro/" + encodedFileName)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, encodedFileName)
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE | 
                     DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             downloadManager.enqueue(request);
-            Toast.makeText(this, "📥 Download started: " + filename, Toast.LENGTH_SHORT).show();
-            
-            // Log download
-            Log.d("Download", "File: " + filename + " | URL: " + url);
-            
+            Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, "❌ Download error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -1464,47 +834,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                 enterPipMode(orientation);
             });
         }
-        
-        // Premium features
-        @JavascriptInterface 
-        public void toggleSponsorBlock(boolean enable) {
-            sponsorBlockEnabled = enable;
-            savePremiumSettings();
-            applyPremiumFeaturesToWeb();
-        }
-        
-        @JavascriptInterface 
-        public void toggleDislikeCount(boolean enable) {
-            returnDislikeCount = enable;
-            savePremiumSettings();
-            applyPremiumFeaturesToWeb();
-        }
-        
-        @JavascriptInterface 
-        public void skipToTimestamp(int seconds) {
-            web.evaluateJavascript(
-                "var video = document.querySelector('video');" +
-                "if(video) video.currentTime = " + seconds + ";",
-                null
-            );
-        }
-        
-        @JavascriptInterface 
-        public void setPlaybackSpeed(float speed) {
-            web.evaluateJavascript(
-                "var video = document.querySelector('video');" +
-                "if(video) video.playbackRate = " + speed + ";",
-                null
-            );
-        }
-        
-        @JavascriptInterface 
-        public String getVideoStats() {
-            return "{\"sponsorBlock\": " + sponsorBlockEnabled + 
-                   ", \"dislikeCount\": " + returnDislikeCount + 
-                   ", \"autoSkipAds\": " + autoSkipAds + 
-                   ", \"hdr\": " + hdrEnabled + "}";
-        }
     }
     
     public void setReceiver() {
@@ -1512,7 +841,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getExtras().getString("actionname");
-                Log.e("Action MainActivity", action);
 
                 switch (action) {
                     case "PLAY_ACTION":
@@ -1529,10 +857,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                         break;
                     case "SEEKTO":
                         web.evaluateJavascript("seekTo('" + intent.getExtras().getString("pos") + "');", null);
-                        break;
-                    case "TOGGLE_SPONSOR_BLOCK":
-                        sponsorBlockEnabled = !sponsorBlockEnabled;
-                        applyPremiumFeaturesToWeb();
                         break;
                 }
             }
@@ -1562,9 +886,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         if (isPlaying) {
             acquireWakeLock();
         }
-        
-        // Apply theme when resuming
-        applyAmoledTheme();
     }
 
     @Override
@@ -1580,7 +901,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             try {
                 unregisterReceiver(broadcastReceiver);
             } catch (Exception e) {
-                // Ignore
             }
         }
         
@@ -1593,9 +913,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         if (wakeLock != null && !wakeLock.isHeld()) {
             try {
                 wakeLock.acquire(30 * 60 * 1000L);
-                Log.d("WakeLock", "✅ WakeLock acquired");
             } catch (Exception e) {
-                Log.e("WakeLock", "❌ Failed to acquire: " + e.getMessage());
             }
         }
     }
@@ -1604,9 +922,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         if (wakeLock != null && wakeLock.isHeld()) {
             try {
                 wakeLock.release();
-                Log.d("WakeLock", "❌ WakeLock released");
             } catch (Exception e) {
-                Log.e("WakeLock", "❌ Failed to release: " + e.getMessage());
             }
         }
     }
@@ -1654,7 +970,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         centerLayout.setGravity(Gravity.CENTER);
         
         TextView iconView = new TextView(this);
-        iconView.setText("🌐");
+        iconView.setText("📡");
         iconView.setTextSize(80);
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -1692,7 +1008,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         centerLayout.addView(messageView);
         
         Button retryButton = new Button(this);
-        retryButton.setText("🔄 Try again");
+        retryButton.setText("Try again");
         retryButton.setTextColor(Color.WHITE);
         retryButton.setTextSize(16);
         retryButton.setTypeface(null, Typeface.BOLD);
@@ -1759,7 +1075,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
     private void startNotificationService() {
         Intent serviceIntent = new Intent(this, NotificationCheckService.class);
         startService(serviceIntent);
-        Log.d("MainActivity", "📢 Notification service started");
     }
 
     private void checkNotificationsNow() {
@@ -1769,56 +1084,12 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         fetcher.fetchNotifications(new NotificationFetcher.NotificationCallback() {
             @Override
             public void onSuccess(List<NotificationModel> notifications) {
-                Log.d("MainActivity", "✅ Fetched " + notifications.size() + " notifications");
                 notificationManager.showNotifications(notifications);
             }
 
             @Override
             public void onError(String error) {
-                Log.e("MainActivity", "❌ Notification fetch error: " + error);
             }
         });
-    }
-    
-    // ✅ Premium feature: Download manager
-    public void showDownloadManager() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("📥 Download Manager");
-        builder.setMessage("Manage your downloads");
-        
-        builder.setPositiveButton("View Downloads", (dialog, which) -> {
-            Intent intent = new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        });
-        
-        builder.setNegativeButton("Clear All", (dialog, which) -> {
-            DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-            dm.remove(0, 0); // This may not work on all devices
-            Toast.makeText(this, "Downloads cleared", Toast.LENGTH_SHORT).show();
-        });
-        
-        builder.setNeutralButton("Settings", (dialog, which) -> {
-            Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-            startActivity(intent);
-        });
-        
-        builder.show();
-    }
-    
-    // ✅ Premium feature: Clear cache
-    public void clearAppCache() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("🧹 Clear Cache");
-        builder.setMessage("Clear all cached data?");
-        
-        builder.setPositiveButton("Clear", (dialog, which) -> {
-            web.clearCache(true);
-            CookieManager.getInstance().removeAllCookies(null);
-            Toast.makeText(this, "✅ Cache cleared", Toast.LENGTH_SHORT).show();
-        });
-        
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
     }
 }
