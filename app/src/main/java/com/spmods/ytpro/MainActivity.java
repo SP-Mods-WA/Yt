@@ -24,6 +24,8 @@ import javax.net.ssl.HttpsURLConnection;
 import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 public class MainActivity extends Activity {
 
@@ -86,8 +88,6 @@ public class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
     
-    
-    
     // ✅ FIXED: Remove deprecated APIs that cause build errors
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
     
@@ -95,8 +95,6 @@ public class MainActivity extends Activity {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
-    
-    
     
     // ✅ Video playback optimization - CRITICAL for smooth YouTube
     settings.setMediaPlaybackRequiresUserGesture(false);
@@ -178,59 +176,43 @@ public class MainActivity extends Activity {
         return false;
       }
       
-      @Override
-      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-        String url = request.getUrl().toString();
+@Override
+public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+    String url = request.getUrl().toString();
 
-        // ✅ CRITICAL FIX: Only intercept YTPRO scripts - let YouTube videos load natively
-        if (!url.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
-            return null; // Let WebView handle all YouTube video requests normally
-        }
+    // ✅ Only intercept YTPRO scripts
+    if (!url.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
+        return null;
+    }
 
-        Log.d("WebView", "🔧 Intercepting YTPRO script: " + url);
+    Log.d("WebView", "🔧 Intercepting YTPRO script from assets: " + url);
 
-        String modifiedUrl = null;
+    String assetPath = null;
 
-        if (url.contains("innertube.js")) {
-            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/innertube.js";
-        } else if (url.contains("bgplay.js")) {
-            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/bgplay.js";
-        } else if (url.contains("script.js")) {
-            modifiedUrl = "https://cdn.jsdelivr.net/gh/SP-Mods-WA/Yt@main/scripts/script.js";
-        }
-        
-        if (modifiedUrl == null) {
-            return null;
-        }
-        
-        try {
-            URL newUrl = new URL(modifiedUrl);
-            HttpsURLConnection connection = (HttpsURLConnection) newUrl.openConnection();
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
-            connection.setRequestProperty("Accept", "*/*");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
-            connection.setRequestMethod("GET");
-            connection.connect();
-
-            int responseCode = connection.getResponseCode();
-            
-            if (responseCode != 200) {
-                Log.e("CDN", "❌ Failed: " + responseCode);
-                return null;
-            }
-
-            return new WebResourceResponse(
-                "application/javascript",
-                "utf-8",
-                connection.getInputStream()
-            );
-
-        } catch (Exception e) {
-            Log.e("CDN Error", "❌ Exception: " + e.getMessage());
-            return null;
-        }
-      }
+    if (url.contains("innertube.js")) {
+        assetPath = "ytpro/innertube.js";
+    } else if (url.contains("bgplay.js")) {
+        assetPath = "ytpro/bgplay.js";
+    } else if (url.contains("script.js")) {
+        assetPath = "ytpro/script.js";
+    }
+    
+    if (assetPath == null) {
+        return null;
+    }
+    
+    try {
+        InputStream inputStream = getAssets().open(assetPath);
+        return new WebResourceResponse(
+            "application/javascript",
+            "utf-8",
+            inputStream
+        );
+    } catch (IOException e) {
+        Log.e("AssetError", "❌ Failed to load: " + assetPath + " - " + e.getMessage());
+        return null;
+    }
+}
       
       @Override
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
@@ -334,31 +316,43 @@ public class MainActivity extends Activity {
         null
     );
     
-    // ✅ Load scripts with proper async loading
-    String scriptLoader = 
-        "(function() {" +
-        "  if(window.YTPRO_LOADED) return;" +
-        "  function loadScript(src) {" +
-        "    return new Promise((resolve, reject) => {" +
-        "      var script = document.createElement('script');" +
-        "      script.src = src;" +
-        "      script.async = false;" + // Sequential loading for dependencies
-        "      script.onload = () => resolve();" +
-        "      script.onerror = (e) => reject(e);" +
-        "      document.body.appendChild(script);" +
-        "    });" +
-        "  }" +
-        "  Promise.all([" +
-        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/script.js')," +
-        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/bgplay.js')," +
-        "    loadScript('https://youtube.com/ytpro_cdn/npm/ytpro/innertube.js')" +
-        "  ])" +
-        "  .then(() => { window.YTPRO_LOADED = true; console.log('✅ YTPRO loaded'); })" +
-        "  .catch((e) => console.error('❌ YTPRO load failed:', e));" +
-        "})();";
+    // ✅ Inject scripts from assets directly
+    String[] scripts = {"ytpro/script.js", "ytpro/bgplay.js", "ytpro/innertube.js"};
     
-    web.evaluateJavascript(scriptLoader, null);
-  }
+    for (String scriptPath : scripts) {
+        try {
+            InputStream inputStream = getAssets().open(scriptPath);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            StringBuilder scriptContent = new StringBuilder();
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                scriptContent.append(line).append("\n");
+            }
+            reader.close();
+            
+            // Inject the script content
+            String jsCode = scriptContent.toString()
+                .replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\n", "\\n")
+                .replace("\r", "");
+                
+            web.evaluateJavascript(
+                "(function() { " + jsCode + " })();",
+                result -> Log.d("ScriptInjection", "✅ Injected: " + scriptPath)
+            );
+            
+        } catch (IOException e) {
+            Log.e("ScriptInjection", "❌ Failed to inject: " + scriptPath, e);
+        }
+    }
+    
+    web.evaluateJavascript(
+        "window.YTPRO_LOADED = true; console.log('✅ YTPRO loaded from assets');",
+        null
+    );
+}
   
   private void setupBottomNavigation() {
     LinearLayout navHome = findViewById(R.id.navHome);
@@ -452,32 +446,11 @@ public class MainActivity extends Activity {
     }
   }
 
-@Override
-public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+  @Override
+  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
     isPip = isInPictureInPictureMode;
-    
-    if (isInPictureInPictureMode) {
-        // ✅ PIP mode එකට ගියාම video play වෙන්න සහතික කරන්න
-        web.evaluateJavascript("PIPlayer();", null);
-        
-        // ✅ Screen off වුනාට පස්සේත් video play වෙන්න
-        web.evaluateJavascript(
-            "(function() {" +
-            "  if (typeof player !== 'undefined' && player) {" +
-            "    player.playVideo();" +
-            "  }" +
-            "})();",
-            null
-        );
-        
-        // ✅ Wake lock එක තියාගන්න PIP mode එකේ
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        
-    } else {
-        // PIP mode එකෙන් exit වුනාම
-        web.evaluateJavascript("removePIP();", null);
-    }
-}
+  }
 
   @Override
   protected void onUserLeaveHint() {
