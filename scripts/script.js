@@ -1,6 +1,6 @@
 /*****YTPRO*******
 Author: Sandun Piumal(SPMods)
-Version: 1.1.3
+Version: 1.1.4
 URI: https://www.spmods.download
 Last Updated On: 14 Nov , 2025 , 15:57 IST
 */
@@ -2212,7 +2212,96 @@ isPIP=true;
 
 
 
+// ✅✅✅ ADD ALL THIS CODE RIGHT HERE (after PIPlayer function) ✅✅✅
 
+// ✅ Screen Off PIP Handler - Complete Solution
+(function() {
+    let backgroundMonitor = null;
+    
+    // ✅ Main visibility handler
+    document.addEventListener('visibilitychange', function() {
+        if (isPIP && document.hidden) {
+            // Screen OFF
+            const v = document.getElementsByClassName('video-stream')[0];
+            if (!v) return;
+            
+            console.log('Screen OFF - Starting PIP play');
+            
+            // ✅ Immediate force play
+            v.muted = false;
+            v.play().catch(() => {});
+            
+            // ✅ Multiple attempts
+            [50, 150, 300, 500].forEach(delay => {
+                setTimeout(() => {
+                    if (v.paused && isPIP && document.hidden) {
+                        v.play().catch(() => {});
+                    }
+                }, delay);
+            });
+            
+            // ✅ Start continuous monitoring
+            if (!backgroundMonitor) {
+                backgroundMonitor = setInterval(() => {
+                    if (!isPIP || !document.hidden) {
+                        clearInterval(backgroundMonitor);
+                        backgroundMonitor = null;
+                        return;
+                    }
+                    
+                    const video = document.getElementsByClassName('video-stream')[0];
+                    if (video && video.paused && !video.ended) {
+                        video.muted = false;
+                        video.play().catch(() => {});
+                    }
+                }, 300);
+            }
+        } else if (backgroundMonitor) {
+            // Screen ON - stop monitoring
+            clearInterval(backgroundMonitor);
+            backgroundMonitor = null;
+            console.log('Screen ON - Stopped monitor');
+        }
+    }, true);
+    
+    // ✅ Override removePIP to cleanup
+    const originalRemovePIP = window.removePIP;
+    window.removePIP = function() {
+        if (backgroundMonitor) {
+            clearInterval(backgroundMonitor);
+            backgroundMonitor = null;
+        }
+        if (originalRemovePIP) {
+            originalRemovePIP.call(this);
+        } else {
+            isPIP = false;
+            pauseAllowed = true;
+            try { document.exitFullscreen(); } catch(e) {}
+            const v = document.getElementsByClassName('video-stream')[0];
+            if (v) {
+                v.pause();
+                setTimeout(() => v.play(), 5);
+            }
+        }
+    };
+    
+    // ✅ Monitor video end
+    const observer = new MutationObserver(() => {
+        const v = document.getElementsByClassName('video-stream')[0];
+        if (v && !v.hasAttribute('data-pip-handler')) {
+            v.setAttribute('data-pip-handler', 'true');
+            v.addEventListener('ended', () => {
+                if (backgroundMonitor) {
+                    clearInterval(backgroundMonitor);
+                    backgroundMonitor = null;
+                }
+            });
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+
+// ✅✅✅ END - Nothing else to add ✅✅✅
 
 
 
