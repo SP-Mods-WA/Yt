@@ -495,83 +495,69 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
     isPipRequested = false;
     
     if (isInPictureInPictureMode) {
+        // ✅ Entering PIP
         Log.d("PIP", "🎬 ENTERING PIP");
         
         if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
             try {
                 wakeLock.acquire(10 * 60 * 1000L);
-                Log.d("WakeLock", "✅ Acquired for PIP");
+                Log.d("WakeLock", "✅ Acquired");
             } catch (Exception e) {
                 Log.e("WakeLock", "❌ Failed: " + e.getMessage());
             }
         }
         
+        // Hide navigation immediately
         runOnUiThread(() -> {
             try {
                 View bottomNav = findViewById(R.id.bottomNavigation);
                 if (bottomNav != null) {
                     bottomNav.setVisibility(View.GONE);
-                    Log.d("PIP", "✅ Custom nav hidden");
                 }
             } catch (Exception e) {
-                Log.e("PIP", "❌ Nav hide failed: " + e.getMessage());
+                Log.e("PIP", "Nav hide failed: " + e.getMessage());
             }
         });
         
+        // DON'T hide or modify video - let it play naturally
         handler.postDelayed(() -> {
             runOnUiThread(() -> {
                 web.evaluateJavascript(
                     "(function() {" +
-                    "  console.log('🎬 PIP: Setting up...');" +
+                    "  console.log('🎬 PIP mode active');" +
+                    "  " +
                     "  var video = document.querySelector('video');" +
-                    "  if (!video) { console.error('❌ No video!'); return; }" +
+                    "  if (!video) {" +
+                    "    console.error('❌ No video element');" +
+                    "    return;" +
+                    "  }" +
+                    "  " +
+                    "  // Just save state, don't modify anything" +
                     "  window.wasPlayingBeforePIP = !video.paused;" +
                     "  window.pipMode = true;" +
-                    "  var ytNav = document.querySelector('ytm-pivot-bar-renderer');" +
-                    "  if (ytNav) ytNav.parentNode.removeChild(ytNav);" +
-                    "  var topbar = document.querySelector('ytm-mobile-topbar-renderer');" +
-                    "  if (topbar) topbar.parentNode.removeChild(topbar);" +
-                    "  video.setAttribute('playsinline', '');" +
-                    "  video.muted = false;" +
-                    "  video.controls = true;" +
-                    "  video.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:2147483647!important;object-fit:contain!important;background:#000!important;';" +
-                    "  document.body.style.overflow = 'hidden';" +
-                    "  function tryPlay() {" +
-                    "    if (video.paused) {" +
-                    "      video.play().then(() => console.log('✅ Playing')).catch(err => {" +
-                    "        setTimeout(() => {" +
-                    "          var btn = document.querySelector('.ytp-play-button');" +
-                    "          if (btn && btn.getAttribute('aria-label') === 'Play') btn.click();" +
-                    "        }, 200);" +
+                    "  console.log('📼 Video paused:', video.paused);" +
+                    "  console.log('📼 Video ready:', video.readyState);" +
+                    "  " +
+                    "  // If video was playing, ensure it continues" +
+                    "  if (window.wasPlayingBeforePIP && video.paused) {" +
+                    "    setTimeout(() => {" +
+                    "      video.play().then(() => {" +
+                    "        console.log('✅ Video resumed in PIP');" +
+                    "      }).catch(err => {" +
+                    "        console.error('⚠️ Play failed:', err);" +
                     "      });" +
-                    "    }" +
+                    "    }, 100);" +
                     "  }" +
-                    "  if (window.wasPlayingBeforePIP) {" +
-                    "    tryPlay(); setTimeout(tryPlay, 300); setTimeout(tryPlay, 600); setTimeout(tryPlay, 1000);" +
-                    "  }" +
-                    "  var userPaused = false; var lastPauseTime = 0;" +
-                    "  video.addEventListener('pause', function() {" +
-                    "    var now = Date.now();" +
-                    "    if (now - lastPauseTime > 500) { userPaused = true; window.wasPlayingBeforePIP = false; }" +
-                    "    lastPauseTime = now;" +
-                    "  });" +
-                    "  video.addEventListener('play', function() {" +
-                    "    userPaused = false; window.wasPlayingBeforePIP = true;" +
-                    "  });" +
-                    "  window.pipPlayInterval = setInterval(() => {" +
-                    "    if (!userPaused && window.wasPlayingBeforePIP && video.paused) {" +
-                    "      var time = Date.now() - lastPauseTime;" +
-                    "      if (time > 2000) tryPlay();" +
-                    "    }" +
-                    "  }, 3000);" +
+                    "  " +
                     "  console.log('✅ PIP ready');" +
                     "})();",
                     null
                 );
             });
-        }, 100);
+        }, 200);
         
     } else {
+        // ✅ Exiting PIP
         Log.d("PIP", "🏠 EXITING PIP");
         
         try {
@@ -579,7 +565,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                 wakeLock.release();
             }
         } catch (Exception e) {
-            Log.e("WakeLock", "❌ Release error: " + e.getMessage());
+            Log.e("WakeLock", "Release error: " + e.getMessage());
         }
         
         runOnUiThread(() -> {
@@ -589,22 +575,25 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     bottomNav.setVisibility(View.VISIBLE);
                 }
             } catch (Exception e) {
-                Log.e("PIP", "❌ Nav restore failed: " + e.getMessage());
+                Log.e("PIP", "Nav restore failed: " + e.getMessage());
             }
             
             web.evaluateJavascript(
                 "(function() {" +
+                "  console.log('🔄 Exiting PIP');" +
                 "  window.pipMode = false;" +
-                "  if (window.pipPlayInterval) { clearInterval(window.pipPlayInterval); window.pipPlayInterval = null; }" +
-                "  document.body.style.overflow = '';" +
+                "  " +
                 "  var video = document.querySelector('video');" +
-                "  if (video) {" +
-                "    video.style.cssText = ''; video.controls = false;" +
-                "    if (window.wasPlayingBeforePIP && video.paused) {" +
-                "      setTimeout(() => { video.play().catch(e => { var btn = document.querySelector('.ytp-play-button'); if (btn) btn.click(); }); }, 500);" +
-                "    }" +
+                "  if (video && window.wasPlayingBeforePIP && video.paused) {" +
+                "    setTimeout(() => {" +
+                "      video.play().catch(err => {" +
+                "        console.log('Resume after PIP failed');" +
+                "      });" +
+                "    }, 300);" +
                 "  }" +
+                "  " +
                 "  window.wasPlayingBeforePIP = undefined;" +
+                "  console.log('✅ PIP exit complete');" +
                 "})();",
                 null
             );
