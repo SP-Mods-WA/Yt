@@ -2,8 +2,9 @@ package com.spmods.ytpro;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
@@ -15,8 +16,8 @@ import java.net.URL;
 
 public class UpdateChecker {
     
+    private static final String UPDATE_URL = "https://raw.githubusercontent.com/SP-Mods-WA/Yt/main/update.json";
     private Context context;
-    private static final String UPDATE_URL = "https://raw.githubusercontent.com/SP-Mods-WA/SP-Mods-WA/refs/heads/main/ytup_info.json";
     
     public UpdateChecker(Context context) {
         this.context = context;
@@ -34,29 +35,25 @@ public class UpdateChecker {
                 URL url = new URL(UPDATE_URL);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(10000);
+                connection.setConnectTimeout(5000);
+                connection.setReadTimeout(5000);
                 
-                BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(connection.getInputStream())
-                );
-                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 StringBuilder response = new StringBuilder();
                 String line;
+                
                 while ((line = reader.readLine()) != null) {
                     response.append(line);
                 }
                 reader.close();
                 
                 JSONObject json = new JSONObject(response.toString());
-                
                 UpdateInfo info = new UpdateInfo();
-                info.latestVersion = json.getString("latestVersion");
-                info.latestVersionCode = json.getInt("latestVersionCode");
-                info.updateTitle = json.getString("updateTitle");
-                info.updateMessage = json.getString("updateMessage");
+                info.latestVersion = json.getString("version");
+                info.versionCode = json.getInt("versionCode");
                 info.downloadUrl = json.getString("downloadUrl");
-                info.forceUpdate = json.optBoolean("forceUpdate", false);
+                info.changelog = json.getString("changelog");
+                info.forceUpdate = json.getBoolean("forceUpdate");
                 
                 return info;
                 
@@ -69,56 +66,51 @@ public class UpdateChecker {
         @Override
         protected void onPostExecute(UpdateInfo updateInfo) {
             if (updateInfo != null) {
-                int currentVersion = getCurrentVersionCode();
-                if (updateInfo.latestVersionCode > currentVersion) {
-                    showUpdateDialog(updateInfo);
+                try {
+                    int currentVersion = context.getPackageManager()
+                        .getPackageInfo(context.getPackageName(), 0)
+                        .versionCode;
+                    
+                    if (updateInfo.versionCode > currentVersion) {
+                        showUpdateDialog(updateInfo);
+                    }
+                    
+                } catch (PackageManager.NameNotFoundException e) {
+                    e.printStackTrace();
                 }
             }
         }
     }
     
-    private int getCurrentVersionCode() {
-        try {
-            PackageInfo pInfo = context.getPackageManager()
-                .getPackageInfo(context.getPackageName(), 0);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                return (int) pInfo.getLongVersionCode();
-            } else {
-                return pInfo.versionCode;
-            }
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-    
-    private void showUpdateDialog(final UpdateInfo info) {
+    private void showUpdateDialog(UpdateInfo info) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle(info.updateTitle);
-        builder.setMessage(info.updateMessage);
-        builder.setCancelable(!info.forceUpdate);
+        builder.setTitle("📱 Update Available");
+        builder.setMessage("New version " + info.latestVersion + " is available!\n\n" +
+                          "What's New:\n" + info.changelog);
         
-        builder.setPositiveButton("Update", (dialog, which) -> {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl));
-            context.startActivity(intent);
+        builder.setPositiveButton("Update Now", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse(info.downloadUrl));
+                context.startActivity(intent);
+            }
         });
         
         if (!info.forceUpdate) {
-            builder.setNegativeButton("Later", (dialog, which) -> dialog.dismiss());
+            builder.setNegativeButton("Later", null);
+        } else {
+            builder.setCancelable(false);
         }
         
-        builder.create().show();
+        builder.show();
     }
     
     private static class UpdateInfo {
         String latestVersion;
-        int latestVersionCode;
-        String updateTitle;
-        String updateMessage;
+        int versionCode;
         String downloadUrl;
+        String changelog;
         boolean forceUpdate;
     }
 }
-
-
-
-
