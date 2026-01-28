@@ -50,6 +50,11 @@ public class MainActivity extends Activity {
   private String lastUrl = "";
   
   private boolean scriptsInjected = false;
+  
+  // ✅ ADD THESE 3 LINES HERE:
+  private FrameLayout miniplayerContainer;
+  private boolean isMiniplayerVisible = false;
+  private String currentVideoUrl = "";
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -439,15 +444,137 @@ public class MainActivity extends Activity {
     }
   }
 
+// ✅ REPLACE WITH THIS NEW METHOD:
   @Override
   public void onBackPressed() {
+    String currentUrl = web.getUrl();
+    
+    // Check if we're on a video page
+    if (currentUrl != null && (currentUrl.contains("/watch") || currentUrl.contains("/shorts"))) {
+        if (isPlaying && !isMiniplayerVisible) {
+            // Show miniplayer instead of going back
+            showMiniplayer();
+            return;
+        } else if (isMiniplayerVisible) {
+            // If miniplayer is showing, hide it first
+            hideMiniplayer();
+            return;
+        }
+    }
+    
+    // Normal back behavior
     if (web.canGoBack()) {
-      web.goBack();
+        web.goBack();
     } else {
-      finish();
+        finish();
     }
   }
 
+// ✅ ADD THIS METHOD AFTER onBackPressed():
+  private void showMiniplayer() {
+    if (isMiniplayerVisible) return;
+    
+    // Save current video URL
+    currentVideoUrl = web.getUrl();
+    
+    // JavaScript to create miniplayer
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var player = document.querySelector('video');" +
+        "  if (!player) return;" +
+        "  " +
+        "  // Create miniplayer container" +
+        "  var mini = document.createElement('div');" +
+        "  mini.id = 'ytpro-miniplayer';" +
+        "  mini.style.cssText = '" +
+        "    position: fixed !important;" +
+        "    bottom: 70px !important;" +
+        "    right: 10px !important;" +
+        "    width: 180px !important;" +
+        "    height: 100px !important;" +
+        "    z-index: 9999 !important;" +
+        "    background: #000 !important;" +
+        "    border-radius: 8px !important;" +
+        "    overflow: hidden !important;" +
+        "    box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;" +
+        "  ';" +
+        "  " +
+        "  // Clone video element" +
+        "  var videoClone = player.cloneNode(true);" +
+        "  videoClone.style.cssText = 'width: 100% !important; height: 100% !important; object-fit: cover !important;';" +
+        "  videoClone.currentTime = player.currentTime;" +
+        "  videoClone.play();" +
+        "  " +
+        "  // Add close button" +
+        "  var closeBtn = document.createElement('div');" +
+        "  closeBtn.innerHTML = '✕';" +
+        "  closeBtn.style.cssText = '" +
+        "    position: absolute !important;" +
+        "    top: 5px !important;" +
+        "    right: 5px !important;" +
+        "    width: 24px !important;" +
+        "    height: 24px !important;" +
+        "    background: rgba(0,0,0,0.7) !important;" +
+        "    color: white !important;" +
+        "    border-radius: 50% !important;" +
+        "    display: flex !important;" +
+        "    align-items: center !important;" +
+        "    justify-content: center !important;" +
+        "    font-size: 16px !important;" +
+        "    cursor: pointer !important;" +
+        "    z-index: 10000 !important;" +
+        "  ';" +
+        "  closeBtn.onclick = function(e) {" +
+        "    e.stopPropagation();" +
+        "    Android.closeMiniPlayer();" +
+        "  };" +
+        "  " +
+        "  // Click to expand" +
+        "  mini.onclick = function(e) {" +
+        "    if (e.target !== closeBtn) {" +
+        "      Android.expandMiniPlayer();" +
+        "    }" +
+        "  };" +
+        "  " +
+        "  mini.appendChild(videoClone);" +
+        "  mini.appendChild(closeBtn);" +
+        "  document.body.appendChild(mini);" +
+        "  " +
+        "  // Hide main player" +
+        "  var mainContainer = document.querySelector('ytm-single-column-watch-next-results-renderer');" +
+        "  if (mainContainer) mainContainer.style.display = 'none';" +
+        "  " +
+        "  window.YTPRO_MINIPLAYER_ACTIVE = true;" +
+        "})();",
+        null
+    );
+    
+    isMiniplayerVisible = true;
+    
+    // Navigate back
+    if (web.canGoBack()) {
+        web.goBack();
+    }
+  }
+
+  // ✅ ADD THIS METHOD TOO:
+  private void hideMiniplayer() {
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var mini = document.getElementById('ytpro-miniplayer');" +
+        "  if (mini) mini.remove();" +
+        "  var mainContainer = document.querySelector('ytm-single-column-watch-next-results-renderer');" +
+        "  if (mainContainer) mainContainer.style.display = 'block';" +
+        "  window.YTPRO_MINIPLAYER_ACTIVE = false;" +
+        "})();",
+        null
+    );
+    isMiniplayerVisible = false;
+    currentVideoUrl = "";
+  }
+  
+  
+  
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
     web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
@@ -580,7 +707,36 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void setVolume(float volume) { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume), 0); }
     @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
     @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
-    @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
+    @JavascriptInterface 
+    public void pipvid(String x) { 
+        if (Build.VERSION.SDK_INT >= 26) { 
+            try { 
+                enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); 
+            } catch (Exception e) {} 
+        } else { 
+            Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); 
+        } 
+    }
+    
+    // ✅ MINIPLAYER METHODS - ADD AT THE END
+    @JavascriptInterface 
+    public void closeMiniPlayer() {
+        runOnUiThread(() -> {
+            hideMiniplayer();
+            web.evaluateJavascript("var v = document.querySelector('video'); if(v) v.pause();", null);
+        });
+    }
+
+    @JavascriptInterface 
+    public void expandMiniPlayer() {
+        runOnUiThread(() -> {
+            hideMiniplayer();
+            if (currentVideoUrl != null && !currentVideoUrl.isEmpty()) {
+                userNavigated = true;
+                web.loadUrl(currentVideoUrl);
+            }
+        });
+    }
   }
   
   public void setReceiver() {
