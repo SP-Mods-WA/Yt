@@ -495,6 +495,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
     isPipRequested = false;
     
     if (isInPictureInPictureMode) {
+        // ✅ Entering PIP
         Log.d("PIP", "🎬 ENTERING PIP");
         
         if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
@@ -506,50 +507,104 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             }
         }
         
+        // ✅ Hide Android bottom navigation immediately
+        runOnUiThread(() -> {
+            try {
+                View bottomNav = findViewById(R.id.bottomNavigation);
+                if (bottomNav != null) {
+                    bottomNav.setVisibility(View.GONE);
+                    Log.d("PIP", "✅ Android nav hidden");
+                }
+            } catch (Exception e) {
+                Log.e("PIP", "❌ Nav hide failed: " + e.getMessage());
+            }
+        });
+        
+        // ✅ Setup video for PIP
         handler.postDelayed(() -> {
             runOnUiThread(() -> {
                 web.evaluateJavascript(
                     "(function() {" +
-                    "  console.log('🎬 PIP: Setting up video...');" +
+                    "  console.log('🎬 PIP: Full setup starting...');" +
                     "  " +
                     "  var video = document.querySelector('video');" +
                     "  if (!video) {" +
-                    "    console.log('❌ No video element found');" +
+                    "    console.error('❌ No video element!');" +
                     "    return;" +
                     "  }" +
                     "  " +
+                    "  // Save state" +
                     "  window.wasPlayingBeforePIP = !video.paused;" +
                     "  window.pipMode = true;" +
-                    "  console.log('📼 Was playing:', window.wasPlayingBeforePIP);" +
+                    "  console.log('📼 Playing:', window.wasPlayingBeforePIP);" +
                     "  " +
-                    "  video.setAttribute('playsinline', 'true');" +
-                    "  video.muted = false;" +
-                    "  " +
-                    "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer'].forEach(sel => {" +
-                    "    var el = document.querySelector(sel);" +
-                    "    if (el) el.style.display = 'none';" +
-                    "  });" +
-                    "  " +
-                    "  video.style.position = 'fixed';" +
-                    "  video.style.top = '0';" +
-                    "  video.style.left = '0';" +
-                    "  video.style.width = '100%';" +
-                    "  video.style.height = '100%';" +
-                    "  video.style.zIndex = '999999';" +
-                    "  video.style.objectFit = 'contain';" +
-                    "  video.style.backgroundColor = '#000';" +
-                    "  " +
-                    "  if (window.wasPlayingBeforePIP && video.paused) {" +
-                    "    console.log('🔄 Resuming playback...');" +
-                    "    video.play().then(() => {" +
-                    "      console.log('✅ Video resumed in PIP');" +
-                    "    }).catch(e => {" +
-                    "      console.log('⚠️ Resume failed:', e);" +
-                    "    });" +
-                    "  } else {" +
-                    "    console.log('⏸️ Video was paused, keeping paused');" +
+                    "  // FORCE remove YouTube navigation" +
+                    "  var ytNav = document.querySelector('ytm-pivot-bar-renderer');" +
+                    "  if (ytNav) {" +
+                    "    ytNav.parentNode.removeChild(ytNav);" +
+                    "    console.log('✅ YT nav removed');" +
                     "  }" +
                     "  " +
+                    "  var topbar = document.querySelector('ytm-mobile-topbar-renderer');" +
+                    "  if (topbar) {" +
+                    "    topbar.parentNode.removeChild(topbar);" +
+                    "  }" +
+                    "  " +
+                    "  // Configure video" +
+                    "  video.setAttribute('playsinline', '');" +
+                    "  video.setAttribute('webkit-playsinline', '');" +
+                    "  video.muted = false;" +
+                    "  video.controls = true;" +
+                    "  " +
+                    "  // Fullscreen positioning" +
+                    "  video.style.cssText = '" +
+                    "    position: fixed !important;" +
+                    "    top: 0 !important;" +
+                    "    left: 0 !important;" +
+                    "    width: 100vw !important;" +
+                    "    height: 100vh !important;" +
+                    "    z-index: 2147483647 !important;" +
+                    "    object-fit: contain !important;" +
+                    "    background: #000 !important;" +
+                    "  ';" +
+                    "  " +
+                    "  // Hide body scroll" +
+                    "  document.body.style.overflow = 'hidden';" +
+                    "  document.documentElement.style.overflow = 'hidden';" +
+                    "  " +
+                    "  // FORCE PLAY - Multiple strategies" +
+                    "  function attemptPlay() {" +
+                    "    console.log('🔄 Attempting play...');" +
+                    "    " +
+                    "    // Strategy 1: Direct play" +
+                    "    if (video.paused) {" +
+                    "      video.play().then(() => {" +
+                    "        console.log('✅ Video playing!');" +
+                    "      }).catch(err => {" +
+                    "        console.warn('⚠️ Play attempt failed:', err);" +
+                    "        " +
+                    "        // Strategy 2: Click play button" +
+                    "        setTimeout(() => {" +
+                    "          var playBtn = document.querySelector('.ytp-play-button');" +
+                    "          if (playBtn && playBtn.getAttribute('aria-label') === 'Play') {" +
+                    "            playBtn.click();" +
+                    "            console.log('🔘 Clicked play button');" +
+                    "          }" +
+                    "        }, 200);" +
+                    "      });" +
+                    "    }" +
+                    "  }" +
+                    "  " +
+                    "  // Try playing if was playing before" +
+                    "  if (window.wasPlayingBeforePIP) {" +
+                    "    // Multiple attempts with delays" +
+                    "    attemptPlay();" +
+                    "    setTimeout(attemptPlay, 300);" +
+                    "    setTimeout(attemptPlay, 600);" +
+                    "    setTimeout(attemptPlay, 1000);" +
+                    "  }" +
+                    "  " +
+                    "  // User control detection" +
                     "  var userPaused = false;" +
                     "  var lastPauseTime = 0;" +
                     "  " +
@@ -558,7 +613,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     "    if (now - lastPauseTime > 500) {" +
                     "      userPaused = true;" +
                     "      window.wasPlayingBeforePIP = false;" +
-                    "      console.log('⏸️ User paused video');" +
+                    "      console.log('⏸️ User paused');" +
                     "    }" +
                     "    lastPauseTime = now;" +
                     "  });" +
@@ -566,27 +621,29 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     "  video.addEventListener('play', function(e) {" +
                     "    userPaused = false;" +
                     "    window.wasPlayingBeforePIP = true;" +
-                    "    console.log('▶️ User played video');" +
+                    "    console.log('▶️ User played');" +
                     "  });" +
                     "  " +
+                    "  // Recovery interval" +
                     "  window.pipPlayInterval = setInterval(() => {" +
                     "    if (!userPaused && window.wasPlayingBeforePIP && video.paused) {" +
                     "      var timeSincePause = Date.now() - lastPauseTime;" +
                     "      if (timeSincePause > 2000) {" +
-                    "        console.log('⚠️ Unexpected pause detected, recovering...');" +
-                    "        video.play().catch(e => console.log('Recovery failed:', e));" +
+                    "        console.log('🔄 Auto-recovering playback');" +
+                    "        attemptPlay();" +
                     "      }" +
                     "    }" +
                     "  }, 3000);" +
                     "  " +
-                    "  console.log('✅ PIP setup complete with user controls');" +
+                    "  console.log('✅ PIP setup complete');" +
                     "})();",
                     null
                 );
             });
-        }, 300);
+        }, 100); // Reduced delay for faster setup
         
     } else {
+        // ✅ Exiting PIP
         Log.d("PIP", "🏠 EXITING PIP");
         
         try {
@@ -598,10 +655,21 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             Log.e("WakeLock", "❌ Release error: " + e.getMessage());
         }
         
+        // ✅ Show Android navigation
         runOnUiThread(() -> {
+            try {
+                View bottomNav = findViewById(R.id.bottomNavigation);
+                if (bottomNav != null) {
+                    bottomNav.setVisibility(View.VISIBLE);
+                    Log.d("PIP", "✅ Android nav restored");
+                }
+            } catch (Exception e) {
+                Log.e("PIP", "❌ Nav restore failed: " + e.getMessage());
+            }
+            
             web.evaluateJavascript(
                 "(function() {" +
-                "  console.log('🔄 Restoring UI after PIP...');" +
+                "  console.log('🔄 Exiting PIP...');" +
                 "  " +
                 "  window.pipMode = false;" +
                 "  " +
@@ -610,26 +678,19 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                 "    window.pipPlayInterval = null;" +
                 "  }" +
                 "  " +
-                "  ['ytm-pivot-bar-renderer', 'ytm-mobile-topbar-renderer'].forEach(sel => {" +
-                "    var el = document.querySelector(sel);" +
-                "    if (el) el.style.display = '';" +
-                "  });" +
+                "  // Restore scrolling" +
+                "  document.body.style.overflow = '';" +
+                "  document.documentElement.style.overflow = '';" +
                 "  " +
+                "  // Restore video" +
                 "  var video = document.querySelector('video');" +
                 "  if (video) {" +
-                "    video.style.position = '';" +
-                "    video.style.top = '';" +
-                "    video.style.left = '';" +
-                "    video.style.width = '';" +
-                "    video.style.height = '';" +
-                "    video.style.zIndex = '';" +
-                "    video.style.objectFit = '';" +
-                "    video.style.backgroundColor = '';" +
+                "    video.style.cssText = '';" +
+                "    video.controls = false;" +
                 "    " +
                 "    if (window.wasPlayingBeforePIP && video.paused) {" +
                 "      setTimeout(() => {" +
                 "        video.play().catch(e => {" +
-                "          console.log('Auto-resume failed, trying button click');" +
                 "          var playBtn = document.querySelector('.ytp-play-button');" +
                 "          if (playBtn) playBtn.click();" +
                 "        });" +
@@ -638,7 +699,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                 "  }" +
                 "  " +
                 "  window.wasPlayingBeforePIP = undefined;" +
-                "  console.log('✅ UI restored');" +
+                "  console.log('✅ Exited PIP');" +
                 "})();",
                 null
             );
@@ -650,7 +711,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         });
     }
 }
-
 
     // ✅ UPDATED USER LEAVE HINT METHOD
     @Override
