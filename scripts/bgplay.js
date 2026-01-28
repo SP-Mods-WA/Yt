@@ -1,7 +1,7 @@
 /*****YTPRO*******
-Author: Prateek Chaubey
-Version: 3.9.2 - Fixed PIP Mode
-URI: https://github.com/prateek-chaubey/YTPRO
+Author: Sandun Piumal
+Version: 3.9.3 - Fixed PIP Mode Stuttering
+URI: https://www.spmods.download
 */
 
 if (typeof MediaMetadata === 'undefined') {
@@ -54,6 +54,7 @@ if (!('mediaSession' in navigator)) {
             _state = value;
 
             var ytproAud = document.getElementsByClassName('video-stream')[0];
+            if (!ytproAud) return;
 
             if (value === 'playing') {
                 setTimeout(() => {
@@ -61,15 +62,23 @@ if (!('mediaSession' in navigator)) {
                     
                     // ✅ PIP mode එකේ නම් video play වෙන්න සහතික කරන්න
                     if (window.isPIPMode && ytproAud.paused) {
-                        ytproAud.play();
+                        ytproAud.play().catch(err => console.log('Play error:', err));
                     }
-                }, 100);
-            } else if (value === 'paused' && (pauseAllowed || PIPause)) {
+                }, 50); // ✅ delay අඩු කරලා
+            } else if (value === 'paused') {
                 // ✅ PIP mode එකේ නම් pause එක ignore කරන්න
-                if (!window.isPIPMode) {
+                if (window.isPIPMode) {
+                    console.log('🛑 Pause blocked in playbackState setter');
+                    if (ytproAud.paused) {
+                        ytproAud.play().catch(err => console.log('Play error:', err));
+                    }
+                    return; // ✅ Android.bgPause() call එක නවත්තන්න
+                }
+                
+                if (pauseAllowed || PIPause) {
                     setTimeout(() => {
                         Android.bgPause(ytproAud.currentTime * 1000);
-                    }, 100);
+                    }, 50);
                 }
             } else if (value === "none" && !(window.location.href.indexOf("youtube.com/watch") > -1 || window.location.href.indexOf("youtube.com/shorts") > -1)) {
                 Android.bgStop();
@@ -129,34 +138,47 @@ async function bgPlay(info) {
     }
 }
 
-// ✅ PIP mode detect කරන function එක
+// ✅ PIP mode detect කරන function එක - IMPROVED
 function PIPlayer() {
     console.log('✅ Entering PIP mode');
     window.isPIPMode = true;
     
     var ytproAud = document.getElementsByClassName('video-stream')[0];
-    if (ytproAud && ytproAud.paused) {
-        ytproAud.play();
-    }
+    if (!ytproAud) return;
     
-    // ✅ PIP mode එකේ video pause වෙනවා නම් auto-play කරන්න
-    if (ytproAud) {
-        ytproAud.addEventListener('pause', function pipPauseHandler() {
+    // ✅ වැදගත්: pause event listener එක එක පාරක් විතරක් add කරන්න
+    if (!ytproAud.pipPauseListenerAdded) {
+        ytproAud.addEventListener('pause', function pipPauseHandler(e) {
             if (window.isPIPMode) {
+                console.log('🔄 Auto-resuming in PIP mode');
+                e.preventDefault(); // ✅ pause event එක block කරන්න
                 setTimeout(() => {
                     if (ytproAud.paused) {
-                        ytproAud.play();
+                        ytproAud.play().catch(err => console.log('Play error:', err));
                     }
-                }, 100);
+                }, 50); // ✅ delay එක අඩු කරලා
             }
-        });
+        }, true); // ✅ capture phase එකේ handle කරන්න
+        
+        ytproAud.pipPauseListenerAdded = true;
+    }
+    
+    // ✅ already paused නම් play කරන්න
+    if (ytproAud.paused) {
+        ytproAud.play().catch(err => console.log('Play error:', err));
     }
 }
 
-// ✅ PIP mode එකෙන් exit වෙද්දී
+// ✅ PIP mode එකෙන් exit වෙද්දී - IMPROVED
 function removePIP() {
     console.log('✅ Exiting PIP mode');
     window.isPIPMode = false;
+    
+    // ✅ cleanup කරන්න අවශ්‍ය නම්
+    var ytproAud = document.getElementsByClassName('video-stream')[0];
+    if (ytproAud) {
+        ytproAud.pipPauseListenerAdded = false; // reset කරන්න
+    }
 }
 
 function seekTo(t) {
@@ -171,10 +193,17 @@ function playVideo() {
     handlers.play();
 }
 
+// ✅ pauseVideo function එක - IMPROVED
 function pauseVideo() {
     // ✅ PIP mode එකේ නම් pause ignore කරන්න
     if (window.isPIPMode) {
         console.log('🛑 Pause blocked in PIP mode');
+        
+        // ✅ video එක pause වෙලා තිබ්බොත් play කරන්න
+        var ytproAud = document.getElementsByClassName('video-stream')[0];
+        if (ytproAud && ytproAud.paused) {
+            ytproAud.play().catch(err => console.log('Play error:', err));
+        }
         return;
     }
     
@@ -193,14 +222,25 @@ function playPrev() {
     handlers.previoustrack();
 }
 
-// ✅ Screen off වුනාට පස්සේත් PIP mode එකේ play කරන්න
+// ✅ visibilitychange handler - IMPROVED
 document.addEventListener('visibilitychange', function() {
-    if (window.isPIPMode && document.hidden) {
+    if (window.isPIPMode) {
         var ytproAud = document.getElementsByClassName('video-stream')[0];
-        if (ytproAud && ytproAud.paused) {
+        if (ytproAud && document.hidden && ytproAud.paused) {
             setTimeout(() => {
-                ytproAud.play();
-            }, 200);
+                ytproAud.play().catch(err => console.log('Play error:', err));
+            }, 100);
         }
     }
 });
+
+// ✅ EXTRA: video element එකම monitor කරන්න
+setInterval(() => {
+    if (window.isPIPMode) {
+        var ytproAud = document.getElementsByClassName('video-stream')[0];
+        if (ytproAud && ytproAud.paused && !ytproAud.ended) {
+            console.log('⚠️ Video paused unexpectedly, resuming...');
+            ytproAud.play().catch(err => console.log('Play error:', err));
+        }
+    }
+}, 500); // ✅ every 500ms check කරන්න
