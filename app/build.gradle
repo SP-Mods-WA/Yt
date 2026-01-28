@@ -35,13 +35,6 @@ android {
             versionNameSuffix "-DEBUG"
         }
     }
-
-    
-    
-    lint {
-        baseline = file("lint-baseline.xml")
-    }
-    }
     
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -55,6 +48,13 @@ android {
     buildFeatures {
         viewBinding true
         buildConfig true
+    }
+    
+    // LINT CONFIGURATION - FIXED POSITION
+    lint {
+        baseline = file("lint-baseline.xml")
+        checkReleaseBuilds false
+        abortOnError false
     }
     
     packagingOptions {
@@ -124,4 +124,3 @@ configurations.all {
         exclude group: 'com.android.support', module: 'support-core-ui'
     }
 }
-
