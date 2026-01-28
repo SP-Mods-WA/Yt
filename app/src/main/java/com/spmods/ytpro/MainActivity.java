@@ -507,11 +507,10 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             }
         }
         
-        // ✅ Hide custom Android navigation bar
+        // ✅ Hide custom navigation (generic View type)
         runOnUiThread(() -> {
             try {
-                // Your custom bottom navigation hide කරන්න
-                LinearLayout bottomNav = findViewById(R.id.bottomNavigation);
+                View bottomNav = findViewById(R.id.bottomNavigation);
                 if (bottomNav != null) {
                     bottomNav.setVisibility(View.GONE);
                     Log.d("PIP", "✅ Custom nav hidden");
@@ -526,110 +525,82 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             runOnUiThread(() -> {
                 web.evaluateJavascript(
                     "(function() {" +
-                    "  console.log('🎬 PIP: Full setup starting...');" +
+                    "  console.log('🎬 PIP: Setting up...');" +
                     "  " +
                     "  var video = document.querySelector('video');" +
                     "  if (!video) {" +
-                    "    console.error('❌ No video element!');" +
+                    "    console.error('❌ No video!');" +
                     "    return;" +
                     "  }" +
                     "  " +
-                    "  // Save state" +
                     "  window.wasPlayingBeforePIP = !video.paused;" +
                     "  window.pipMode = true;" +
                     "  console.log('📼 Playing:', window.wasPlayingBeforePIP);" +
                     "  " +
-                    "  // Remove YouTube navigation" +
+                    "  // Remove YouTube nav" +
                     "  var ytNav = document.querySelector('ytm-pivot-bar-renderer');" +
-                    "  if (ytNav) {" +
-                    "    ytNav.parentNode.removeChild(ytNav);" +
-                    "    console.log('✅ YT nav removed');" +
-                    "  }" +
+                    "  if (ytNav) ytNav.parentNode.removeChild(ytNav);" +
                     "  " +
                     "  var topbar = document.querySelector('ytm-mobile-topbar-renderer');" +
                     "  if (topbar) topbar.parentNode.removeChild(topbar);" +
                     "  " +
                     "  // Configure video" +
                     "  video.setAttribute('playsinline', '');" +
-                    "  video.setAttribute('webkit-playsinline', '');" +
                     "  video.muted = false;" +
                     "  video.controls = true;" +
                     "  " +
-                    "  // Fullscreen positioning" +
-                    "  video.style.cssText = '" +
-                    "    position: fixed !important;" +
-                    "    top: 0 !important;" +
-                    "    left: 0 !important;" +
-                    "    width: 100vw !important;" +
-                    "    height: 100vh !important;" +
-                    "    z-index: 2147483647 !important;" +
-                    "    object-fit: contain !important;" +
-                    "    background: #000 !important;" +
-                    "  ';" +
+                    "  // Fullscreen" +
+                    "  video.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:2147483647!important;object-fit:contain!important;background:#000!important;';" +
                     "  " +
-                    "  // Hide body scroll" +
                     "  document.body.style.overflow = 'hidden';" +
-                    "  document.documentElement.style.overflow = 'hidden';" +
                     "  " +
-                    "  // FORCE PLAY" +
-                    "  function attemptPlay() {" +
-                    "    console.log('🔄 Attempting play...');" +
+                    "  // Force play" +
+                    "  function tryPlay() {" +
                     "    if (video.paused) {" +
-                    "      video.play().then(() => {" +
-                    "        console.log('✅ Video playing!');" +
-                    "      }).catch(err => {" +
+                    "      video.play().then(() => console.log('✅ Playing')).catch(err => {" +
                     "        console.warn('⚠️ Play failed:', err);" +
                     "        setTimeout(() => {" +
-                    "          var playBtn = document.querySelector('.ytp-play-button');" +
-                    "          if (playBtn && playBtn.getAttribute('aria-label') === 'Play') {" +
-                    "            playBtn.click();" +
-                    "            console.log('🔘 Clicked play button');" +
-                    "          }" +
+                    "          var btn = document.querySelector('.ytp-play-button');" +
+                    "          if (btn && btn.getAttribute('aria-label') === 'Play') btn.click();" +
                     "        }, 200);" +
                     "      });" +
                     "    }" +
                     "  }" +
                     "  " +
-                    "  // Multiple play attempts" +
                     "  if (window.wasPlayingBeforePIP) {" +
-                    "    attemptPlay();" +
-                    "    setTimeout(attemptPlay, 300);" +
-                    "    setTimeout(attemptPlay, 600);" +
-                    "    setTimeout(attemptPlay, 1000);" +
+                    "    tryPlay();" +
+                    "    setTimeout(tryPlay, 300);" +
+                    "    setTimeout(tryPlay, 600);" +
+                    "    setTimeout(tryPlay, 1000);" +
                     "  }" +
                     "  " +
-                    "  // User control detection" +
+                    "  // User controls" +
                     "  var userPaused = false;" +
                     "  var lastPauseTime = 0;" +
                     "  " +
-                    "  video.addEventListener('pause', function(e) {" +
+                    "  video.addEventListener('pause', function() {" +
                     "    var now = Date.now();" +
                     "    if (now - lastPauseTime > 500) {" +
                     "      userPaused = true;" +
                     "      window.wasPlayingBeforePIP = false;" +
-                    "      console.log('⏸️ User paused');" +
                     "    }" +
                     "    lastPauseTime = now;" +
                     "  });" +
                     "  " +
-                    "  video.addEventListener('play', function(e) {" +
+                    "  video.addEventListener('play', function() {" +
                     "    userPaused = false;" +
                     "    window.wasPlayingBeforePIP = true;" +
-                    "    console.log('▶️ User played');" +
                     "  });" +
                     "  " +
-                    "  // Recovery interval" +
+                    "  // Recovery" +
                     "  window.pipPlayInterval = setInterval(() => {" +
                     "    if (!userPaused && window.wasPlayingBeforePIP && video.paused) {" +
-                    "      var timeSincePause = Date.now() - lastPauseTime;" +
-                    "      if (timeSincePause > 2000) {" +
-                    "        console.log('🔄 Auto-recovering playback');" +
-                    "        attemptPlay();" +
-                    "      }" +
+                    "      var time = Date.now() - lastPauseTime;" +
+                    "      if (time > 2000) tryPlay();" +
                     "    }" +
                     "  }, 3000);" +
                     "  " +
-                    "  console.log('✅ PIP setup complete');" +
+                    "  console.log('✅ PIP ready');" +
                     "})();",
                     null
                 );
@@ -643,19 +614,18 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
-                Log.d("WakeLock", "❌ Released");
             }
         } catch (Exception e) {
             Log.e("WakeLock", "❌ Release error: " + e.getMessage());
         }
         
-        // ✅ Show custom navigation bar again
+        // ✅ Show navigation
         runOnUiThread(() -> {
             try {
-                LinearLayout bottomNav = findViewById(R.id.bottomNavigation);
+                View bottomNav = findViewById(R.id.bottomNavigation);
                 if (bottomNav != null) {
                     bottomNav.setVisibility(View.VISIBLE);
-                    Log.d("PIP", "✅ Custom nav restored");
+                    Log.d("PIP", "✅ Nav restored");
                 }
             } catch (Exception e) {
                 Log.e("PIP", "❌ Nav restore failed: " + e.getMessage());
@@ -663,37 +633,26 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             
             web.evaluateJavascript(
                 "(function() {" +
-                "  console.log('🔄 Exiting PIP...');" +
-                "  " +
                 "  window.pipMode = false;" +
-                "  " +
                 "  if (window.pipPlayInterval) {" +
                 "    clearInterval(window.pipPlayInterval);" +
                 "    window.pipPlayInterval = null;" +
                 "  }" +
-                "  " +
-                "  // Restore scrolling" +
                 "  document.body.style.overflow = '';" +
-                "  document.documentElement.style.overflow = '';" +
-                "  " +
-                "  // Restore video" +
                 "  var video = document.querySelector('video');" +
                 "  if (video) {" +
                 "    video.style.cssText = '';" +
                 "    video.controls = false;" +
-                "    " +
                 "    if (window.wasPlayingBeforePIP && video.paused) {" +
                 "      setTimeout(() => {" +
                 "        video.play().catch(e => {" +
-                "          var playBtn = document.querySelector('.ytp-play-button');" +
-                "          if (playBtn) playBtn.click();" +
+                "          var btn = document.querySelector('.ytp-play-button');" +
+                "          if (btn) btn.click();" +
                 "        });" +
                 "      }, 500);" +
                 "    }" +
                 "  }" +
-                "  " +
                 "  window.wasPlayingBeforePIP = undefined;" +
-                "  console.log('✅ Exited PIP');" +
                 "})();",
                 null
             );
