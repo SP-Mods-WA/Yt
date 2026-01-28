@@ -26,6 +26,8 @@ import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.os.PowerManager;
 import android.os.Handler;
+// MainActivity.java එකේ ඉහල import section එකේ add කරන්න:
+import android.graphics.drawable.GradientDrawable;
 
 public class MainActivity extends Activity {
 
@@ -1093,3 +1095,4 @@ public class MainActivity extends Activity {
         });
     }
 }
+
