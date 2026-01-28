@@ -482,46 +482,24 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
     }
 }
 
-@Override
-protected void onUserLeaveHint() {
+  @Override
+  protected void onUserLeaveHint() {
     super.onUserLeaveHint();
-    
-    if (android.os.Build.VERSION.SDK_INT >= 26 && 
-        web.getUrl() != null && 
-        web.getUrl().contains("watch") && 
-        isPlaying) {
-        
+    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch") && isPlaying) {
         try {
-            isPip = true;
-            
-            // ✅ Video play වෙන බව confirm කරන්න
-            web.evaluateJavascript(
-                "(function() {" +
-                "  if (typeof player !== 'undefined' && player) {" +
-                "    player.playVideo();" +
-                "  }" +
-                "})();",
-                null
-            );
-            
-            PictureInPictureParams params;
-            if (portrait) {
-                params = new PictureInPictureParams.Builder()
-                    .setAspectRatio(new Rational(9, 16))
-                    .build();
-            } else {
-                params = new PictureInPictureParams.Builder()
-                    .setAspectRatio(new Rational(16, 9))
-                    .build();
-            }
-            
-            enterPictureInPictureMode(params);
-            
+          PictureInPictureParams params;
+          isPip=true;
+          if (portrait) {
+            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(9, 16)).build();
+          } else{
+            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build();
+          }
+          enterPictureInPictureMode(params);
         } catch (IllegalStateException e) {
-            Log.e("PIP", "PIP mode error: " + e.getMessage());
+          e.printStackTrace();
         }
     }
-}
+  }
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
