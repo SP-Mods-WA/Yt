@@ -495,10 +495,8 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
     isPipRequested = false;
     
     if (isInPictureInPictureMode) {
-        // ✅ Entering PIP Mode
         Log.d("PIP", "🎬 ENTERING PIP");
         
-        // Acquire WakeLock
         if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
             try {
                 wakeLock.acquire(10 * 60 * 1000L);
@@ -508,7 +506,6 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             }
         }
         
-        // Hide custom navigation
         runOnUiThread(() -> {
             try {
                 View bottomNav = findViewById(R.id.bottomNavigation);
@@ -521,41 +518,27 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             }
         });
         
-        // Setup video for PIP
         handler.postDelayed(() -> {
             runOnUiThread(() -> {
                 web.evaluateJavascript(
                     "(function() {" +
                     "  console.log('🎬 PIP: Setting up...');" +
-                    "  " +
                     "  var video = document.querySelector('video');" +
-                    "  if (!video) {" +
-                    "    console.error('❌ No video!');" +
-                    "    return;" +
-                    "  }" +
-                    "  " +
+                    "  if (!video) { console.error('❌ No video!'); return; }" +
                     "  window.wasPlayingBeforePIP = !video.paused;" +
                     "  window.pipMode = true;" +
-                    "  console.log('📼 Playing:', window.wasPlayingBeforePIP);" +
-                    "  " +
                     "  var ytNav = document.querySelector('ytm-pivot-bar-renderer');" +
                     "  if (ytNav) ytNav.parentNode.removeChild(ytNav);" +
-                    "  " +
                     "  var topbar = document.querySelector('ytm-mobile-topbar-renderer');" +
                     "  if (topbar) topbar.parentNode.removeChild(topbar);" +
-                    "  " +
                     "  video.setAttribute('playsinline', '');" +
                     "  video.muted = false;" +
                     "  video.controls = true;" +
-                    "  " +
                     "  video.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:2147483647!important;object-fit:contain!important;background:#000!important;';" +
-                    "  " +
                     "  document.body.style.overflow = 'hidden';" +
-                    "  " +
                     "  function tryPlay() {" +
                     "    if (video.paused) {" +
                     "      video.play().then(() => console.log('✅ Playing')).catch(err => {" +
-                    "        console.warn('⚠️ Play failed:', err);" +
                     "        setTimeout(() => {" +
                     "          var btn = document.querySelector('.ytp-play-button');" +
                     "          if (btn && btn.getAttribute('aria-label') === 'Play') btn.click();" +
@@ -563,38 +546,24 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     "      });" +
                     "    }" +
                     "  }" +
-                    "  " +
                     "  if (window.wasPlayingBeforePIP) {" +
-                    "    tryPlay();" +
-                    "    setTimeout(tryPlay, 300);" +
-                    "    setTimeout(tryPlay, 600);" +
-                    "    setTimeout(tryPlay, 1000);" +
+                    "    tryPlay(); setTimeout(tryPlay, 300); setTimeout(tryPlay, 600); setTimeout(tryPlay, 1000);" +
                     "  }" +
-                    "  " +
-                    "  var userPaused = false;" +
-                    "  var lastPauseTime = 0;" +
-                    "  " +
+                    "  var userPaused = false; var lastPauseTime = 0;" +
                     "  video.addEventListener('pause', function() {" +
                     "    var now = Date.now();" +
-                    "    if (now - lastPauseTime > 500) {" +
-                    "      userPaused = true;" +
-                    "      window.wasPlayingBeforePIP = false;" +
-                    "    }" +
+                    "    if (now - lastPauseTime > 500) { userPaused = true; window.wasPlayingBeforePIP = false; }" +
                     "    lastPauseTime = now;" +
                     "  });" +
-                    "  " +
                     "  video.addEventListener('play', function() {" +
-                    "    userPaused = false;" +
-                    "    window.wasPlayingBeforePIP = true;" +
+                    "    userPaused = false; window.wasPlayingBeforePIP = true;" +
                     "  });" +
-                    "  " +
                     "  window.pipPlayInterval = setInterval(() => {" +
                     "    if (!userPaused && window.wasPlayingBeforePIP && video.paused) {" +
                     "      var time = Date.now() - lastPauseTime;" +
                     "      if (time > 2000) tryPlay();" +
                     "    }" +
                     "  }, 3000);" +
-                    "  " +
                     "  console.log('✅ PIP ready');" +
                     "})();",
                     null
@@ -603,26 +572,21 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
         }, 100);
         
     } else {
-        // ✅ Exiting PIP Mode
         Log.d("PIP", "🏠 EXITING PIP");
         
-        // Release WakeLock
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
-                Log.d("WakeLock", "❌ Released");
             }
         } catch (Exception e) {
             Log.e("WakeLock", "❌ Release error: " + e.getMessage());
         }
         
-        // Show navigation
         runOnUiThread(() -> {
             try {
                 View bottomNav = findViewById(R.id.bottomNavigation);
                 if (bottomNav != null) {
                     bottomNav.setVisibility(View.VISIBLE);
-                    Log.d("PIP", "✅ Nav restored");
                 }
             } catch (Exception e) {
                 Log.e("PIP", "❌ Nav restore failed: " + e.getMessage());
@@ -631,197 +595,13 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             web.evaluateJavascript(
                 "(function() {" +
                 "  window.pipMode = false;" +
-                "  if (window.pipPlayInterval) {" +
-                "    clearInterval(window.pipPlayInterval);" +
-                "    window.pipPlayInterval = null;" +
-                "  }" +
+                "  if (window.pipPlayInterval) { clearInterval(window.pipPlayInterval); window.pipPlayInterval = null; }" +
                 "  document.body.style.overflow = '';" +
                 "  var video = document.querySelector('video');" +
                 "  if (video) {" +
-                "    video.style.cssText = '';" +
-                "    video.controls = false;" +
+                "    video.style.cssText = ''; video.controls = false;" +
                 "    if (window.wasPlayingBeforePIP && video.paused) {" +
-                "      setTimeout(() => {" +
-                "        video.play().catch(e => {" +
-                "          var btn = document.querySelector('.ytp-play-button');" +
-                "          if (btn) btn.click();" +
-                "        });" +
-                "      }, 500);" +
-                "    }" +
-                "  }" +
-                "  window.wasPlayingBeforePIP = undefined;" +
-                "})();",
-                null
-            );
-            
-            handler.postDelayed(() -> {
-                web.requestLayout();
-                web.invalidate();
-            }, 300);
-        });
-    }
-}@Override
-public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
-    
-    Log.d("PIP", "🔄 PIP state: " + isInPictureInPictureMode);
-    
-    isPip = isInPictureInPictureMode;
-    isPipRequested = false;
-    
-    if (isInPictureInPictureMode) {
-        // ✅ Entering PIP Mode
-        Log.d("PIP", "🎬 ENTERING PIP");
-        
-        // Acquire WakeLock
-        if (isPlaying && wakeLock != null && !wakeLock.isHeld()) {
-            try {
-                wakeLock.acquire(10 * 60 * 1000L);
-                Log.d("WakeLock", "✅ Acquired for PIP");
-            } catch (Exception e) {
-                Log.e("WakeLock", "❌ Failed: " + e.getMessage());
-            }
-        }
-        
-        // Hide custom navigation
-        runOnUiThread(() -> {
-            try {
-                View bottomNav = findViewById(R.id.bottomNavigation);
-                if (bottomNav != null) {
-                    bottomNav.setVisibility(View.GONE);
-                    Log.d("PIP", "✅ Custom nav hidden");
-                }
-            } catch (Exception e) {
-                Log.e("PIP", "❌ Nav hide failed: " + e.getMessage());
-            }
-        });
-        
-        // Setup video for PIP
-        handler.postDelayed(() -> {
-            runOnUiThread(() -> {
-                web.evaluateJavascript(
-                    "(function() {" +
-                    "  console.log('🎬 PIP: Setting up...');" +
-                    "  " +
-                    "  var video = document.querySelector('video');" +
-                    "  if (!video) {" +
-                    "    console.error('❌ No video!');" +
-                    "    return;" +
-                    "  }" +
-                    "  " +
-                    "  window.wasPlayingBeforePIP = !video.paused;" +
-                    "  window.pipMode = true;" +
-                    "  console.log('📼 Playing:', window.wasPlayingBeforePIP);" +
-                    "  " +
-                    "  var ytNav = document.querySelector('ytm-pivot-bar-renderer');" +
-                    "  if (ytNav) ytNav.parentNode.removeChild(ytNav);" +
-                    "  " +
-                    "  var topbar = document.querySelector('ytm-mobile-topbar-renderer');" +
-                    "  if (topbar) topbar.parentNode.removeChild(topbar);" +
-                    "  " +
-                    "  video.setAttribute('playsinline', '');" +
-                    "  video.muted = false;" +
-                    "  video.controls = true;" +
-                    "  " +
-                    "  video.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:2147483647!important;object-fit:contain!important;background:#000!important;';" +
-                    "  " +
-                    "  document.body.style.overflow = 'hidden';" +
-                    "  " +
-                    "  function tryPlay() {" +
-                    "    if (video.paused) {" +
-                    "      video.play().then(() => console.log('✅ Playing')).catch(err => {" +
-                    "        console.warn('⚠️ Play failed:', err);" +
-                    "        setTimeout(() => {" +
-                    "          var btn = document.querySelector('.ytp-play-button');" +
-                    "          if (btn && btn.getAttribute('aria-label') === 'Play') btn.click();" +
-                    "        }, 200);" +
-                    "      });" +
-                    "    }" +
-                    "  }" +
-                    "  " +
-                    "  if (window.wasPlayingBeforePIP) {" +
-                    "    tryPlay();" +
-                    "    setTimeout(tryPlay, 300);" +
-                    "    setTimeout(tryPlay, 600);" +
-                    "    setTimeout(tryPlay, 1000);" +
-                    "  }" +
-                    "  " +
-                    "  var userPaused = false;" +
-                    "  var lastPauseTime = 0;" +
-                    "  " +
-                    "  video.addEventListener('pause', function() {" +
-                    "    var now = Date.now();" +
-                    "    if (now - lastPauseTime > 500) {" +
-                    "      userPaused = true;" +
-                    "      window.wasPlayingBeforePIP = false;" +
-                    "    }" +
-                    "    lastPauseTime = now;" +
-                    "  });" +
-                    "  " +
-                    "  video.addEventListener('play', function() {" +
-                    "    userPaused = false;" +
-                    "    window.wasPlayingBeforePIP = true;" +
-                    "  });" +
-                    "  " +
-                    "  window.pipPlayInterval = setInterval(() => {" +
-                    "    if (!userPaused && window.wasPlayingBeforePIP && video.paused) {" +
-                    "      var time = Date.now() - lastPauseTime;" +
-                    "      if (time > 2000) tryPlay();" +
-                    "    }" +
-                    "  }, 3000);" +
-                    "  " +
-                    "  console.log('✅ PIP ready');" +
-                    "})();",
-                    null
-                );
-            });
-        }, 100);
-        
-    } else {
-        // ✅ Exiting PIP Mode
-        Log.d("PIP", "🏠 EXITING PIP");
-        
-        // Release WakeLock
-        try {
-            if (wakeLock != null && wakeLock.isHeld()) {
-                wakeLock.release();
-                Log.d("WakeLock", "❌ Released");
-            }
-        } catch (Exception e) {
-            Log.e("WakeLock", "❌ Release error: " + e.getMessage());
-        }
-        
-        // Show navigation
-        runOnUiThread(() -> {
-            try {
-                View bottomNav = findViewById(R.id.bottomNavigation);
-                if (bottomNav != null) {
-                    bottomNav.setVisibility(View.VISIBLE);
-                    Log.d("PIP", "✅ Nav restored");
-                }
-            } catch (Exception e) {
-                Log.e("PIP", "❌ Nav restore failed: " + e.getMessage());
-            }
-            
-            web.evaluateJavascript(
-                "(function() {" +
-                "  window.pipMode = false;" +
-                "  if (window.pipPlayInterval) {" +
-                "    clearInterval(window.pipPlayInterval);" +
-                "    window.pipPlayInterval = null;" +
-                "  }" +
-                "  document.body.style.overflow = '';" +
-                "  var video = document.querySelector('video');" +
-                "  if (video) {" +
-                "    video.style.cssText = '';" +
-                "    video.controls = false;" +
-                "    if (window.wasPlayingBeforePIP && video.paused) {" +
-                "      setTimeout(() => {" +
-                "        video.play().catch(e => {" +
-                "          var btn = document.querySelector('.ytp-play-button');" +
-                "          if (btn) btn.click();" +
-                "        });" +
-                "      }, 500);" +
+                "      setTimeout(() => { video.play().catch(e => { var btn = document.querySelector('.ytp-play-button'); if (btn) btn.click(); }); }, 500);" +
                 "    }" +
                 "  }" +
                 "  window.wasPlayingBeforePIP = undefined;" +
