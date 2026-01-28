@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/headerLayout"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:background="#0F0F0F"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingLeft="12dp"
+    android:paddingRight="12dp"
+    android:elevation="4dp">
+
+    <!-- YouTube Logo -->
+    <ImageView
+        android:id="@+id/ytLogo"
+        android:layout_width="110dp"
+        android:layout_height="24dp"
+        android:src="@drawable/yt_logo"
+        android:scaleType="fitStart"
+        android:contentDescription="YouTube Logo"/>
+
+    <!-- Spacer -->
+    <View
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1"/>
+
+    <!-- Search Button -->
+    <RelativeLayout
+        android:id="@+id/searchButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true">
+        
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_centerInParent="true"
+            android:src="@drawable/ic_search"
+            android:tint="#FFFFFF"
+            android:contentDescription="Search"/>
+    </RelativeLayout>
+
+    <!-- Notifications Button -->
+    <RelativeLayout
+        android:id="@+id/notificationButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginLeft="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true">
+        
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_centerInParent="true"
+            android:src="@drawable/ic_notifications"
+            android:tint="#FFFFFF"
+            android:contentDescription="Notifications"/>
+        
+        <!-- Notification Badge -->
+        <TextView
+            android:id="@+id/notificationBadge"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginTop="2dp"
+            android:layout_marginRight="2dp"
+            android:background="@drawable/notification_badge_bg"
+            android:gravity="center"
+            android:text="3"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone"/>
+    </RelativeLayout>
+
+    <!-- Profile Button -->
+    <RelativeLayout
+        android:id="@+id/profileButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginLeft="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true">
+        
+        <ImageView
+            android:id="@+id/profileImage"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_centerInParent="true"
+            android:src="@drawable/ic_profile"
+            android:background="@drawable/profile_circle_bg"
+            android:scaleType="centerCrop"
+            android:contentDescription="Profile"/>
+    </RelativeLayout>
+
+</LinearLayout>
