@@ -267,55 +267,133 @@ private boolean isHeaderVisible = true;
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
         scriptsInjected = false;
+        
+        // ✅✅✅ මේ code එක add කරන්න ✅✅✅
+    // Pre-inject hiding code ASAP
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var style = document.createElement('style');" +
+        "  style.innerHTML = '" +
+        "    ytm-mobile-topbar-renderer, c3-masthead, ytm-masthead, " +
+        "    .mobile-topbar-header, ytm-pivot-bar-renderer { " +
+        "      display: none !important; " +
+        "    }" +
+        "  ';" +
+        "  document.head.appendChild(style);" +
+        "})();",
+        null
+    );
+    // ✅✅✅ END ✅✅✅
       }
 
-      @Override
-      public void onPageFinished(WebView p1, String url) {
-        // ✅ CRITICAL FIX: Inject scripts immediately for smooth playback
-        if (!scriptsInjected) {
-            injectYTProScripts();
-            scriptsInjected = true;
-        }
-        
-        // ✅ Hide YouTube bottom nav immediately
-        web.evaluateJavascript(
-            "(function() {" +
-            "  var style = document.createElement('style');" +
-            "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
-            "  document.head.appendChild(style);" +
-            "})();",
-            null
-        );
-        
-        // ✅ Block shorts auto-redirect
-        web.evaluateJavascript(
-            "(function() {" +
-            "  var originalPushState = history.pushState;" +
-            "  history.pushState = function(state, title, url) {" +
-            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
-            "      return;" +
-            "    }" +
-            "    return originalPushState.apply(this, arguments);" +
-            "  };" +
-            "})();",
-            null
-        );
+@Override
+public void onPageFinished(WebView p1, String url) {
+    // ✅ Inject scripts
+    if (!scriptsInjected) {
+        injectYTProScripts();
+        scriptsInjected = true;
+    }
+    
+    // ✅✅✅ මේ COMPLETE code එක add කරන්න ✅✅✅
+    // SUPER AGGRESSIVE - Hide EVERYTHING from YouTube UI
+    web.evaluateJavascript(
+        "(function() {" +
+        "  function hideYouTubeUI() {" +
+        "    var style = document.getElementById('ytpro-custom-style');" +
+        "    if (!style) {" +
+        "      style = document.createElement('style');" +
+        "      style.id = 'ytpro-custom-style';" +
+        "      style.innerHTML = `" +
+        "        /* Hide ALL YouTube headers */" +
+        "        ytm-mobile-topbar-renderer," +
+        "        c3-masthead," +
+        "        ytm-masthead," +
+        "        .mobile-topbar-header," +
+        "        ytm-topbar-renderer," +
+        "        .masthead-skeleton-icon," +
+        "        .mobile-topbar-header-content," +
+        "        #header," +
+        "        #masthead-container {" +
+        "          display: none !important;" +
+        "          visibility: hidden !important;" +
+        "          height: 0 !important;" +
+        "          opacity: 0 !important;" +
+        "        }" +
+        "        " +
+        "        /* Hide YouTube bottom navigation */" +
+        "        ytm-pivot-bar-renderer," +
+        "        .pivot-bar-renderer," +
+        "        ytm-bottom-sheet-renderer {" +
+        "          display: none !important;" +
+        "          visibility: hidden !important;" +
+        "        }" +
+        "        " +
+        "        /* Fix body spacing */" +
+        "        body {" +
+        "          padding-top: 0px !important;" +
+        "          padding-bottom: 65px !important;" +
+        "          margin-top: 0px !important;" +
+        "        }" +
+        "        " +
+        "        /* Fix content containers */" +
+        "        ytm-browse," +
+        "        ytm-single-column-browse-results-renderer," +
+        "        ytm-feed {" +
+        "          padding-top: 0px !important;" +
+        "          margin-top: 0px !important;" +
+        "        }" +
+        "        " +
+        "        /* Video player adjustments */" +
+        "        .player-container," +
+        "        ytm-watch {" +
+        "          padding-top: 0px !important;" +
+        "        }" +
+        "      `;" +
+        "      document.head.appendChild(style);" +
+        "    }" +
+        "  }" +
+        "  " +
+        "  hideYouTubeUI();" +
+        "  " +
+        "  // Re-apply on DOM changes" +
+        "  var observer = new MutationObserver(hideYouTubeUI);" +
+        "  observer.observe(document.body, { childList: true, subtree: true });" +
+        "  " +
+        "  console.log('✅ YouTube UI completely hidden');" +
+        "})();",
+        null
+    );
+    
+    // Block shorts auto-redirect
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var originalPushState = history.pushState;" +
+        "  history.pushState = function(state, title, url) {" +
+        "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+        "      return;" +
+        "    }" +
+        "    return originalPushState.apply(this, arguments);" +
+        "  };" +
+        "})();",
+        null
+    );
+    // ✅✅✅ END ✅✅✅
 
-        if (dL) {
-            web.postDelayed(() -> {
-                web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
-                dL = false;
-            }, 2000);
-        }
+    if (dL) {
+        web.postDelayed(() -> {
+            web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
+            dL = false;
+        }, 2000);
+    }
 
-        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-            isPlaying = false;
-            mediaSession = false;
-            stopService(new Intent(getApplicationContext(), ForegroundService.class));
-        }
+    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+        isPlaying = false;
+        mediaSession = false;
+        stopService(new Intent(getApplicationContext(), ForegroundService.class));
+    }
 
-        super.onPageFinished(p1, url);
-      }
+    super.onPageFinished(p1, url);
+}
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -1086,110 +1164,77 @@ private void setupCustomHeader() {
     notificationBadge = findViewById(R.id.notificationBadge);
     profileImage = findViewById(R.id.profileImage);
     
+    // Check if views exist
+    if (headerLayout == null || searchButton == null) {
+        Log.e("Header", "Header views not found!");
+        return;
+    }
+    
     // Search button click
-    searchButton.setOnClickListener(v -> {
-        animateButton(v);
-        userNavigated = true;
-        web.loadUrl("https://m.youtube.com/results?search_query=");
-        web.evaluateJavascript(
-            "(function() {" +
-            "  setTimeout(function() {" +
-            "    var searchBox = document.querySelector('input[type=\"search\"]');" +
-            "    if (searchBox) {" +
-            "      searchBox.focus();" +
-            "      searchBox.click();" +
-            "    }" +
-            "  }, 500);" +
-            "})();",
-            null
-        );
+    searchButton.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            animateButton(v);
+            userNavigated = true;
+            web.loadUrl("https://m.youtube.com/results?search_query=");
+            web.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    web.evaluateJavascript(
+                        "(function() {" +
+                        "  var searchBox = document.querySelector('input[type=\"search\"]');" +
+                        "  if (searchBox) {" +
+                        "    searchBox.focus();" +
+                        "    searchBox.click();" +
+                        "  }" +
+                        "})();",
+                        null
+                    );
+                }
+            }, 500);
+        }
     });
     
     // Notification button click
-    notificationButton.setOnClickListener(v -> {
-        animateButton(v);
-        checkNotificationsNow();
-        Toast.makeText(this, "Checking notifications... 🔔", Toast.LENGTH_SHORT).show();
+    notificationButton.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            animateButton(v);
+            checkNotificationsNow();
+            Toast.makeText(MainActivity.this, "Checking notifications... 🔔", Toast.LENGTH_SHORT).show();
+        }
     });
     
     // Profile button click
-    profileButton.setOnClickListener(v -> {
-        animateButton(v);
-        userNavigated = true;
-        web.loadUrl("https://m.youtube.com/feed/account");
+    profileButton.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            animateButton(v);
+            userNavigated = true;
+            web.loadUrl("https://m.youtube.com/feed/account");
+        }
     });
     
-    // ✅ Scroll listener - header hide/show කරන්න
-    setupHeaderScrollBehavior();
+    Log.d("Header", "✅ Custom header setup complete");
 }
 
 // ✅ Button Animation
-private void animateButton(View button) {
+private void animateButton(final View button) {
     button.animate()
         .scaleX(0.85f)
         .scaleY(0.85f)
         .setDuration(100)
-        .withEndAction(() -> {
-            button.animate()
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(100)
-                .start();
+        .withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                button.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(100)
+                    .start();
+            }
         })
         .start();
-}
-
-// ✅ Header Scroll Behavior
-private void setupHeaderScrollBehavior() {
-    web.setOnScrollChangeListener(new View.OnScrollChangeListener() {
-        private int lastScrollY = 0;
-        
-        @Override
-        public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
-            // Scroll down - hide header
-            if (scrollY > lastScrollY && scrollY > 100 && isHeaderVisible) {
-                hideHeader();
-            }
-            // Scroll up - show header
-            else if (scrollY < lastScrollY && !isHeaderVisible) {
-                showHeader();
-            }
-            
-            lastScrollY = scrollY;
-        }
-    });
-}
-
-// ✅ Hide Header
-private void hideHeader() {
-    isHeaderVisible = false;
-    headerLayout.animate()
-        .translationY(-headerLayout.getHeight())
-        .alpha(0f)
-        .setDuration(200)
-        .start();
-}
-
-// ✅ Show Header
-private void showHeader() {
-    isHeaderVisible = true;
-    headerLayout.animate()
-        .translationY(0)
-        .alpha(1f)
-        .setDuration(200)
-        .start();
-}
-
-// ✅ Update Notification Badge (optional)
-public void updateNotificationBadge(int count) {
-    runOnUiThread(() -> {
-        if (count > 0) {
-            notificationBadge.setText(String.valueOf(count));
-            notificationBadge.setVisibility(View.VISIBLE);
-        } else {
-            notificationBadge.setVisibility(View.GONE);
-        }
-    });
 }
   
 }
