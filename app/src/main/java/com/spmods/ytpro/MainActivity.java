@@ -86,12 +86,19 @@ public class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
     
+    settings.setMediaPlaybackRequiresUserGesture(false);
+    
     // ✅ FIXED: Remove deprecated APIs that cause build errors
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
     
     // ✅ Hardware acceleration for smooth video playback
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+    }
+    
+    // ✅ Background playback සඳහා මේකත් add කරන්න
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { // 👈 මේකත් add කරන්න
+        settings.setSafeBrowsingEnabled(true);
     }
     
     // ✅ Video playback optimization - CRITICAL for smooth YouTube
@@ -448,30 +455,73 @@ public class MainActivity extends Activity {
     }
   }
 
-  @Override
-  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
+@Override
+public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
     isPip = isInPictureInPictureMode;
-  }
+    
+    if (isInPictureInPictureMode) {
+        // ✅ PIP mode එකට ගියාම video play වෙන්න සහතික කරන්න
+        web.evaluateJavascript("PIPlayer();", null);
+        
+        // ✅ Screen off වුනාට පස්සේත් video play වෙන්න
+        web.evaluateJavascript(
+            "(function() {" +
+            "  if (typeof player !== 'undefined' && player) {" +
+            "    player.playVideo();" +
+            "  }" +
+            "})();",
+            null
+        );
+        
+        // ✅ Wake lock එක තියාගන්න PIP mode එකේ
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        
+    } else {
+        // PIP mode එකෙන් exit වුනාම
+        web.evaluateJavascript("removePIP();", null);
+    }
+}
 
-  @Override
-  protected void onUserLeaveHint() {
+@Override
+protected void onUserLeaveHint() {
     super.onUserLeaveHint();
-    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch") && isPlaying) {
+    
+    if (android.os.Build.VERSION.SDK_INT >= 26 && 
+        web.getUrl() != null && 
+        web.getUrl().contains("watch") && 
+        isPlaying) {
+        
         try {
-          PictureInPictureParams params;
-          isPip=true;
-          if (portrait) {
-            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(9, 16)).build();
-          } else{
-            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build();
-          }
-          enterPictureInPictureMode(params);
+            isPip = true;
+            
+            // ✅ Video play වෙන බව confirm කරන්න
+            web.evaluateJavascript(
+                "(function() {" +
+                "  if (typeof player !== 'undefined' && player) {" +
+                "    player.playVideo();" +
+                "  }" +
+                "})();",
+                null
+            );
+            
+            PictureInPictureParams params;
+            if (portrait) {
+                params = new PictureInPictureParams.Builder()
+                    .setAspectRatio(new Rational(9, 16))
+                    .build();
+            } else {
+                params = new PictureInPictureParams.Builder()
+                    .setAspectRatio(new Rational(16, 9))
+                    .build();
+            }
+            
+            enterPictureInPictureMode(params);
+            
         } catch (IllegalStateException e) {
-          e.printStackTrace();
+            Log.e("PIP", "PIP mode error: " + e.getMessage());
         }
     }
-  }
+}
 
   public class CustomWebClient extends WebChromeClient {
     private View mCustomView;
