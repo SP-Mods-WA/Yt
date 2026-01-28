@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <item
+        android:id="@+id/action_pip"
+        android:title="🎬 Picture-in-Picture"
+        android:icon="@drawable/ic_pip"/>
+
+    <item
+        android:id="@+id/action_download"
+        android:title="📥 Download Video"
+        android:icon="@drawable/ic_download"/>
+
+    <item
+        android:id="@+id/action_speed"
+        android:title="🎚️ Playback Speed"
+        android:icon="@drawable/ic_speed"/>
+
+    <item
+        android:id="@+id/action_quality"
+        android:title="🎬 Video Quality"
+        android:icon="@drawable/ic_quality"/>
+
+    <item
+        android:id="@+id/action_stats"
+        android:title="📊 Video Stats"
+        android:icon="@drawable/ic_stats"/>
+
+    <item
+        android:id="@+id/action_share"
+        android:title="🔗 Share Video"
+        android:icon="@drawable/ic_share"/>
+
+</menu>
