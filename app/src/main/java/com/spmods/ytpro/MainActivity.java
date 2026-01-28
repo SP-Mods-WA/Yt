@@ -86,7 +86,7 @@ public class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
     
-    settings.setMediaPlaybackRequiresUserGesture(false);
+    
     
     // ✅ FIXED: Remove deprecated APIs that cause build errors
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -96,10 +96,7 @@ public class MainActivity extends Activity {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
     
-    // ✅ Background playback සඳහා මේකත් add කරන්න
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { // 👈 මේකත් add කරන්න
-        settings.setSafeBrowsingEnabled(true);
-    }
+    
     
     // ✅ Video playback optimization - CRITICAL for smooth YouTube
     settings.setMediaPlaybackRequiresUserGesture(false);
