@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/bottomNavigation"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bottomNavBar"
     android:layout_width="match_parent"
     android:layout_height="65dp"
     android:orientation="horizontal"
-    android:background="#1A000000"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp"
-    android:baselineAligned="false">
+    android:background="@drawable/nav_glass_background"
+    android:elevation="8dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
 
-    <!-- Home -->
+    <!-- Home Button -->
     <LinearLayout
         android:id="@+id/navHome"
         android:layout_width="0dp"
@@ -19,26 +20,26 @@
         android:gravity="center"
         android:clickable="true"
         android:focusable="true"
-        android:background="?selectableItemBackgroundBorderless">
-
+        android:background="?android:attr/selectableItemBackground">
+        
         <ImageView
             android:id="@+id/iconHome"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_home"
-            android:tint="#FF0000"/>
-
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:tint="#FFFFFF"
+            android:src="@drawable/ic_home"/>
+        
         <TextView
             android:id="@+id/textHome"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Home"
             android:textSize="10sp"
-            android:textColor="#FF0000"
-            android:fontFamily="sans-serif-medium"/>
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- Shorts -->
+    <!-- Shorts Button -->
     <LinearLayout
         android:id="@+id/navShorts"
         android:layout_width="0dp"
@@ -48,15 +49,15 @@
         android:gravity="center"
         android:clickable="true"
         android:focusable="true"
-        android:background="?selectableItemBackgroundBorderless">
-
+        android:background="?android:attr/selectableItemBackground">
+        
         <ImageView
             android:id="@+id/iconShorts"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_shorts"
-            android:tint="#AAAAAA"/>
-
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:tint="#FFFFFF"
+            android:src="@drawable/ic_shorts"/>
+        
         <TextView
             android:id="@+id/textShorts"
             android:layout_width="wrap_content"
@@ -64,10 +65,32 @@
             android:text="Shorts"
             android:textSize="10sp"
             android:textColor="#AAAAAA"
-            android:fontFamily="sans-serif-medium"/>
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- Subscriptions -->
+    <!-- ✅ Upload Button - TikTok Style (LinearLayout විදියට) -->
+    <LinearLayout
+        android:id="@+id/navUpload"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?android:attr/selectableItemBackground">
+        
+        <ImageView
+            android:id="@+id/iconUpload"
+            android:layout_width="56dp"
+            android:layout_height="36dp"
+            android:background="@drawable/upload_button_background"
+            android:src="@drawable/ic_upload_plus"
+            android:scaleType="center"
+            android:contentDescription="Upload"/>
+    </LinearLayout>
+
+    <!-- Subscriptions Button -->
     <LinearLayout
         android:id="@+id/navSubscriptions"
         android:layout_width="0dp"
@@ -77,15 +100,15 @@
         android:gravity="center"
         android:clickable="true"
         android:focusable="true"
-        android:background="?selectableItemBackgroundBorderless">
-
+        android:background="?android:attr/selectableItemBackground">
+        
         <ImageView
             android:id="@+id/iconSubscriptions"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_subscriptions"
-            android:tint="#AAAAAA"/>
-
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:tint="#FFFFFF"
+            android:src="@drawable/ic_subscriptions"/>
+        
         <TextView
             android:id="@+id/textSubscriptions"
             android:layout_width="wrap_content"
@@ -93,10 +116,10 @@
             android:text="Subscriptions"
             android:textSize="10sp"
             android:textColor="#AAAAAA"
-            android:fontFamily="sans-serif-medium"/>
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- You/Library -->
+    <!-- You Button -->
     <LinearLayout
         android:id="@+id/navYou"
         android:layout_width="0dp"
@@ -106,15 +129,15 @@
         android:gravity="center"
         android:clickable="true"
         android:focusable="true"
-        android:background="?selectableItemBackgroundBorderless">
-
+        android:background="?android:attr/selectableItemBackground">
+        
         <ImageView
             android:id="@+id/iconYou"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_library"
-            android:tint="#AAAAAA"/>
-
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:tint="#FFFFFF"
+            android:src="@drawable/ic_you"/>
+        
         <TextView
             android:id="@+id/textYou"
             android:layout_width="wrap_content"
@@ -122,7 +145,7 @@
             android:text="You"
             android:textSize="10sp"
             android:textColor="#AAAAAA"
-            android:fontFamily="sans-serif-medium"/>
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
 </LinearLayout>
