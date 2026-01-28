@@ -5,18 +5,29 @@
     android:background="#000000"
     android:layout_height="match_parent">
 
+    <!-- Custom Header -->
+    <include
+        android:id="@+id/customHeader"
+        layout="@layout/custom_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"/>
+
+    <!-- WebView -->
     <com.spmods.ytpro.YTProWebview
         android:id="@+id/web"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#000000"
+        android:layout_below="@id/customHeader"
         android:layout_above="@+id/bottomNavBar"/>
 
+    <!-- Bottom Navigation -->
     <include
         layout="@layout/bottom_navigation"
+        android:id="@+id/bottomNavBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"/>
 
 </RelativeLayout>
-
