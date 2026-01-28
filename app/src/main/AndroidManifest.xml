@@ -23,7 +23,7 @@
 		android:usesCleartextTraffic="true"
 		android:theme="@style/AppTheme">
 		
-		<!-- ✅ SPLASH ACTIVITY - No default splash, custom only -->
+		<!-- ✅ SPLASH ACTIVITY -->
 		<activity
 			android:name=".SplashActivity"
 			android:theme="@style/SplashTheme"
@@ -44,18 +44,24 @@
 			android:supportsPictureInPicture="true"
 			android:theme="@style/AppTheme"
 			android:exported="true"
+			android:launchMode="singleTask"
 			android:screenOrientation="unspecified">
-			<!-- YouTube links handle කරන්න -->
-			<intent-filter>
+			
+			<!-- ✅ YouTube links handle කරන්න (FIXED) -->
+			<intent-filter android:autoVerify="true">
 				<action android:name="android.intent.action.VIEW" />
 				<category android:name="android.intent.category.DEFAULT" />
 				<category android:name="android.intent.category.BROWSABLE" />
+				
 				<data android:scheme="http" />
 				<data android:scheme="https" />
 				<data android:host="youtube.com" />
-				<data android:host="*.youtube.com" />
+				<data android:host="www.youtube.com" />
+				<data android:host="m.youtube.com" />
 				<data android:host="youtu.be" />
 			</intent-filter>
+			
+			<!-- Share intents -->
 			<intent-filter>
 				<action android:name="android.intent.action.SEND" />
 				<category android:name="android.intent.category.DEFAULT" />
@@ -99,13 +105,13 @@
 		<!-- Notification Receiver -->
 		<receiver android:name=".NotificationActionService"/>
 
-		<!-- ✅ Notification Check Service -->
+		<!-- Notification Check Service -->
 		<service
 			android:name=".NotificationCheckService"
 			android:enabled="true"
 			android:exported="false" />
 
-		<!-- ✅ Notification Boot Receiver -->
+		<!-- Notification Boot Receiver -->
 		<receiver
 			android:name=".NotificationBootReceiver"
 			android:enabled="true"
