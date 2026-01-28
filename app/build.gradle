@@ -35,6 +35,13 @@ android {
             versionNameSuffix "-DEBUG"
         }
     }
+
+    
+    
+    lint {
+        baseline = file("lint-baseline.xml")
+    }
+    }
     
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -117,3 +124,4 @@ configurations.all {
         exclude group: 'com.android.support', module: 'support-core-ui'
     }
 }
+
