@@ -444,135 +444,220 @@ public class MainActivity extends Activity {
     }
   }
 
-// ✅ REPLACE WITH THIS NEW METHOD:
-  @Override
-  public void onBackPressed() {
+@Override
+public void onBackPressed() {
     String currentUrl = web.getUrl();
     
-    // Check if we're on a video page
+    Log.d("BackPressed", "🔙 URL: " + currentUrl);
+    Log.d("BackPressed", "isPlaying: " + isPlaying);
+    Log.d("BackPressed", "isMiniplayerVisible: " + isMiniplayerVisible);
+    
+    // Check if on video page
     if (currentUrl != null && (currentUrl.contains("/watch") || currentUrl.contains("/shorts"))) {
-        if (isPlaying && !isMiniplayerVisible) {
-            // Show miniplayer instead of going back
-            showMiniplayer();
-            return;
-        } else if (isMiniplayerVisible) {
-            // If miniplayer is showing, hide it first
+        
+        // If miniplayer is already showing, hide it and go back normally
+        if (isMiniplayerVisible) {
+            Log.d("BackPressed", "🔽 Hiding miniplayer");
             hideMiniplayer();
+            if (web.canGoBack()) {
+                web.goBack();
+            } else {
+                finish();
+            }
             return;
         }
+        
+        // Try to show miniplayer (don't check isPlaying first)
+        // Check if video is actually playing via JavaScript
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var video = document.querySelector('video');" +
+            "  if (video && !video.paused && video.currentTime > 0) {" +
+            "    return 'true';" +
+            "  }" +
+            "  return 'false';" +
+            "})();",
+            result -> {
+                Log.d("BackPressed", "Video playing check: " + result);
+                
+                if (result != null && result.contains("true")) {
+                    Log.d("BackPressed", "✅ Video is playing, showing miniplayer");
+                    showMiniplayer();
+                } else {
+                    Log.d("BackPressed", "⚠️ No video playing, going back normally");
+                    // Go back normally
+                    if (web.canGoBack()) {
+                        web.goBack();
+                    } else {
+                        finish();
+                    }
+                }
+            }
+        );
+        return; // Important: prevent immediate back
     }
     
-    // Normal back behavior
+    // Normal back behavior for non-video pages
     if (web.canGoBack()) {
         web.goBack();
     } else {
         finish();
     }
-  }
+}
 
-// ✅ ADD THIS METHOD AFTER onBackPressed():
-  private void showMiniplayer() {
-    if (isMiniplayerVisible) return;
+private void showMiniplayer() {
+    if (isMiniplayerVisible) {
+        Log.d("Miniplayer", "⚠️ Already visible");
+        return;
+    }
     
-    // Save current video URL
+    Log.d("Miniplayer", "🎬 Creating miniplayer");
     currentVideoUrl = web.getUrl();
     
-    // JavaScript to create miniplayer
     web.evaluateJavascript(
         "(function() {" +
-        "  var player = document.querySelector('video');" +
-        "  if (!player) return;" +
-        "  " +
-        "  // Create miniplayer container" +
-        "  var mini = document.createElement('div');" +
-        "  mini.id = 'ytpro-miniplayer';" +
-        "  mini.style.cssText = '" +
-        "    position: fixed !important;" +
-        "    bottom: 70px !important;" +
-        "    right: 10px !important;" +
-        "    width: 180px !important;" +
-        "    height: 100px !important;" +
-        "    z-index: 9999 !important;" +
-        "    background: #000 !important;" +
-        "    border-radius: 8px !important;" +
-        "    overflow: hidden !important;" +
-        "    box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;" +
-        "  ';" +
-        "  " +
-        "  // Clone video element" +
-        "  var videoClone = player.cloneNode(true);" +
-        "  videoClone.style.cssText = 'width: 100% !important; height: 100% !important; object-fit: cover !important;';" +
-        "  videoClone.currentTime = player.currentTime;" +
-        "  videoClone.play();" +
-        "  " +
-        "  // Add close button" +
-        "  var closeBtn = document.createElement('div');" +
-        "  closeBtn.innerHTML = '✕';" +
-        "  closeBtn.style.cssText = '" +
-        "    position: absolute !important;" +
-        "    top: 5px !important;" +
-        "    right: 5px !important;" +
-        "    width: 24px !important;" +
-        "    height: 24px !important;" +
-        "    background: rgba(0,0,0,0.7) !important;" +
-        "    color: white !important;" +
-        "    border-radius: 50% !important;" +
-        "    display: flex !important;" +
-        "    align-items: center !important;" +
-        "    justify-content: center !important;" +
-        "    font-size: 16px !important;" +
-        "    cursor: pointer !important;" +
-        "    z-index: 10000 !important;" +
-        "  ';" +
-        "  closeBtn.onclick = function(e) {" +
-        "    e.stopPropagation();" +
-        "    Android.closeMiniPlayer();" +
-        "  };" +
-        "  " +
-        "  // Click to expand" +
-        "  mini.onclick = function(e) {" +
-        "    if (e.target !== closeBtn) {" +
-        "      Android.expandMiniPlayer();" +
+        "  try {" +
+        "    var player = document.querySelector('video');" +
+        "    " +
+        "    if (!player) {" +
+        "      console.log('❌ No video element');" +
+        "      return false;" +
         "    }" +
-        "  };" +
-        "  " +
-        "  mini.appendChild(videoClone);" +
-        "  mini.appendChild(closeBtn);" +
-        "  document.body.appendChild(mini);" +
-        "  " +
-        "  // Hide main player" +
-        "  var mainContainer = document.querySelector('ytm-single-column-watch-next-results-renderer');" +
-        "  if (mainContainer) mainContainer.style.display = 'none';" +
-        "  " +
-        "  window.YTPRO_MINIPLAYER_ACTIVE = true;" +
+        "    " +
+        "    console.log('✅ Video found:', player);" +
+        "    " +
+        "    // Remove existing miniplayer" +
+        "    var existing = document.getElementById('ytpro-miniplayer');" +
+        "    if (existing) existing.remove();" +
+        "    " +
+        "    // Get current time before cloning" +
+        "    var currentTime = player.currentTime;" +
+        "    var isPaused = player.paused;" +
+        "    " +
+        "    // Create container" +
+        "    var mini = document.createElement('div');" +
+        "    mini.id = 'ytpro-miniplayer';" +
+        "    mini.style.cssText = `" +
+        "      position: fixed !important;" +
+        "      bottom: 85px !important;" +
+        "      right: 10px !important;" +
+        "      width: 200px !important;" +
+        "      height: 112px !important;" +
+        "      z-index: 999999 !important;" +
+        "      background: #000 !important;" +
+        "      border-radius: 12px !important;" +
+        "      overflow: hidden !important;" +
+        "      box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;" +
+        "      border: 3px solid #FF0000 !important;" +
+        "    `;" +
+        "    " +
+        "    // Create video clone" +
+        "    var clone = document.createElement('video');" +
+        "    clone.src = player.src || player.currentSrc;" +
+        "    clone.currentTime = currentTime;" +
+        "    clone.volume = player.volume;" +
+        "    clone.muted = player.muted;" +
+        "    clone.controls = false;" +
+        "    clone.autoplay = true;" +
+        "    clone.style.cssText = `" +
+        "      width: 100% !important;" +
+        "      height: 100% !important;" +
+        "      object-fit: cover !important;" +
+        "    `;" +
+        "    " +
+        "    // Play the clone" +
+        "    clone.play().catch(e => console.error('Play error:', e));" +
+        "    " +
+        "    // Close button" +
+        "    var closeBtn = document.createElement('div');" +
+        "    closeBtn.innerHTML = '✕';" +
+        "    closeBtn.style.cssText = `" +
+        "      position: absolute !important;" +
+        "      top: 5px !important;" +
+        "      right: 5px !important;" +
+        "      width: 28px !important;" +
+        "      height: 28px !important;" +
+        "      background: #FF0000 !important;" +
+        "      color: white !important;" +
+        "      border-radius: 50% !important;" +
+        "      display: flex !important;" +
+        "      align-items: center !important;" +
+        "      justify-content: center !important;" +
+        "      font-size: 20px !important;" +
+        "      font-weight: bold !important;" +
+        "      cursor: pointer !important;" +
+        "      z-index: 1000000 !important;" +
+        "      line-height: 1 !important;" +
+        "    `;" +
+        "    " +
+        "    closeBtn.onclick = function(e) {" +
+        "      e.stopPropagation();" +
+        "      e.preventDefault();" +
+        "      Android.closeMiniPlayer();" +
+        "    };" +
+        "    " +
+        "    // Expand on click" +
+        "    mini.onclick = function(e) {" +
+        "      if (e.target !== closeBtn) {" +
+        "        Android.expandMiniPlayer();" +
+        "      }" +
+        "    };" +
+        "    " +
+        "    // Build miniplayer" +
+        "    mini.appendChild(clone);" +
+        "    mini.appendChild(closeBtn);" +
+        "    document.body.appendChild(mini);" +
+        "    " +
+        "    console.log('✅ Miniplayer created');" +
+        "    return true;" +
+        "    " +
+        "  } catch(e) {" +
+        "    console.error('❌ Miniplayer error:', e);" +
+        "    return false;" +
+        "  }" +
         "})();",
-        null
+        result -> {
+            Log.d("Miniplayer", "Creation result: " + result);
+            
+            if (result != null && result.contains("true")) {
+                isMiniplayerVisible = true;
+                
+                // NOW go back after miniplayer is created
+                new Handler().postDelayed(() -> {
+                    if (web.canGoBack()) {
+                        web.goBack();
+                    }
+                }, 300);
+            } else {
+                Log.e("Miniplayer", "❌ Failed to create miniplayer");
+                // Go back normally if failed
+                if (web.canGoBack()) {
+                    web.goBack();
+                }
+            }
+        }
     );
-    
-    isMiniplayerVisible = true;
-    
-    // Navigate back
-    if (web.canGoBack()) {
-        web.goBack();
-    }
-  }
+}
 
-  // ✅ ADD THIS METHOD TOO:
-  private void hideMiniplayer() {
+private void hideMiniplayer() {
+    Log.d("Miniplayer", "🗑️ Hiding miniplayer");
+    
     web.evaluateJavascript(
         "(function() {" +
         "  var mini = document.getElementById('ytpro-miniplayer');" +
-        "  if (mini) mini.remove();" +
-        "  var mainContainer = document.querySelector('ytm-single-column-watch-next-results-renderer');" +
-        "  if (mainContainer) mainContainer.style.display = 'block';" +
-        "  window.YTPRO_MINIPLAYER_ACTIVE = false;" +
+        "  if (mini) {" +
+        "    mini.remove();" +
+        "    console.log('✅ Miniplayer removed');" +
+        "    return true;" +
+        "  }" +
+        "  return false;" +
         "})();",
         null
     );
+    
     isMiniplayerVisible = false;
     currentVideoUrl = "";
-  }
-  
+}
   
   
   @Override
