@@ -28,6 +28,9 @@ import android.os.PowerManager;
 import android.os.Handler;
 import android.graphics.drawable.GradientDrawable;
 import android.animation.ValueAnimator;
+// Add these imports at the top of MainActivity.java
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 public class MainActivity extends Activity {
 
@@ -1071,3 +1074,4 @@ public class MainActivity extends Activity {
         manager.notify(1001, builder.build());
     }
 }
+
