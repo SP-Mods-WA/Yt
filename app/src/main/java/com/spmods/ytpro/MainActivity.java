@@ -81,6 +81,27 @@ public class MainActivity extends Activity {
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
+  
+  @Override
+  protected void onNewIntent(Intent intent) {
+      super.onNewIntent(intent);
+      setIntent(intent);
+      
+      String action = intent.getAction();
+      Uri data = intent.getData();
+      
+      Log.d("MainActivity", "📨 New intent received");
+      
+      if (Intent.ACTION_VIEW.equals(action) && data != null && web != null) {
+          String url = data.toString()
+              .replace("www.youtube.com", "m.youtube.com")
+              .replace("youtube.com", "m.youtube.com");
+          
+          userNavigated = true;
+          web.loadUrl(url);
+          Log.d("MainActivity", "🔄 Loading new URL: " + url);
+      }
+  }
 
   public void load(boolean dl) {
     web = findViewById(R.id.web);
