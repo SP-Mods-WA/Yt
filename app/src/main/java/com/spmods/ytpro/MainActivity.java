@@ -50,19 +50,6 @@ public class MainActivity extends Activity {
   private String lastUrl = "";
   
   private boolean scriptsInjected = false;
-  
-  private LinearLayout headerLayout;
-private RelativeLayout searchButton;
-private RelativeLayout notificationButton;
-private RelativeLayout profileButton;
-private TextView notificationBadge;
-private ImageView profileImage;
-private boolean isHeaderVisible = true;
-  
-  // ✅ ADD THESE 3 LINES HERE:
-  private FrameLayout miniplayerContainer;
-  private boolean isMiniplayerVisible = false;
-  private String currentVideoUrl = "";
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -85,31 +72,9 @@ private boolean isHeaderVisible = true;
         startNotificationService();
         checkNotificationsNow();
         setupBottomNavigation();
-        setupCustomHeader();
     }
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-  }
-  
-  @Override
-  protected void onNewIntent(Intent intent) {
-      super.onNewIntent(intent);
-      setIntent(intent);
-      
-      String action = intent.getAction();
-      Uri data = intent.getData();
-      
-      Log.d("MainActivity", "📨 New intent received");
-      
-      if (Intent.ACTION_VIEW.equals(action) && data != null && web != null) {
-          String url = data.toString()
-              .replace("www.youtube.com", "m.youtube.com")
-              .replace("youtube.com", "m.youtube.com");
-          
-          userNavigated = true;
-          web.loadUrl(url);
-          Log.d("MainActivity", "🔄 Loading new URL: " + url);
-      }
   }
 
   public void load(boolean dl) {
@@ -267,133 +232,55 @@ private boolean isHeaderVisible = true;
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
         scriptsInjected = false;
-        
-        // ✅✅✅ මේ code එක add කරන්න ✅✅✅
-    // Pre-inject hiding code ASAP
-    web.evaluateJavascript(
-        "(function() {" +
-        "  var style = document.createElement('style');" +
-        "  style.innerHTML = '" +
-        "    ytm-mobile-topbar-renderer, c3-masthead, ytm-masthead, " +
-        "    .mobile-topbar-header, ytm-pivot-bar-renderer { " +
-        "      display: none !important; " +
-        "    }" +
-        "  ';" +
-        "  document.head.appendChild(style);" +
-        "})();",
-        null
-    );
-    // ✅✅✅ END ✅✅✅
       }
 
-@Override
-public void onPageFinished(WebView p1, String url) {
-    // ✅ Inject scripts
-    if (!scriptsInjected) {
-        injectYTProScripts();
-        scriptsInjected = true;
-    }
-    
-    // ✅✅✅ මේ COMPLETE code එක add කරන්න ✅✅✅
-    // SUPER AGGRESSIVE - Hide EVERYTHING from YouTube UI
-    web.evaluateJavascript(
-        "(function() {" +
-        "  function hideYouTubeUI() {" +
-        "    var style = document.getElementById('ytpro-custom-style');" +
-        "    if (!style) {" +
-        "      style = document.createElement('style');" +
-        "      style.id = 'ytpro-custom-style';" +
-        "      style.innerHTML = `" +
-        "        /* Hide ALL YouTube headers */" +
-        "        ytm-mobile-topbar-renderer," +
-        "        c3-masthead," +
-        "        ytm-masthead," +
-        "        .mobile-topbar-header," +
-        "        ytm-topbar-renderer," +
-        "        .masthead-skeleton-icon," +
-        "        .mobile-topbar-header-content," +
-        "        #header," +
-        "        #masthead-container {" +
-        "          display: none !important;" +
-        "          visibility: hidden !important;" +
-        "          height: 0 !important;" +
-        "          opacity: 0 !important;" +
-        "        }" +
-        "        " +
-        "        /* Hide YouTube bottom navigation */" +
-        "        ytm-pivot-bar-renderer," +
-        "        .pivot-bar-renderer," +
-        "        ytm-bottom-sheet-renderer {" +
-        "          display: none !important;" +
-        "          visibility: hidden !important;" +
-        "        }" +
-        "        " +
-        "        /* Fix body spacing */" +
-        "        body {" +
-        "          padding-top: 0px !important;" +
-        "          padding-bottom: 65px !important;" +
-        "          margin-top: 0px !important;" +
-        "        }" +
-        "        " +
-        "        /* Fix content containers */" +
-        "        ytm-browse," +
-        "        ytm-single-column-browse-results-renderer," +
-        "        ytm-feed {" +
-        "          padding-top: 0px !important;" +
-        "          margin-top: 0px !important;" +
-        "        }" +
-        "        " +
-        "        /* Video player adjustments */" +
-        "        .player-container," +
-        "        ytm-watch {" +
-        "          padding-top: 0px !important;" +
-        "        }" +
-        "      `;" +
-        "      document.head.appendChild(style);" +
-        "    }" +
-        "  }" +
-        "  " +
-        "  hideYouTubeUI();" +
-        "  " +
-        "  // Re-apply on DOM changes" +
-        "  var observer = new MutationObserver(hideYouTubeUI);" +
-        "  observer.observe(document.body, { childList: true, subtree: true });" +
-        "  " +
-        "  console.log('✅ YouTube UI completely hidden');" +
-        "})();",
-        null
-    );
-    
-    // Block shorts auto-redirect
-    web.evaluateJavascript(
-        "(function() {" +
-        "  var originalPushState = history.pushState;" +
-        "  history.pushState = function(state, title, url) {" +
-        "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
-        "      return;" +
-        "    }" +
-        "    return originalPushState.apply(this, arguments);" +
-        "  };" +
-        "})();",
-        null
-    );
-    // ✅✅✅ END ✅✅✅
+      @Override
+      public void onPageFinished(WebView p1, String url) {
+        // ✅ CRITICAL FIX: Inject scripts immediately for smooth playback
+        if (!scriptsInjected) {
+            injectYTProScripts();
+            scriptsInjected = true;
+        }
+        
+        // ✅ Hide YouTube bottom nav immediately
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var style = document.createElement('style');" +
+            "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
+            "  document.head.appendChild(style);" +
+            "})();",
+            null
+        );
+        
+        // ✅ Block shorts auto-redirect
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var originalPushState = history.pushState;" +
+            "  history.pushState = function(state, title, url) {" +
+            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+            "      return;" +
+            "    }" +
+            "    return originalPushState.apply(this, arguments);" +
+            "  };" +
+            "})();",
+            null
+        );
 
-    if (dL) {
-        web.postDelayed(() -> {
-            web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
-            dL = false;
-        }, 2000);
-    }
+        if (dL) {
+            web.postDelayed(() -> {
+                web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
+                dL = false;
+            }, 2000);
+        }
 
-    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-        isPlaying = false;
-        mediaSession = false;
-        stopService(new Intent(getApplicationContext(), ForegroundService.class));
-    }
+        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+            isPlaying = false;
+            mediaSession = false;
+            stopService(new Intent(getApplicationContext(), ForegroundService.class));
+        }
 
-    super.onPageFinished(p1, url);
-}
+        super.onPageFinished(p1, url);
+      }
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -552,222 +439,15 @@ public void onPageFinished(WebView p1, String url) {
     }
   }
 
-@Override
-public void onBackPressed() {
-    String currentUrl = web.getUrl();
-    
-    Log.d("BackPressed", "🔙 URL: " + currentUrl);
-    Log.d("BackPressed", "isPlaying: " + isPlaying);
-    Log.d("BackPressed", "isMiniplayerVisible: " + isMiniplayerVisible);
-    
-    // Check if on video page
-    if (currentUrl != null && (currentUrl.contains("/watch") || currentUrl.contains("/shorts"))) {
-        
-        // If miniplayer is already showing, hide it and go back normally
-        if (isMiniplayerVisible) {
-            Log.d("BackPressed", "🔽 Hiding miniplayer");
-            hideMiniplayer();
-            if (web.canGoBack()) {
-                web.goBack();
-            } else {
-                finish();
-            }
-            return;
-        }
-        
-        // Try to show miniplayer (don't check isPlaying first)
-        // Check if video is actually playing via JavaScript
-        web.evaluateJavascript(
-            "(function() {" +
-            "  var video = document.querySelector('video');" +
-            "  if (video && !video.paused && video.currentTime > 0) {" +
-            "    return 'true';" +
-            "  }" +
-            "  return 'false';" +
-            "})();",
-            result -> {
-                Log.d("BackPressed", "Video playing check: " + result);
-                
-                if (result != null && result.contains("true")) {
-                    Log.d("BackPressed", "✅ Video is playing, showing miniplayer");
-                    showMiniplayer();
-                } else {
-                    Log.d("BackPressed", "⚠️ No video playing, going back normally");
-                    // Go back normally
-                    if (web.canGoBack()) {
-                        web.goBack();
-                    } else {
-                        finish();
-                    }
-                }
-            }
-        );
-        return; // Important: prevent immediate back
-    }
-    
-    // Normal back behavior for non-video pages
+  @Override
+  public void onBackPressed() {
     if (web.canGoBack()) {
-        web.goBack();
+      web.goBack();
     } else {
-        finish();
+      finish();
     }
-}
+  }
 
-private void showMiniplayer() {
-    if (isMiniplayerVisible) {
-        Log.d("Miniplayer", "⚠️ Already visible");
-        return;
-    }
-    
-    Log.d("Miniplayer", "🎬 Creating miniplayer");
-    currentVideoUrl = web.getUrl();
-    
-    web.evaluateJavascript(
-        "(function() {" +
-        "  try {" +
-        "    var player = document.querySelector('video');" +
-        "    " +
-        "    if (!player) {" +
-        "      console.log('❌ No video element');" +
-        "      return false;" +
-        "    }" +
-        "    " +
-        "    console.log('✅ Video found:', player);" +
-        "    " +
-        "    // Remove existing miniplayer" +
-        "    var existing = document.getElementById('ytpro-miniplayer');" +
-        "    if (existing) existing.remove();" +
-        "    " +
-        "    // Get current time before cloning" +
-        "    var currentTime = player.currentTime;" +
-        "    var isPaused = player.paused;" +
-        "    " +
-        "    // Create container" +
-        "    var mini = document.createElement('div');" +
-        "    mini.id = 'ytpro-miniplayer';" +
-        "    mini.style.cssText = `" +
-        "      position: fixed !important;" +
-        "      bottom: 85px !important;" +
-        "      right: 10px !important;" +
-        "      width: 200px !important;" +
-        "      height: 112px !important;" +
-        "      z-index: 999999 !important;" +
-        "      background: #000 !important;" +
-        "      border-radius: 12px !important;" +
-        "      overflow: hidden !important;" +
-        "      box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;" +
-        "      border: 3px solid #FF0000 !important;" +
-        "    `;" +
-        "    " +
-        "    // Create video clone" +
-        "    var clone = document.createElement('video');" +
-        "    clone.src = player.src || player.currentSrc;" +
-        "    clone.currentTime = currentTime;" +
-        "    clone.volume = player.volume;" +
-        "    clone.muted = player.muted;" +
-        "    clone.controls = false;" +
-        "    clone.autoplay = true;" +
-        "    clone.style.cssText = `" +
-        "      width: 100% !important;" +
-        "      height: 100% !important;" +
-        "      object-fit: cover !important;" +
-        "    `;" +
-        "    " +
-        "    // Play the clone" +
-        "    clone.play().catch(e => console.error('Play error:', e));" +
-        "    " +
-        "    // Close button" +
-        "    var closeBtn = document.createElement('div');" +
-        "    closeBtn.innerHTML = '✕';" +
-        "    closeBtn.style.cssText = `" +
-        "      position: absolute !important;" +
-        "      top: 5px !important;" +
-        "      right: 5px !important;" +
-        "      width: 28px !important;" +
-        "      height: 28px !important;" +
-        "      background: #FF0000 !important;" +
-        "      color: white !important;" +
-        "      border-radius: 50% !important;" +
-        "      display: flex !important;" +
-        "      align-items: center !important;" +
-        "      justify-content: center !important;" +
-        "      font-size: 20px !important;" +
-        "      font-weight: bold !important;" +
-        "      cursor: pointer !important;" +
-        "      z-index: 1000000 !important;" +
-        "      line-height: 1 !important;" +
-        "    `;" +
-        "    " +
-        "    closeBtn.onclick = function(e) {" +
-        "      e.stopPropagation();" +
-        "      e.preventDefault();" +
-        "      Android.closeMiniPlayer();" +
-        "    };" +
-        "    " +
-        "    // Expand on click" +
-        "    mini.onclick = function(e) {" +
-        "      if (e.target !== closeBtn) {" +
-        "        Android.expandMiniPlayer();" +
-        "      }" +
-        "    };" +
-        "    " +
-        "    // Build miniplayer" +
-        "    mini.appendChild(clone);" +
-        "    mini.appendChild(closeBtn);" +
-        "    document.body.appendChild(mini);" +
-        "    " +
-        "    console.log('✅ Miniplayer created');" +
-        "    return true;" +
-        "    " +
-        "  } catch(e) {" +
-        "    console.error('❌ Miniplayer error:', e);" +
-        "    return false;" +
-        "  }" +
-        "})();",
-        result -> {
-            Log.d("Miniplayer", "Creation result: " + result);
-            
-            if (result != null && result.contains("true")) {
-                isMiniplayerVisible = true;
-                
-                // NOW go back after miniplayer is created
-                new Handler().postDelayed(() -> {
-                    if (web.canGoBack()) {
-                        web.goBack();
-                    }
-                }, 300);
-            } else {
-                Log.e("Miniplayer", "❌ Failed to create miniplayer");
-                // Go back normally if failed
-                if (web.canGoBack()) {
-                    web.goBack();
-                }
-            }
-        }
-    );
-}
-
-private void hideMiniplayer() {
-    Log.d("Miniplayer", "🗑️ Hiding miniplayer");
-    
-    web.evaluateJavascript(
-        "(function() {" +
-        "  var mini = document.getElementById('ytpro-miniplayer');" +
-        "  if (mini) {" +
-        "    mini.remove();" +
-        "    console.log('✅ Miniplayer removed');" +
-        "    return true;" +
-        "  }" +
-        "  return false;" +
-        "})();",
-        null
-    );
-    
-    isMiniplayerVisible = false;
-    currentVideoUrl = "";
-}
-  
-  
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
     web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
@@ -900,36 +580,7 @@ private void hideMiniplayer() {
     @JavascriptInterface public void setVolume(float volume) { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume), 0); }
     @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
     @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
-    @JavascriptInterface 
-    public void pipvid(String x) { 
-        if (Build.VERSION.SDK_INT >= 26) { 
-            try { 
-                enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); 
-            } catch (Exception e) {} 
-        } else { 
-            Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); 
-        } 
-    }
-    
-    // ✅ MINIPLAYER METHODS - ADD AT THE END
-    @JavascriptInterface 
-    public void closeMiniPlayer() {
-        runOnUiThread(() -> {
-            hideMiniplayer();
-            web.evaluateJavascript("var v = document.querySelector('video'); if(v) v.pause();", null);
-        });
-    }
-
-    @JavascriptInterface 
-    public void expandMiniPlayer() {
-        runOnUiThread(() -> {
-            hideMiniplayer();
-            if (currentVideoUrl != null && !currentVideoUrl.isEmpty()) {
-                userNavigated = true;
-                web.loadUrl(currentVideoUrl);
-            }
-        });
-    }
+    @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
   }
   
   public void setReceiver() {
@@ -1154,87 +805,4 @@ private void hideMiniplayer() {
         }
     });
   }
-  
-  // ✅ Custom Header Setup Function
-private void setupCustomHeader() {
-    headerLayout = findViewById(R.id.headerLayout);
-    searchButton = findViewById(R.id.searchButton);
-    notificationButton = findViewById(R.id.notificationButton);
-    profileButton = findViewById(R.id.profileButton);
-    notificationBadge = findViewById(R.id.notificationBadge);
-    profileImage = findViewById(R.id.profileImage);
-    
-    // Check if views exist
-    if (headerLayout == null || searchButton == null) {
-        Log.e("Header", "Header views not found!");
-        return;
-    }
-    
-    // Search button click
-    searchButton.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            animateButton(v);
-            userNavigated = true;
-            web.loadUrl("https://m.youtube.com/results?search_query=");
-            web.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    web.evaluateJavascript(
-                        "(function() {" +
-                        "  var searchBox = document.querySelector('input[type=\"search\"]');" +
-                        "  if (searchBox) {" +
-                        "    searchBox.focus();" +
-                        "    searchBox.click();" +
-                        "  }" +
-                        "})();",
-                        null
-                    );
-                }
-            }, 500);
-        }
-    });
-    
-    // Notification button click
-    notificationButton.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            animateButton(v);
-            checkNotificationsNow();
-            Toast.makeText(MainActivity.this, "Checking notifications... 🔔", Toast.LENGTH_SHORT).show();
-        }
-    });
-    
-    // Profile button click
-    profileButton.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            animateButton(v);
-            userNavigated = true;
-            web.loadUrl("https://m.youtube.com/feed/account");
-        }
-    });
-    
-    Log.d("Header", "✅ Custom header setup complete");
-}
-
-// ✅ Button Animation
-private void animateButton(final View button) {
-    button.animate()
-        .scaleX(0.85f)
-        .scaleY(0.85f)
-        .setDuration(100)
-        .withEndAction(new Runnable() {
-            @Override
-            public void run() {
-                button.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(100)
-                    .start();
-            }
-        })
-        .start();
-}
-  
 }
