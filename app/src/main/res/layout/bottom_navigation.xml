@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bottomNavigation"
+    android:layout_width="match_parent"
+    android:layout_height="65dp"
+    android:orientation="horizontal"
+    android:background="#1A000000"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:baselineAligned="false">
+
+    <!-- Home -->
+    <LinearLayout
+        android:id="@+id/navHome"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?selectableItemBackgroundBorderless">
+
+        <ImageView
+            android:id="@+id/iconHome"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_home"
+            android:tint="#FF0000"/>
+
+        <TextView
+            android:id="@+id/textHome"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Home"
+            android:textSize="10sp"
+            android:textColor="#FF0000"
+            android:fontFamily="sans-serif-medium"/>
+    </LinearLayout>
+
+    <!-- Shorts -->
+    <LinearLayout
+        android:id="@+id/navShorts"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?selectableItemBackgroundBorderless">
+
+        <ImageView
+            android:id="@+id/iconShorts"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_shorts"
+            android:tint="#AAAAAA"/>
+
+        <TextView
+            android:id="@+id/textShorts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Shorts"
+            android:textSize="10sp"
+            android:textColor="#AAAAAA"
+            android:fontFamily="sans-serif-medium"/>
+    </LinearLayout>
+
+    <!-- Subscriptions -->
+    <LinearLayout
+        android:id="@+id/navSubscriptions"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?selectableItemBackgroundBorderless">
+
+        <ImageView
+            android:id="@+id/iconSubscriptions"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_subscriptions"
+            android:tint="#AAAAAA"/>
+
+        <TextView
+            android:id="@+id/textSubscriptions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Subscriptions"
+            android:textSize="10sp"
+            android:textColor="#AAAAAA"
+            android:fontFamily="sans-serif-medium"/>
+    </LinearLayout>
+
+    <!-- You/Library -->
+    <LinearLayout
+        android:id="@+id/navYou"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?selectableItemBackgroundBorderless">
+
+        <ImageView
+            android:id="@+id/iconYou"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_library"
+            android:tint="#AAAAAA"/>
+
+        <TextView
+            android:id="@+id/textYou"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="You"
+            android:textSize="10sp"
+            android:textColor="#AAAAAA"
+            android:fontFamily="sans-serif-medium"/>
+    </LinearLayout>
+
+</LinearLayout>
