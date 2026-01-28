@@ -507,13 +507,14 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             }
         }
         
-        // ✅ Hide Android bottom navigation immediately
+        // ✅ Hide custom Android navigation bar
         runOnUiThread(() -> {
             try {
-                View bottomNav = findViewById(R.id.bottomNavigation);
+                // Your custom bottom navigation hide කරන්න
+                LinearLayout bottomNav = findViewById(R.id.bottomNavigation);
                 if (bottomNav != null) {
                     bottomNav.setVisibility(View.GONE);
-                    Log.d("PIP", "✅ Android nav hidden");
+                    Log.d("PIP", "✅ Custom nav hidden");
                 }
             } catch (Exception e) {
                 Log.e("PIP", "❌ Nav hide failed: " + e.getMessage());
@@ -538,7 +539,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     "  window.pipMode = true;" +
                     "  console.log('📼 Playing:', window.wasPlayingBeforePIP);" +
                     "  " +
-                    "  // FORCE remove YouTube navigation" +
+                    "  // Remove YouTube navigation" +
                     "  var ytNav = document.querySelector('ytm-pivot-bar-renderer');" +
                     "  if (ytNav) {" +
                     "    ytNav.parentNode.removeChild(ytNav);" +
@@ -546,9 +547,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     "  }" +
                     "  " +
                     "  var topbar = document.querySelector('ytm-mobile-topbar-renderer');" +
-                    "  if (topbar) {" +
-                    "    topbar.parentNode.removeChild(topbar);" +
-                    "  }" +
+                    "  if (topbar) topbar.parentNode.removeChild(topbar);" +
                     "  " +
                     "  // Configure video" +
                     "  video.setAttribute('playsinline', '');" +
@@ -572,18 +571,14 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     "  document.body.style.overflow = 'hidden';" +
                     "  document.documentElement.style.overflow = 'hidden';" +
                     "  " +
-                    "  // FORCE PLAY - Multiple strategies" +
+                    "  // FORCE PLAY" +
                     "  function attemptPlay() {" +
                     "    console.log('🔄 Attempting play...');" +
-                    "    " +
-                    "    // Strategy 1: Direct play" +
                     "    if (video.paused) {" +
                     "      video.play().then(() => {" +
                     "        console.log('✅ Video playing!');" +
                     "      }).catch(err => {" +
-                    "        console.warn('⚠️ Play attempt failed:', err);" +
-                    "        " +
-                    "        // Strategy 2: Click play button" +
+                    "        console.warn('⚠️ Play failed:', err);" +
                     "        setTimeout(() => {" +
                     "          var playBtn = document.querySelector('.ytp-play-button');" +
                     "          if (playBtn && playBtn.getAttribute('aria-label') === 'Play') {" +
@@ -595,9 +590,8 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     "    }" +
                     "  }" +
                     "  " +
-                    "  // Try playing if was playing before" +
+                    "  // Multiple play attempts" +
                     "  if (window.wasPlayingBeforePIP) {" +
-                    "    // Multiple attempts with delays" +
                     "    attemptPlay();" +
                     "    setTimeout(attemptPlay, 300);" +
                     "    setTimeout(attemptPlay, 600);" +
@@ -640,7 +634,7 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
                     null
                 );
             });
-        }, 100); // Reduced delay for faster setup
+        }, 100);
         
     } else {
         // ✅ Exiting PIP
@@ -655,13 +649,13 @@ public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Conf
             Log.e("WakeLock", "❌ Release error: " + e.getMessage());
         }
         
-        // ✅ Show Android navigation
+        // ✅ Show custom navigation bar again
         runOnUiThread(() -> {
             try {
-                View bottomNav = findViewById(R.id.bottomNavigation);
+                LinearLayout bottomNav = findViewById(R.id.bottomNavigation);
                 if (bottomNav != null) {
                     bottomNav.setVisibility(View.VISIBLE);
-                    Log.d("PIP", "✅ Android nav restored");
+                    Log.d("PIP", "✅ Custom nav restored");
                 }
             } catch (Exception e) {
                 Log.e("PIP", "❌ Nav restore failed: " + e.getMessage());
