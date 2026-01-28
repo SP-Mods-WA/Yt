@@ -51,6 +51,14 @@ public class MainActivity extends Activity {
   
   private boolean scriptsInjected = false;
   
+  private LinearLayout headerLayout;
+private RelativeLayout searchButton;
+private RelativeLayout notificationButton;
+private RelativeLayout profileButton;
+private TextView notificationBadge;
+private ImageView profileImage;
+private boolean isHeaderVisible = true;
+  
   // ✅ ADD THESE 3 LINES HERE:
   private FrameLayout miniplayerContainer;
   private boolean isMiniplayerVisible = false;
@@ -77,6 +85,7 @@ public class MainActivity extends Activity {
         startNotificationService();
         checkNotificationsNow();
         setupBottomNavigation();
+        setupCustomHeader();
     }
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -1067,4 +1076,120 @@ private void hideMiniplayer() {
         }
     });
   }
+  
+  // ✅ Custom Header Setup Function
+private void setupCustomHeader() {
+    headerLayout = findViewById(R.id.headerLayout);
+    searchButton = findViewById(R.id.searchButton);
+    notificationButton = findViewById(R.id.notificationButton);
+    profileButton = findViewById(R.id.profileButton);
+    notificationBadge = findViewById(R.id.notificationBadge);
+    profileImage = findViewById(R.id.profileImage);
+    
+    // Search button click
+    searchButton.setOnClickListener(v -> {
+        animateButton(v);
+        userNavigated = true;
+        web.loadUrl("https://m.youtube.com/results?search_query=");
+        web.evaluateJavascript(
+            "(function() {" +
+            "  setTimeout(function() {" +
+            "    var searchBox = document.querySelector('input[type=\"search\"]');" +
+            "    if (searchBox) {" +
+            "      searchBox.focus();" +
+            "      searchBox.click();" +
+            "    }" +
+            "  }, 500);" +
+            "})();",
+            null
+        );
+    });
+    
+    // Notification button click
+    notificationButton.setOnClickListener(v -> {
+        animateButton(v);
+        checkNotificationsNow();
+        Toast.makeText(this, "Checking notifications... 🔔", Toast.LENGTH_SHORT).show();
+    });
+    
+    // Profile button click
+    profileButton.setOnClickListener(v -> {
+        animateButton(v);
+        userNavigated = true;
+        web.loadUrl("https://m.youtube.com/feed/account");
+    });
+    
+    // ✅ Scroll listener - header hide/show කරන්න
+    setupHeaderScrollBehavior();
+}
+
+// ✅ Button Animation
+private void animateButton(View button) {
+    button.animate()
+        .scaleX(0.85f)
+        .scaleY(0.85f)
+        .setDuration(100)
+        .withEndAction(() -> {
+            button.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(100)
+                .start();
+        })
+        .start();
+}
+
+// ✅ Header Scroll Behavior
+private void setupHeaderScrollBehavior() {
+    web.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+        private int lastScrollY = 0;
+        
+        @Override
+        public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+            // Scroll down - hide header
+            if (scrollY > lastScrollY && scrollY > 100 && isHeaderVisible) {
+                hideHeader();
+            }
+            // Scroll up - show header
+            else if (scrollY < lastScrollY && !isHeaderVisible) {
+                showHeader();
+            }
+            
+            lastScrollY = scrollY;
+        }
+    });
+}
+
+// ✅ Hide Header
+private void hideHeader() {
+    isHeaderVisible = false;
+    headerLayout.animate()
+        .translationY(-headerLayout.getHeight())
+        .alpha(0f)
+        .setDuration(200)
+        .start();
+}
+
+// ✅ Show Header
+private void showHeader() {
+    isHeaderVisible = true;
+    headerLayout.animate()
+        .translationY(0)
+        .alpha(1f)
+        .setDuration(200)
+        .start();
+}
+
+// ✅ Update Notification Badge (optional)
+public void updateNotificationBadge(int count) {
+    runOnUiThread(() -> {
+        if (count > 0) {
+            notificationBadge.setText(String.valueOf(count));
+            notificationBadge.setVisibility(View.VISIBLE);
+        } else {
+            notificationBadge.setVisibility(View.GONE);
+        }
+    });
+}
+  
 }
