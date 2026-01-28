@@ -1,86 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android" 
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.spmods.ytpro">
-    
-    <!-- ✅ අවශ්‍ය Permissions -->
-    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
-    <!-- ✅ Play Protect Bypass -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    
-    <!-- Storage permissions -->
+    <!-- For downloads -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-        tools:ignore="ScopedStorage" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
         android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     
-    <!-- ✅ Features -->
-    <uses-feature android:name="android.hardware.wifi" android:required="false" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
-    <uses-feature android:name="android.software.picture_in_picture" android:required="false" />
+    <!-- For Android 11+ -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" 
+        tools:ignore="ScopedStorage" />
     
+    <!-- For microphone/voice search -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
         android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:icon="@mipmap/app_icon"
-        android:roundIcon="@mipmap/app_icon"
-        android:largeHeap="true"
-        android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme"
-        android:requestLegacyExternalStorage="true"
-        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="true"
         android:supportsRtl="true"
-        tools:ignore="GoogleAppIndexingWarning"
-        tools:targetApi="34">
+        android:hardwareAccelerated="true"
+        android:requestLegacyExternalStorage="true">
         
-        <!-- ✅ SPLASH ACTIVITY -->
-        <activity
-            android:name=".SplashActivity"
-            android:theme="@style/SplashTheme"
-            android:exported="true"
-            android:noHistory="true"
-            android:screenOrientation="portrait">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-        
-        <!-- ✅ MAIN ACTIVITY -->
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode"
-            android:hardwareAccelerated="true"
+            android:exported="true"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
             android:supportsPictureInPicture="true"
             android:resizeableActivity="true"
-            android:theme="@style/AppTheme"
-            android:exported="true"
             android:launchMode="singleTask"
-            android:screenOrientation="unspecified">
+            android:windowSoftInputMode="adjustResize">
             
-            <!-- ✅ හරි PIP metadata -->
-            <meta-data
-                android:name="android.app.picture_in_picture"
-                android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
             
-            <!-- YouTube links handle කරන්න -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" />
                 <data android:scheme="https" />
+                <data android:host="m.youtube.com" />
                 <data android:host="youtube.com" />
-                <data android:host="*.youtube.com" />
+                <data android:host="www.youtube.com" />
                 <data android:host="youtu.be" />
             </intent-filter>
             
@@ -91,57 +65,33 @@
             </intent-filter>
         </activity>
         
-        <!-- Download Activity -->
-        <activity
-            android:name=".DownloadFromIntentFilter"
-            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
-            android:hardwareAccelerated="true"
-            android:supportsPictureInPicture="true"
-            android:theme="@style/AppTheme"
-            android:exported="true"
-            android:screenOrientation="unspecified">
-            <intent-filter android:label="@string/dl">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="youtube.com" />
-                <data android:host="*.youtube.com" />
-                <data android:host="youtu.be" />
-            </intent-filter>
-            <intent-filter android:label="@string/dl">
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-        </activity>
-        
-        <!-- Foreground Service -->
+        <!-- Background playback service -->
         <service
             android:name=".ForegroundService"
-            android:enabled="true"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
-
-        <!-- Notification Receiver -->
-        <receiver android:name=".NotificationActionService"/>
-
-        <!-- ✅ Notification Check Service -->
+        
+        <!-- Notification service -->
         <service
-            android:name=".NotificationCheckService"
-            android:enabled="true"
+            android:name=".NotificationService"
             android:exported="false" />
-
-        <!-- ✅ Notification Boot Receiver -->
-        <receiver
-            android:name=".NotificationBootReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
+        
+        <!-- Update checker service -->
+        <service
+            android:name=".UpdateChecker"
+            android:exported="false" />
+        
+        <!-- File provider for downloads -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         
     </application>
+
 </manifest>
