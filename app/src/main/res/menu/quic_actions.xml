@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_sponsor_skip"
+        android:title="Sponsor Skip"/>
+    <item
+        android:id="@+id/action_pip"
+        android:title="Picture-in-Picture"/>
+    <item
+        android:id="@+id/action_download"
+        android:title="Download Video"/>
+    <item
+        android:id="@+id/action_speed"
+        android:title="Playback Speed"/>
+    <item
+        android:id="@+id/action_sleep"
+        android:title="Sleep Timer"/>
+    <item
+        android:id="@+id/action_stats"
+        android:title="Video Stats"/>
+</menu>
