@@ -24,8 +24,6 @@ import javax.net.ssl.HttpsURLConnection;
 import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 
 public class MainActivity extends Activity {
 
@@ -88,40 +86,32 @@ public class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
     
-    // ✅ FIXED: Remove deprecated APIs that cause build errors
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
     
-    // ✅ Hardware acceleration for smooth video playback
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
     
-    // ✅ Video playback optimization - CRITICAL for smooth YouTube
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setLoadsImagesAutomatically(true);
     settings.setBlockNetworkImage(false);
     settings.setBlockNetworkLoads(false);
     
-    // ✅ Viewport & Layout - optimized for mobile YouTube
     settings.setUseWideViewPort(true);
     settings.setLoadWithOverviewMode(true);
     settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
-    settings.setSupportZoom(false); // YouTube handles its own zoom
+    settings.setSupportZoom(false);
     
-    // ✅ File & Content Access
     settings.setAllowFileAccess(true);
     settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
     
-    // ✅ Mixed content for video streaming
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
     }
     
-    // ✅ Smooth scrolling
     web.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
     
-    // ✅ Database path for proper caching
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
         settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
     }
@@ -176,44 +166,6 @@ public class MainActivity extends Activity {
         return false;
       }
       
-@Override
-public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-    String url = request.getUrl().toString();
-
-    // ✅ Only intercept YTPRO scripts
-    if (!url.contains("youtube.com/ytpro_cdn/npm/ytpro/")) {
-        return null;
-    }
-
-    Log.d("WebView", "🔧 Intercepting YTPRO script from assets: " + url);
-
-    String assetPath = null;
-
-    if (url.contains("innertube.js")) {
-        assetPath = "ytpro/innertube.js";
-    } else if (url.contains("bgplay.js")) {
-        assetPath = "ytpro/bgplay.js";
-    } else if (url.contains("script.js")) {
-        assetPath = "ytpro/script.js";
-    }
-    
-    if (assetPath == null) {
-        return null;
-    }
-    
-    try {
-        InputStream inputStream = getAssets().open(assetPath);
-        return new WebResourceResponse(
-            "application/javascript",
-            "utf-8",
-            inputStream
-        );
-    } catch (IOException e) {
-        Log.e("AssetError", "❌ Failed to load: " + assetPath + " - " + e.getMessage());
-        return null;
-    }
-}
-      
       @Override
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
@@ -222,9 +174,9 @@ public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceReque
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-        // ✅ CRITICAL FIX: Inject scripts immediately for smooth playback
+        // ✅ Inject scripts from assets
         if (!scriptsInjected) {
-            injectYTProScripts();
+            injectYTProScriptsFromAssets();
             scriptsInjected = true;
         }
         
@@ -302,57 +254,88 @@ public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceReque
     }
   }
   
-  // ✅ CRITICAL FIX: Optimized script injection
-  private void injectYTProScripts() {
-    // Trusted Types policy first
-    web.evaluateJavascript(
-        "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
-        "  window.trustedTypes.createPolicy('default', {" +
-        "    createHTML: (string) => string," +
-        "    createScriptURL: string => string," +
-        "    createScript: string => string" +
-        "  });" +
-        "}",
-        null
-    );
-    
-    // ✅ Inject scripts from assets directly
-    String[] scripts = {"ytpro/script.js", "ytpro/bgplay.js", "ytpro/innertube.js"};
-    
-    for (String scriptPath : scripts) {
-        try {
-            InputStream inputStream = getAssets().open(scriptPath);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            StringBuilder scriptContent = new StringBuilder();
-            String line;
-            
-            while ((line = reader.readLine()) != null) {
-                scriptContent.append(line).append("\n");
-            }
-            reader.close();
-            
-            // Inject the script content
-            String jsCode = scriptContent.toString()
-                .replace("\\", "\\\\")
-                .replace("'", "\\'")
-                .replace("\n", "\\n")
-                .replace("\r", "");
-                
-            web.evaluateJavascript(
-                "(function() { " + jsCode + " })();",
-                result -> Log.d("ScriptInjection", "✅ Injected: " + scriptPath)
-            );
-            
-        } catch (IOException e) {
-            Log.e("ScriptInjection", "❌ Failed to inject: " + scriptPath, e);
-        }
+  // ✅ Scripts inject කරන්න assets folder එකෙන්
+  private void injectYTProScriptsFromAssets() {
+    try {
+        // 1. Trusted Types policy
+        web.evaluateJavascript(
+            "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
+            "  window.trustedTypes.createPolicy('default', {" +
+            "    createHTML: (string) => string," +
+            "    createScriptURL: string => string," +
+            "    createScript: string => string" +
+            "  });" +
+            "}",
+            null
+        );
+        
+        // 2. Load scripts from assets
+        String scriptLoader = 
+            "(function() {" +
+            "  if(window.YTPRO_LOADED) return;" +
+            "  function loadScriptFromString(content) {" +
+            "    var script = document.createElement('script');" +
+            "    script.textContent = content;" +
+            "    script.async = false;" +
+            "    document.body.appendChild(script);" +
+            "  }" +
+            "  " + loadScriptFromAssets("script.js") + " " +
+            "  " + loadScriptFromAssets("bgplay.js") + " " +
+            "  " + loadScriptFromAssets("innertube.js") + " " +
+            "  window.YTPRO_LOADED = true;" +
+            "  console.log('✅ YTPRO scripts loaded from assets');" +
+            "})();";
+        
+        web.evaluateJavascript(scriptLoader, null);
+        
+        // 3. Additional YouTube modifications
+        web.evaluateJavascript(
+            "(function() {" +
+            "  setTimeout(function() {" +
+            "    // Remove YouTube premium offers" +
+            "    var premiumElements = document.querySelectorAll('ytm-purchase-offer-renderer, ytm-upsell-dialog-renderer');" +
+            "    premiumElements.forEach(function(el) { el.remove(); });" +
+            "    " +
+            "    // Enable background play" +
+            "    if (window.ytplayer && window.ytplayer.config) {" +
+            "      window.ytplayer.config.args.autoplay = 1;" +
+            "      window.ytplayer.config.args.background = 1;" +
+            "    }" +
+            "  }, 1000);" +
+            "})();",
+            null
+        );
+        
+    } catch (Exception e) {
+        Log.e("Script Injection", "❌ Error: " + e.getMessage());
     }
-    
-    web.evaluateJavascript(
-        "window.YTPRO_LOADED = true; console.log('✅ YTPRO loaded from assets');",
-        null
-    );
-}
+  }
+  
+  private String loadScriptFromAssets(String filename) {
+    try {
+        InputStream inputStream = getAssets().open(filename);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        StringBuilder content = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            content.append(line).append("\n");
+        }
+        reader.close();
+        
+        // Escape special characters for JavaScript
+        String escaped = content.toString()
+            .replace("\\", "\\\\")
+            .replace("`", "\\`")
+            .replace("${", "\\${")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r");
+            
+        return "loadScriptFromString(`" + escaped + "`);";
+    } catch (IOException e) {
+        Log.e("Assets", "❌ Failed to load " + filename + ": " + e.getMessage());
+        return "";
+    }
+  }
   
   private void setupBottomNavigation() {
     LinearLayout navHome = findViewById(R.id.navHome);
