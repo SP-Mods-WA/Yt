@@ -69,17 +69,7 @@
 			</intent-filter>
 		</activity>
 
-		<activity
-    android:name=".PIPVideoPlayer"
-    android:theme="@style/Theme.AppCompat.NoActionBar"
-    android:exported="false"
-    android:supportsPictureInPicture="true"
-    android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
-    android:launchMode="singleInstance" />
-    
-<receiver
-    android:name=".PIPActionReceiver"
-    android:exported="false" />
+		
 		
 		<!-- Download Activity -->
 		<activity
@@ -135,4 +125,5 @@
 		
 	</application>
 </manifest>
+
 
