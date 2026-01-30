@@ -306,123 +306,37 @@ public class MainActivity extends Activity {
             null
         );
         
-        // 4. ✅ Enhanced Status bar color sync with YouTube (Video play support)
+        // 4. ✅ Status bar color sync with YouTube header
         web.evaluateJavascript(
             "(function() {" +
-            "  console.log('🎨 Enhanced status bar sync initialized');" +
-            "  var lastColor = '#000000';" +
-            "  " +
+            "  console.log('🎨 Status bar sync initialized');" +
             "  function rgbToHex(rgb) {" +
-            "    var match = rgb.match(/\\\\d+/g);" +
-            "    if (!match || match.length < 3) return null;" +
+            "    var match = rgb.match(/\\d+/g);" +
+            "    if (!match || match.length < 3) return '#000000';" +
             "    var r = parseInt(match[0]).toString(16).padStart(2, '0');" +
             "    var g = parseInt(match[1]).toString(16).padStart(2, '0');" +
             "    var b = parseInt(match[2]).toString(16).padStart(2, '0');" +
             "    return '#' + r + g + b;" +
             "  }" +
-            "  " +
             "  function updateStatusBarColor() {" +
-            "    var color = null;" +
-            "    " +
-            "    // 1. Video player background (highest priority)" +
-            "    var playerBg = document.querySelector('.player-container') || " +
-            "                   document.querySelector('ytm-single-column-watch-next-results-renderer') ||" +
-            "                   document.querySelector('.watch-below-the-player');" +
-            "    if (playerBg) {" +
-            "      var playerColor = window.getComputedStyle(playerBg).backgroundColor;" +
-            "      color = rgbToHex(playerColor);" +
-            "    }" +
-            "    " +
-            "    // 2. Check for video page specific background" +
-            "    if (!color || color === '#000000') {" +
-            "      var watchPage = document.querySelector('ytm-watch') || " +
-            "                      document.querySelector('#player-container-id');" +
-            "      if (watchPage) {" +
-            "        var watchColor = window.getComputedStyle(watchPage).backgroundColor;" +
-            "        color = rgbToHex(watchColor);" +
-            "      }" +
-            "    }" +
-            "    " +
-            "    // 3. Mobile topbar (for home page)" +
-            "    if (!color || color === '#000000') {" +
-            "      var header = document.querySelector('ytm-mobile-topbar-renderer') || " +
-            "                   document.querySelector('#masthead');" +
+            "    var selectors = ['ytm-mobile-topbar-renderer', '#masthead', 'ytm-pivot-bar-renderer', '.mobile-topbar-header'];" +
+            "    for (var i = 0; i < selectors.length; i++) {" +
+            "      var header = document.querySelector(selectors[i]);" +
             "      if (header) {" +
-            "        var headerColor = window.getComputedStyle(header).backgroundColor;" +
-            "        color = rgbToHex(headerColor);" +
-            "      }" +
-            "    }" +
-            "    " +
-            "    // 4. Page background as fallback" +
-            "    if (!color || color === '#000000') {" +
-            "      var pageColor = window.getComputedStyle(document.body).backgroundColor;" +
-            "      color = rgbToHex(pageColor);" +
-            "    }" +
-            "    " +
-            "    // 5. Extract color from video page elements" +
-            "    if (window.location.href.includes('/watch') || window.location.href.includes('/shorts')) {" +
-            "      var thumbnail = document.querySelector('ytm-thumbnail-overlay-time-status-renderer') ||" +
-            "                      document.querySelector('.ytp-cued-thumbnail-overlay-image');" +
-            "      if (thumbnail && thumbnail.parentElement) {" +
-            "        var thumbColor = window.getComputedStyle(thumbnail.parentElement).backgroundColor;" +
-            "        var extracted = rgbToHex(thumbColor);" +
-            "        if (extracted && extracted !== '#000000') {" +
-            "          color = extracted;" +
+            "        var bgColor = window.getComputedStyle(header).backgroundColor;" +
+            "        var hexColor = rgbToHex(bgColor);" +
+            "        if (window.Android && window.Android.setStatusBarColor) {" +
+            "          window.Android.setStatusBarColor(hexColor);" +
+            "          console.log('🎨 Status bar color:', hexColor);" +
             "        }" +
-            "      }" +
-            "    }" +
-            "    " +
-            "    // Apply color if changed" +
-            "    if (color && color !== lastColor && color !== '#000000') {" +
-            "      if (window.Android && window.Android.setStatusBarColor) {" +
-            "        window.Android.setStatusBarColor(color);" +
-            "        lastColor = color;" +
-            "        console.log('🎨 Status bar updated:', color);" +
+            "        break;" +
             "      }" +
             "    }" +
             "  }" +
-            "  " +
-            "  // Watch for URL changes (SPA navigation)" +
-            "  var lastUrl = location.href;" +
-            "  new MutationObserver(function() {" +
-            "    var currentUrl = location.href;" +
-            "    if (currentUrl !== lastUrl) {" +
-            "      lastUrl = currentUrl;" +
-            "      console.log('🔄 Page changed, updating status bar');" +
-            "      setTimeout(updateStatusBarColor, 300);" +
-            "      setTimeout(updateStatusBarColor, 1000);" +
-            "      setTimeout(updateStatusBarColor, 2000);" +
-            "    }" +
-            "  }).observe(document.body, { childList: true, subtree: true });" +
-            "  " +
-            "  // Watch for DOM changes" +
             "  var observer = new MutationObserver(updateStatusBarColor);" +
-            "  observer.observe(document.body, { " +
-            "    attributes: true, " +
-            "    childList: true, " +
-            "    subtree: true," +
-            "    attributeFilter: ['style', 'class']" +
-            "  });" +
-            "  " +
-            "  // Multiple update triggers for reliability" +
+            "  observer.observe(document.body, { attributes: true, childList: true, subtree: true });" +
             "  setTimeout(updateStatusBarColor, 500);" +
-            "  setTimeout(updateStatusBarColor, 1500);" +
-            "  setTimeout(updateStatusBarColor, 3000);" +
-            "  setInterval(updateStatusBarColor, 2000);" +
-            "  " +
-            "  // Listen for video play events" +
-            "  document.addEventListener('play', function() {" +
-            "    console.log('▶️ Video playing, updating status bar');" +
-            "    setTimeout(updateStatusBarColor, 500);" +
-            "  }, true);" +
-            "  " +
-            "  // Listen for page visibility" +
-            "  document.addEventListener('visibilitychange', function() {" +
-            "    if (!document.hidden) {" +
-            "      setTimeout(updateStatusBarColor, 300);" +
-            "    }" +
-            "  });" +
-            "  " +
+            "  setInterval(updateStatusBarColor, 3000);" +
             "})();",
             null
         );
