@@ -6,5 +6,12 @@
 	<color name="colorControlNormal">#000000</color>
 	<color name="black">#DD000000</color>
     <color name="white">#FFFFFF</color>
+	    <color name="splash_background_dark">#0f0f1e</color>
+    <color name="splash_background_mid">#1a1a3e</color>
+    <color name="splash_text_light">#FFFFFF</color>
+    <color name="splash_text_secondary">#B3FFFFFF</color>
+    <color name="splash_accent_blue">#88D4F7</color>
+    <color name="splash_accent_purple">#D796E8</color>
 </resources>
+
 
