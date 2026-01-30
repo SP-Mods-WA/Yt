@@ -23,5 +23,9 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowTranslucentStatus">false</item>
-    </style>
+    <item name="android:windowSplashScreenBackground">@android:color/transparent</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@null</item>
+    <item name="android:windowDisablePreview">true</item>
+</style>
 </resources>
+
