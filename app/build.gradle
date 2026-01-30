@@ -21,19 +21,30 @@ android {
 }
 
 dependencies {
-    // Add your dependencies here
+    // Core AndroidX + AppCompat + Material (ඔයාගේ තිබුණු ඒවා තියාගන්න)
     implementation 'androidx.core:core-splashscreen:1.0.1'
     implementation 'pl.droidsonroids.gif:android-gif-drawable:1.2.28'
-    implementation 'androidx.media:media:1.7.0'
-    implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
-    implementation 'com.google.android.exoplayer:extension-mediasession:2.19.1'
-    
-    // මේ AppCompat library එක අවශ්‍යයි:
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    
-    // Material Design library එකත් අවශ්‍ය විය හැක:
     implementation 'com.google.android.material:material:1.11.0'
+
+    // REMOVE these old ones (conflicts + deprecated)
+    // implementation 'androidx.media:media:1.7.0'
+    // implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
+    // implementation 'com.google.android.exoplayer:extension-mediasession:2.19.1'
+
+    // ADD Media3 modules (latest 1.9.1)
+    // Player + UI (PlayerView සඳහා)
+    implementation 'androidx.media3:media3-exoplayer:1.9.1'
+    implementation 'androidx.media3:media3-ui:1.9.1'
+
+    // MediaSession + custom commands / PIP controls සඳහා (ඔයාගේ error fix වෙන්නේ මෙතනින්)
+    implementation 'androidx.media3:media3-session:1.9.1'
+
+    // Optional: ඔයාගේ video sources වලට match වෙන්න (HTTP / progressive streams)
+    // implementation 'androidx.media3:media3-datasource-okhttp:1.9.1'  // okhttp use කරනවා නම්
+    // හෝ default http datasource එක use කරන්න (අවශ්‍ය නැත්නම් skip)
 }
+
 
 
 
