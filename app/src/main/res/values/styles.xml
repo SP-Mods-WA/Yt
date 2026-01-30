@@ -19,12 +19,20 @@
     </style>
     
     <style name="SplashTheme" parent="@android:style/Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
-        <item name="android:statusBarColor">@android:color/white</item>
-        <item name="android:navigationBarColor">@android:color/white</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@drawable/gradient_background</item>
+        <item name="android:statusBarColor">#0f0f1e</item>
+        <item name="android:navigationBarColor">#0f0f1e</item>
+        <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+    
+    <!-- Alternative: Fullscreen Splash Theme -->
+    <style name="SplashThemeFullscreen" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/gradient_background</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 </resources>
+
