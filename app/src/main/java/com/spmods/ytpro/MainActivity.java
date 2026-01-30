@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
-
+  
   public void load(boolean dl) {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
@@ -147,7 +147,7 @@ public class MainActivity extends Activity {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         cookieManager.setAcceptThirdPartyCookies(web, true);
     }
-
+    
     web.setWebViewClient(new WebViewClient() {
       
       @Override
@@ -306,6 +306,41 @@ public class MainActivity extends Activity {
             null
         );
         
+        // 4. ✅ Status bar color sync with YouTube header
+        web.evaluateJavascript(
+            "(function() {" +
+            "  console.log('🎨 Status bar sync initialized');" +
+            "  function rgbToHex(rgb) {" +
+            "    var match = rgb.match(/\\d+/g);" +
+            "    if (!match || match.length < 3) return '#000000';" +
+            "    var r = parseInt(match[0]).toString(16).padStart(2, '0');" +
+            "    var g = parseInt(match[1]).toString(16).padStart(2, '0');" +
+            "    var b = parseInt(match[2]).toString(16).padStart(2, '0');" +
+            "    return '#' + r + g + b;" +
+            "  }" +
+            "  function updateStatusBarColor() {" +
+            "    var selectors = ['ytm-mobile-topbar-renderer', '#masthead', 'ytm-pivot-bar-renderer', '.mobile-topbar-header'];" +
+            "    for (var i = 0; i < selectors.length; i++) {" +
+            "      var header = document.querySelector(selectors[i]);" +
+            "      if (header) {" +
+            "        var bgColor = window.getComputedStyle(header).backgroundColor;" +
+            "        var hexColor = rgbToHex(bgColor);" +
+            "        if (window.Android && window.Android.setStatusBarColor) {" +
+            "          window.Android.setStatusBarColor(hexColor);" +
+            "          console.log('🎨 Status bar color:', hexColor);" +
+            "        }" +
+            "        break;" +
+            "      }" +
+            "    }" +
+            "  }" +
+            "  var observer = new MutationObserver(updateStatusBarColor);" +
+            "  observer.observe(document.body, { attributes: true, childList: true, subtree: true });" +
+            "  setTimeout(updateStatusBarColor, 500);" +
+            "  setInterval(updateStatusBarColor, 3000);" +
+            "})();",
+            null
+        );
+        
     } catch (Exception e) {
         Log.e("Script Injection", "❌ Error: " + e.getMessage());
     }
@@ -322,7 +357,6 @@ public class MainActivity extends Activity {
         }
         reader.close();
         
-        // Escape special characters for JavaScript
         String escaped = content.toString()
             .replace("\\", "\\\\")
             .replace("`", "\\`")
@@ -548,6 +582,7 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void oplink(String url) { Intent i = new Intent(); i.setAction(Intent.ACTION_VIEW); i.setData(Uri.parse(url)); startActivity(i); }
     @JavascriptInterface public String getInfo() { try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "1.0"; } }
     @JavascriptInterface public void setBgPlay(boolean bgplay) { getSharedPreferences("YTPRO", MODE_PRIVATE).edit().putBoolean("bgplay", bgplay).apply(); }
+    
     @JavascriptInterface public void bgStart(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; mediaSession=true; Intent intent = new Intent(getApplicationContext(), ForegroundService.class); intent.putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "play"); startService(intent); }
     @JavascriptInterface public void bgUpdate(String iconn, String titlen, String subtitlen, long dura) { icon=iconn; title=titlen; subtitle=subtitlen; duration=dura; isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", 0).putExtra("action", "pause")); }
     @JavascriptInterface public void bgStop() { isPlaying=false; mediaSession=false; stopService(new Intent(getApplicationContext(), ForegroundService.class)); }
@@ -559,70 +594,22 @@ public class MainActivity extends Activity {
     @JavascriptInterface public String getAllCookies(String url) { return CookieManager.getInstance().getCookie(url); }
     @JavascriptInterface public float getVolume() { return (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC); }
     @JavascriptInterface public void setVolume(float volume) { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume), 0); }
-    @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTness) / 255f) * 100f; } catch (Exception e) { return 50f; } }
+    @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
     @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
-    @JavascriptInterface public void pipvid(String x) { 
-      if (Build.VERSION.SDK_INT >= 26) { 
-        try { 
-          enterPictureInPictureMode(new PictureInPictureParams.Builder()
-            .setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); 
-        } catch (Exception e) {} 
-      } else { 
-        Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); 
-      } 
-    }
+    @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
     
-    // ✅ NEW: Native PIP Player Launch Method
+    // ✅ Status Bar Color Change Method
     @JavascriptInterface 
-    public void launchPIP(String videoUrl, String title, String channel) {
+    public void setStatusBarColor(String color) { 
         runOnUiThread(() -> {
-            try {
-                Log.d("NativePIP", "🚀 Launching Native PIP");
-                Log.d("NativePIP", "Video URL: " + (videoUrl != null ? "Yes (" + videoUrl.length() + " chars)" : "No"));
-                Log.d("NativePIP", "Title: " + title);
-                Log.d("NativePIP", "Channel: " + channel);
-                
-                // Check if PIPVideoPlayer exists
-                boolean playerExists = false;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 try {
-                    Class.forName("com.spmods.ytpro.PIPVideoPlayer");
-                    playerExists = true;
-                    Log.d("NativePIP", "✅ PIPVideoPlayer class found");
-                } catch (ClassNotFoundException e) {
-                    Log.d("NativePIP", "❌ PIPVideoPlayer class NOT found - using fallback");
-                }
-                
-                if (playerExists && videoUrl != null && !videoUrl.isEmpty()) {
-                    // Launch native PIP player
-                    Intent pipIntent = new Intent(MainActivity.this, PIPVideoPlayer.class);
-                    pipIntent.putExtra("VIDEO_URL", videoUrl);
-                    pipIntent.putExtra("VIDEO_TITLE", title != null ? title : "YouTube Video");
-                    pipIntent.putExtra("VIDEO_CHANNEL", channel != null ? channel : "YouTube");
-                    pipIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    
-                    startActivity(pipIntent);
-                    
-                    // Minimize main activity
-                    moveTaskToBack(true);
-                    
-                    Toast.makeText(MainActivity.this, "🎬 Opening Native PIP...", Toast.LENGTH_SHORT).show();
-                    
-                } else {
-                    // Fallback to old PIP
-                    Log.d("NativePIP", "⚠️ Using fallback PIP");
-                    pipvid("landscape");
-                    Toast.makeText(MainActivity.this, "Using standard PIP", Toast.LENGTH_SHORT).show();
-                }
-                
-            } catch (Exception e) {
-                Log.e("NativePIP", "❌ Failed to launch PIP: " + e.getMessage(), e);
-                Toast.makeText(MainActivity.this, "PIP Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                
-                // Emergency fallback
-                try {
-                    pipvid("landscape");
-                } catch (Exception e2) {
-                    Toast.makeText(MainActivity.this, "All PIP methods failed", Toast.LENGTH_SHORT).show();
+                    Window window = getWindow();
+                    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                    window.setStatusBarColor(Color.parseColor(color));
+                    Log.d("StatusBar", "🎨 Color changed to: " + color);
+                } catch (Exception e) {
+                    Log.e("StatusBar", "❌ Error setting color: " + e.getMessage());
                 }
             }
         });
@@ -702,7 +689,7 @@ public class MainActivity extends Activity {
     }
     return false;
   }
-
+  
   private void showOfflineScreen() {
     isOffline = true;
     offlineLayout = new RelativeLayout(this);
