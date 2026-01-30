@@ -27,6 +27,12 @@ dependencies {
     implementation 'androidx.media:media:1.7.0'
     implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
     implementation 'com.google.android.exoplayer:extension-mediasession:2.19.1'
+    
+    // මේ AppCompat library එක අවශ්‍යයි:
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    
+    // Material Design library එකත් අවශ්‍ය විය හැක:
+    implementation 'com.google.android.material:material:1.11.0'
 }
 
 
