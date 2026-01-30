@@ -117,41 +117,27 @@ public class MainActivity extends Activity {
     centerLayout.setOrientation(LinearLayout.VERTICAL);
     centerLayout.setGravity(Gravity.CENTER);
     
-    // Animation container
+    // 🎨 TikTok Style Animation container
     RelativeLayout animContainer = new RelativeLayout(this);
     LinearLayout.LayoutParams animParams = new LinearLayout.LayoutParams(dpToPx(120), dpToPx(120));
     animParams.bottomMargin = dpToPx(32);
     animContainer.setLayoutParams(animParams);
     
-    // Outer circle
+    // Ball 1 (Cyan)
     outerCircle = new View(this);
-    RelativeLayout.LayoutParams outerParams = new RelativeLayout.LayoutParams(dpToPx(100), dpToPx(100));
-    outerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-    outerCircle.setLayoutParams(outerParams);
-    outerCircle.setBackground(createGradientRing(dpToPx(100), 3, 8, true));
+    RelativeLayout.LayoutParams ball1Params = new RelativeLayout.LayoutParams(dpToPx(50), dpToPx(50));
+    ball1Params.addRule(RelativeLayout.CENTER_IN_PARENT);
+    outerCircle.setLayoutParams(ball1Params);
+    outerCircle.setBackground(createCircle("#00F2EA")); // Cyan
     animContainer.addView(outerCircle);
     
-    // Inner circle
+    // Ball 2 (Magenta)
     innerCircle = new View(this);
-    RelativeLayout.LayoutParams innerParams = new RelativeLayout.LayoutParams(dpToPx(70), dpToPx(70));
-    innerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-    innerCircle.setLayoutParams(innerParams);
-    innerCircle.setBackground(createGradientRing(dpToPx(70), 3.5f, 12, false));
+    RelativeLayout.LayoutParams ball2Params = new RelativeLayout.LayoutParams(dpToPx(50), dpToPx(50));
+    ball2Params.addRule(RelativeLayout.CENTER_IN_PARENT);
+    innerCircle.setLayoutParams(ball2Params);
+    innerCircle.setBackground(createCircle("#FF0050")); // Magenta
     animContainer.addView(innerCircle);
-    
-    // Center play icon
-    TextView playIcon = new TextView(this);
-    playIcon.setText("▶");
-    playIcon.setTextColor(Color.parseColor("#FF0000"));
-    playIcon.setTextSize(36);
-    playIcon.setTypeface(null, Typeface.BOLD);
-    RelativeLayout.LayoutParams iconParams = new RelativeLayout.LayoutParams(
-        RelativeLayout.LayoutParams.WRAP_CONTENT,
-        RelativeLayout.LayoutParams.WRAP_CONTENT
-    );
-    iconParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-    playIcon.setLayoutParams(iconParams);
-    animContainer.addView(playIcon);
     
     centerLayout.addView(animContainer);
     
@@ -202,7 +188,7 @@ public class MainActivity extends Activity {
         ViewGroup.LayoutParams.MATCH_PARENT,
         ViewGroup.LayoutParams.MATCH_PARENT
     ));
-  }
+}
   
   private android.graphics.drawable.Drawable createGradientRing(int size, float innerRadiusRatio, float thicknessRatio, boolean isOuter) {
     android.graphics.drawable.GradientDrawable gradient = new android.graphics.drawable.GradientDrawable();
@@ -249,29 +235,62 @@ public class MainActivity extends Activity {
     return dot;
   }
   
-  private void showLoadingScreen() {
+private void showLoadingScreen() {
     runOnUiThread(() -> {
         loadingScreen.setVisibility(View.VISIBLE);
         loadingScreen.bringToFront();
         
-        // Outer circle rotation (clockwise)
-        outerRotation = ObjectAnimator.ofFloat(outerCircle, "rotation", 0f, 360f);
-        outerRotation.setDuration(2000);
-        outerRotation.setRepeatCount(ValueAnimator.INFINITE);
-        outerRotation.setInterpolator(new LinearInterpolator());
-        outerRotation.start();
+        // 🎨 TikTok style ball animations
+        // Ball 1 (Cyan) - Clockwise circular motion
+        ObjectAnimator rotate1 = ObjectAnimator.ofFloat(outerCircle, "rotation", 0f, 360f);
+        ObjectAnimator translateX1 = ObjectAnimator.ofFloat(outerCircle, "translationX", 0f, 30f, 0f, -30f, 0f);
+        ObjectAnimator translateY1 = ObjectAnimator.ofFloat(outerCircle, "translationY", 0f, -30f, 0f, 30f, 0f);
         
-        // Inner circle rotation (counter-clockwise)
-        innerRotation = ObjectAnimator.ofFloat(innerCircle, "rotation", 360f, 0f);
-        innerRotation.setDuration(1500);
-        innerRotation.setRepeatCount(ValueAnimator.INFINITE);
-        innerRotation.setInterpolator(new LinearInterpolator());
-        innerRotation.start();
+        rotate1.setDuration(1200);
+        translateX1.setDuration(1200);
+        translateY1.setDuration(1200);
+        
+        rotate1.setRepeatCount(ValueAnimator.INFINITE);
+        translateX1.setRepeatCount(ValueAnimator.INFINITE);
+        translateY1.setRepeatCount(ValueAnimator.INFINITE);
+        
+        rotate1.setInterpolator(new LinearInterpolator());
+        translateX1.setInterpolator(new LinearInterpolator());
+        translateY1.setInterpolator(new LinearInterpolator());
+        
+        // Ball 2 (Magenta) - Counter-clockwise circular motion
+        ObjectAnimator rotate2 = ObjectAnimator.ofFloat(innerCircle, "rotation", 360f, 0f);
+        ObjectAnimator translateX2 = ObjectAnimator.ofFloat(innerCircle, "translationX", 0f, -30f, 0f, 30f, 0f);
+        ObjectAnimator translateY2 = ObjectAnimator.ofFloat(innerCircle, "translationY", 0f, 30f, 0f, -30f, 0f);
+        
+        rotate2.setDuration(1200);
+        translateX2.setDuration(1200);
+        translateY2.setDuration(1200);
+        
+        rotate2.setRepeatCount(ValueAnimator.INFINITE);
+        translateX2.setRepeatCount(ValueAnimator.INFINITE);
+        translateY2.setRepeatCount(ValueAnimator.INFINITE);
+        
+        rotate2.setInterpolator(new LinearInterpolator());
+        translateX2.setInterpolator(new LinearInterpolator());
+        translateY2.setInterpolator(new LinearInterpolator());
+        
+        // Start all animations
+        rotate1.start();
+        translateX1.start();
+        translateY1.start();
+        rotate2.start();
+        translateX2.start();
+        translateY2.start();
+        
+        // Store references for canceling
+        outerRotation = rotate1;
+        innerRotation = rotate2;
         
         // Dots animation
         startDotsAnimation();
     });
-  }
+}
   
   private void startDotsAnimation() {
     long delay = 200;
@@ -312,10 +331,15 @@ public class MainActivity extends Activity {
     });
   }
   
-  private void hideLoadingScreen() {
+private void hideLoadingScreen() {
     runOnUiThread(() -> {
+        // Cancel all animations
         if (outerRotation != null) outerRotation.cancel();
         if (innerRotation != null) innerRotation.cancel();
+        
+        // Cancel ball animations
+        outerCircle.animate().cancel();
+        innerCircle.animate().cancel();
         
         // Fade out animation
         loadingScreen.animate()
@@ -333,7 +357,7 @@ public class MainActivity extends Activity {
             })
             .start();
     });
-  }
+}
   
   public void load(boolean dl) {
     web = findViewById(R.id.web);
@@ -1072,6 +1096,13 @@ public class MainActivity extends Activity {
     float density = getResources().getDisplayMetrics().density;
     return Math.round(dp * density);
   }
+  
+  private android.graphics.drawable.Drawable createCircle(String color) {
+    android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
+    circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+    circle.setColor(Color.parseColor(color));
+    return circle;
+}
 
   private void checkForAppUpdate() {
     new android.os.Handler().postDelayed(() -> {
