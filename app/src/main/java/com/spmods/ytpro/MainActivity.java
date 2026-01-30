@@ -290,15 +290,19 @@ public class MainActivity extends Activity {
     ObjectAnimator scaleY = ObjectAnimator.ofFloat(dot, "scaleY", 1f, 1.5f, 1f);
     ObjectAnimator alpha = ObjectAnimator.ofFloat(dot, "alpha", 1f, 0.3f, 1f);
     
+    // එක එක animator වලට repeat count set කරන්න
+    scaleX.setRepeatCount(ValueAnimator.INFINITE);
+    scaleY.setRepeatCount(ValueAnimator.INFINITE);
+    alpha.setRepeatCount(ValueAnimator.INFINITE);
+    
     AnimatorSet set = new AnimatorSet();
     set.playTogether(scaleX, scaleY, alpha);
     set.setDuration(600);
     set.setStartDelay(startDelay);
-    set.setRepeatCount(ValueAnimator.INFINITE);
     set.setInterpolator(new AccelerateDecelerateInterpolator());
     
     return set;
-  }
+}
   
   public void updateLoadingProgress(String message) {
     runOnUiThread(() -> {
