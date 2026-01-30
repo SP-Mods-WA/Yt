@@ -179,19 +179,7 @@ public class MainActivity extends Activity {
     return gradient;
   }
   
-  private View createDot() {
-    View dot = new View(this);
-    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(8), dpToPx(8));
-    params.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
-    dot.setLayoutParams(params);
-    
-    android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
-    shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-    shape.setColor(Color.parseColor("#FF0000"));
-    dot.setBackground(shape);
-    
-    return dot;
-  }
+
   
 private void showLoadingScreen() {
     runOnUiThread(() -> {
@@ -252,44 +240,9 @@ ObjectAnimator translateY2 = ObjectAnimator.ofFloat(innerCircle, "translationY",
     });
 }
   
-  private void startDotsAnimation() {
-    long delay = 200;
-    
-    AnimatorSet dot1Set = createDotAnimator(dot1, 0);
-    AnimatorSet dot2Set = createDotAnimator(dot2, delay);
-    AnimatorSet dot3Set = createDotAnimator(dot3, delay * 2);
-    
-    dot1Set.start();
-    dot2Set.start();
-    dot3Set.start();
-  }
+
   
-  private AnimatorSet createDotAnimator(View dot, long startDelay) {
-    ObjectAnimator scaleX = ObjectAnimator.ofFloat(dot, "scaleX", 1f, 1.5f, 1f);
-    ObjectAnimator scaleY = ObjectAnimator.ofFloat(dot, "scaleY", 1f, 1.5f, 1f);
-    ObjectAnimator alpha = ObjectAnimator.ofFloat(dot, "alpha", 1f, 0.3f, 1f);
-    
-    // එක එක animator වලට repeat count set කරන්න
-    scaleX.setRepeatCount(ValueAnimator.INFINITE);
-    scaleY.setRepeatCount(ValueAnimator.INFINITE);
-    alpha.setRepeatCount(ValueAnimator.INFINITE);
-    
-    AnimatorSet set = new AnimatorSet();
-    set.playTogether(scaleX, scaleY, alpha);
-    set.setDuration(600);
-    set.setStartDelay(startDelay);
-    set.setInterpolator(new AccelerateDecelerateInterpolator());
-    
-    return set;
-}
   
-  public void updateLoadingProgress(String message) {
-    runOnUiThread(() -> {
-        if (progressText != null) {
-            progressText.setText(message);
-        }
-    });
-  }
   
 private void hideLoadingScreen() {
     runOnUiThread(() -> {
@@ -323,7 +276,7 @@ private void hideLoadingScreen() {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
-    //updateLoadingProgress("Setting up WebView...");
+
     
     WebSettings settings = web.getSettings();
     settings.setJavaScriptEnabled(true);
@@ -360,7 +313,7 @@ private void hideLoadingScreen() {
         settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
     }
 
-  //  updateLoadingProgress("Loading YouTube...");
+
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -416,12 +369,12 @@ private void hideLoadingScreen() {
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
         scriptsInjected = false;
-      //  updateLoadingProgress("Loading page...");
+
       }
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-      //  updateLoadingProgress("Injecting YTPro scripts...");
+
         
         // ✅ Inject scripts from assets
         if (!scriptsInjected) {
@@ -429,7 +382,7 @@ private void hideLoadingScreen() {
             scriptsInjected = true;
         }
         
-      //  updateLoadingProgress("Applying customizations...");
+
         
         // ✅ Hide YouTube bottom nav immediately
         web.evaluateJavascript(
@@ -468,14 +421,12 @@ private void hideLoadingScreen() {
             stopService(new Intent(getApplicationContext(), ForegroundService.class));
         }
 
-        // Hide loading after everything is done
-        new Handler().postDelayed(() -> {
-          //  updateLoadingProgress("Ready!");
-            new Handler().postDelayed(() -> hideLoadingScreen(), 300);
-        }, 500);
+// Hide loading after everything is done
+new Handler().postDelayed(() -> {
+    hideLoadingScreen(); // ✅ Add this
+}, 500);
 
-        super.onPageFinished(p1, url);
-      }
+super.onPageFinished(p1, url);
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
