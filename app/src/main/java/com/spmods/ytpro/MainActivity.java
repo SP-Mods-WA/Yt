@@ -372,89 +372,91 @@ private void hideLoadingScreen() {
 
       }
 
-      @Override
-      public void onPageFinished(WebView p1, String url) {
+@Override
+public void onPageFinished(WebView p1, String url) {
 
-        
-        // ✅ Inject scripts from assets
-        if (!scriptsInjected) {
-            injectYTProScriptsFromAssets();
-            scriptsInjected = true;
+    // ✅ Inject scripts from assets
+    if (!scriptsInjected) {
+        injectYTProScriptsFromAssets();
+        scriptsInjected = true;
+    }
+
+    // ✅ Hide YouTube bottom nav immediately
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var style = document.createElement('style');" +
+        "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
+        "  document.head.appendChild(style);" +
+        "})();",
+        null
+    );
+    
+    // ✅ Block shorts auto-redirect
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var originalPushState = history.pushState;" +
+        "  history.pushState = function(state, title, url) {" +
+        "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+        "      return;" +
+        "    }" +
+        "    return originalPushState.apply(this, arguments);" +
+        "  };" +
+        "})();",
+        null
+    );
+
+    if (dL) {
+        web.postDelayed(() -> {
+            web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
+            dL = false;
+        }, 2000);
+    }
+
+    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+        isPlaying = false;
+        mediaSession = false;
+        stopService(new Intent(getApplicationContext(), ForegroundService.class));
+    }
+
+    // Hide loading after everything is done
+    new Handler().postDelayed(() -> {
+        hideLoadingScreen();
+    }, 500);
+
+    super.onPageFinished(p1, url);
+} // ✅ onPageFinished method එක close කරනවා
+
+@Override
+public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+    if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+        errorCode == WebViewClient.ERROR_CONNECT || 
+        errorCode == WebViewClient.ERROR_TIMEOUT) {
+        runOnUiThread(() -> {
+            hideLoadingScreen();
+            showOfflineScreen();
+        });
+    }
+    super.onReceivedError(view, errorCode, description, failingUrl);
+}
+
+@Override
+public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (request.isForMainFrame()) {
+            int errorCode = error.getErrorCode();
+            if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+                errorCode == WebViewClient.ERROR_CONNECT || 
+                errorCode == WebViewClient.ERROR_TIMEOUT) {
+                runOnUiThread(() -> {
+                    hideLoadingScreen();
+                    showOfflineScreen();
+                });
+            }
         }
-        
-
-        
-        // ✅ Hide YouTube bottom nav immediately
-        web.evaluateJavascript(
-            "(function() {" +
-            "  var style = document.createElement('style');" +
-            "  style.innerHTML = 'ytm-pivot-bar-renderer { display: none !important; } body { padding-bottom: 65px !important; }';" +
-            "  document.head.appendChild(style);" +
-            "})();",
-            null
-        );
-        
-        // ✅ Block shorts auto-redirect
-        web.evaluateJavascript(
-            "(function() {" +
-            "  var originalPushState = history.pushState;" +
-            "  history.pushState = function(state, title, url) {" +
-            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
-            "      return;" +
-            "    }" +
-            "    return originalPushState.apply(this, arguments);" +
-            "  };" +
-            "})();",
-            null
-        );
-
-        if (dL) {
-            web.postDelayed(() -> {
-                web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
-                dL = false;
-            }, 2000);
-        }
-
-        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-            isPlaying = false;
-            mediaSession = false;
-            stopService(new Intent(getApplicationContext(), ForegroundService.class));
-        }
-
-// Hide loading after everything is done
-new Handler().postDelayed(() -> {
-    hideLoadingScreen(); // ✅ Add this
-}, 500);
-
-super.onPageFinished(p1, url);
-
-      @Override
-      public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-          if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
-              runOnUiThread(() -> {
-                  hideLoadingScreen();
-                  showOfflineScreen();
-              });
-          }
-          super.onReceivedError(view, errorCode, description, failingUrl);
-      }
-      
-      @Override
-      public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-              if (request.isForMainFrame()) {
-                  int errorCode = error.getErrorCode();
-                  if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
-                      runOnUiThread(() -> {
-                          hideLoadingScreen();
-                          showOfflineScreen();
-                      });
-                  }
-              }
-          }
-          super.onReceivedError(view, request, error);
-      }
-    });
+    }
+    super.onReceivedError(view, request, error);
+}
+    }); // ✅ WebViewClient එක close කරනවා
 
     setReceiver();
 
@@ -466,7 +468,7 @@ super.onPageFinished(p1, url);
       };
       dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
     }
-  }
+  } // ✅ load() method එක close කරනවා
   
   // ✅ Scripts inject කරන්න assets folder එකෙන්
   private void injectYTProScriptsFromAssets() {
