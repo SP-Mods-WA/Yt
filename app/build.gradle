@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.spmods.ytpro"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 36
         versionCode 3
         versionName "1.2"
@@ -44,6 +44,7 @@ dependencies {
     // implementation 'androidx.media3:media3-datasource-okhttp:1.9.1'  // okhttp use කරනවා නම්
     // හෝ default http datasource එක use කරන්න (අවශ්‍ය නැත්නම් skip)
 }
+
 
 
 
