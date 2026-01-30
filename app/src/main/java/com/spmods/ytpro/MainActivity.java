@@ -1,9 +1,15 @@
 package com.spmods.ytpro;
 
 import android.Manifest;
+import android.animation.Animator;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.*;
 import android.os.*;
 import android.view.*;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.widget.*;
 import android.content.*;
 import android.content.res.*;
@@ -50,6 +56,15 @@ public class MainActivity extends Activity {
   private String lastUrl = "";
   
   private boolean scriptsInjected = false;
+  
+  // Loading Animation Views
+  private RelativeLayout loadingScreen;
+  private View outerCircle;
+  private View innerCircle;
+  private View dot1, dot2, dot3;
+  private TextView progressText;
+  private ObjectAnimator outerRotation;
+  private ObjectAnimator innerRotation;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -64,9 +79,14 @@ public class MainActivity extends Activity {
     
     requestNotificationPermission();
     
+    // Initialize loading screen
+    initLoadingScreen();
+    
     if (!isNetworkAvailable()) {
+        hideLoadingScreen();
         showOfflineScreen();
     } else {
+        showLoadingScreen();
         load(false);
         checkForAppUpdate();
         startNotificationService();
@@ -77,10 +97,246 @@ public class MainActivity extends Activity {
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
   
+  private void initLoadingScreen() {
+    loadingScreen = new RelativeLayout(this);
+    loadingScreen.setLayoutParams(new RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.MATCH_PARENT,
+        RelativeLayout.LayoutParams.MATCH_PARENT
+    ));
+    loadingScreen.setBackgroundColor(Color.parseColor("#0F0F0F"));
+    loadingScreen.setVisibility(View.GONE);
+    
+    // Center container
+    LinearLayout centerLayout = new LinearLayout(this);
+    RelativeLayout.LayoutParams centerParams = new RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.WRAP_CONTENT,
+        RelativeLayout.LayoutParams.WRAP_CONTENT
+    );
+    centerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+    centerLayout.setLayoutParams(centerParams);
+    centerLayout.setOrientation(LinearLayout.VERTICAL);
+    centerLayout.setGravity(Gravity.CENTER);
+    
+    // Animation container
+    RelativeLayout animContainer = new RelativeLayout(this);
+    LinearLayout.LayoutParams animParams = new LinearLayout.LayoutParams(dpToPx(120), dpToPx(120));
+    animParams.bottomMargin = dpToPx(32);
+    animContainer.setLayoutParams(animParams);
+    
+    // Outer circle
+    outerCircle = new View(this);
+    RelativeLayout.LayoutParams outerParams = new RelativeLayout.LayoutParams(dpToPx(100), dpToPx(100));
+    outerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+    outerCircle.setLayoutParams(outerParams);
+    outerCircle.setBackground(createGradientRing(dpToPx(100), 3, 8, true));
+    animContainer.addView(outerCircle);
+    
+    // Inner circle
+    innerCircle = new View(this);
+    RelativeLayout.LayoutParams innerParams = new RelativeLayout.LayoutParams(dpToPx(70), dpToPx(70));
+    innerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+    innerCircle.setLayoutParams(innerParams);
+    innerCircle.setBackground(createGradientRing(dpToPx(70), 3.5f, 12, false));
+    animContainer.addView(innerCircle);
+    
+    // Center play icon
+    TextView playIcon = new TextView(this);
+    playIcon.setText("▶");
+    playIcon.setTextColor(Color.parseColor("#FF0000"));
+    playIcon.setTextSize(36);
+    playIcon.setTypeface(null, Typeface.BOLD);
+    RelativeLayout.LayoutParams iconParams = new RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.WRAP_CONTENT,
+        RelativeLayout.LayoutParams.WRAP_CONTENT
+    );
+    iconParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+    playIcon.setLayoutParams(iconParams);
+    animContainer.addView(playIcon);
+    
+    centerLayout.addView(animContainer);
+    
+    // Loading text
+    TextView loadingText = new TextView(this);
+    loadingText.setText("Loading YTPro");
+    loadingText.setTextColor(Color.WHITE);
+    loadingText.setTextSize(18);
+    loadingText.setTypeface(null, Typeface.BOLD);
+    LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    textParams.bottomMargin = dpToPx(8);
+    loadingText.setLayoutParams(textParams);
+    centerLayout.addView(loadingText);
+    
+    // Dots container
+    LinearLayout dotsLayout = new LinearLayout(this);
+    dotsLayout.setOrientation(LinearLayout.HORIZONTAL);
+    
+    dot1 = createDot();
+    dot2 = createDot();
+    dot3 = createDot();
+    
+    dotsLayout.addView(dot1);
+    dotsLayout.addView(dot2);
+    dotsLayout.addView(dot3);
+    centerLayout.addView(dotsLayout);
+    
+    // Progress text
+    progressText = new TextView(this);
+    progressText.setText("Initializing...");
+    progressText.setTextColor(Color.parseColor("#AAAAAA"));
+    progressText.setTextSize(12);
+    LinearLayout.LayoutParams progParams = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
+    progParams.topMargin = dpToPx(24);
+    progressText.setLayoutParams(progParams);
+    centerLayout.addView(progressText);
+    
+    loadingScreen.addView(centerLayout);
+    
+    // Add to content view
+    addContentView(loadingScreen, new ViewGroup.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT
+    ));
+  }
+  
+  private android.graphics.drawable.Drawable createGradientRing(int size, float innerRadiusRatio, float thicknessRatio, boolean isOuter) {
+    android.graphics.drawable.GradientDrawable gradient = new android.graphics.drawable.GradientDrawable();
+    gradient.setShape(android.graphics.drawable.GradientDrawable.RING);
+    
+    float innerRadius = size / (2 * innerRadiusRatio);
+    float thickness = size / (2 * thicknessRatio);
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        gradient.setInnerRadius((int)innerRadius);
+        gradient.setThickness((int)thickness);
+    }
+    
+    if (isOuter) {
+        gradient.setColors(new int[]{
+            Color.parseColor("#FF0000"),
+            Color.parseColor("#FF6666"),
+            Color.parseColor("#00FFFFFF")
+        });
+    } else {
+        gradient.setColors(new int[]{
+            Color.parseColor("#00FFFFFF"),
+            Color.parseColor("#FF3333"),
+            Color.parseColor("#FF0000")
+        });
+    }
+    
+    gradient.setGradientType(android.graphics.drawable.GradientDrawable.SWEEP_GRADIENT);
+    
+    return gradient;
+  }
+  
+  private View createDot() {
+    View dot = new View(this);
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(8), dpToPx(8));
+    params.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
+    dot.setLayoutParams(params);
+    
+    android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+    shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+    shape.setColor(Color.parseColor("#FF0000"));
+    dot.setBackground(shape);
+    
+    return dot;
+  }
+  
+  private void showLoadingScreen() {
+    runOnUiThread(() -> {
+        loadingScreen.setVisibility(View.VISIBLE);
+        loadingScreen.bringToFront();
+        
+        // Outer circle rotation (clockwise)
+        outerRotation = ObjectAnimator.ofFloat(outerCircle, "rotation", 0f, 360f);
+        outerRotation.setDuration(2000);
+        outerRotation.setRepeatCount(ValueAnimator.INFINITE);
+        outerRotation.setInterpolator(new LinearInterpolator());
+        outerRotation.start();
+        
+        // Inner circle rotation (counter-clockwise)
+        innerRotation = ObjectAnimator.ofFloat(innerCircle, "rotation", 360f, 0f);
+        innerRotation.setDuration(1500);
+        innerRotation.setRepeatCount(ValueAnimator.INFINITE);
+        innerRotation.setInterpolator(new LinearInterpolator());
+        innerRotation.start();
+        
+        // Dots animation
+        startDotsAnimation();
+    });
+  }
+  
+  private void startDotsAnimation() {
+    long delay = 200;
+    
+    AnimatorSet dot1Set = createDotAnimator(dot1, 0);
+    AnimatorSet dot2Set = createDotAnimator(dot2, delay);
+    AnimatorSet dot3Set = createDotAnimator(dot3, delay * 2);
+    
+    dot1Set.start();
+    dot2Set.start();
+    dot3Set.start();
+  }
+  
+  private AnimatorSet createDotAnimator(View dot, long startDelay) {
+    ObjectAnimator scaleX = ObjectAnimator.ofFloat(dot, "scaleX", 1f, 1.5f, 1f);
+    ObjectAnimator scaleY = ObjectAnimator.ofFloat(dot, "scaleY", 1f, 1.5f, 1f);
+    ObjectAnimator alpha = ObjectAnimator.ofFloat(dot, "alpha", 1f, 0.3f, 1f);
+    
+    AnimatorSet set = new AnimatorSet();
+    set.playTogether(scaleX, scaleY, alpha);
+    set.setDuration(600);
+    set.setStartDelay(startDelay);
+    set.setRepeatCount(ValueAnimator.INFINITE);
+    set.setInterpolator(new AccelerateDecelerateInterpolator());
+    
+    return set;
+  }
+  
+  public void updateLoadingProgress(String message) {
+    runOnUiThread(() -> {
+        if (progressText != null) {
+            progressText.setText(message);
+        }
+    });
+  }
+  
+  private void hideLoadingScreen() {
+    runOnUiThread(() -> {
+        if (outerRotation != null) outerRotation.cancel();
+        if (innerRotation != null) innerRotation.cancel();
+        
+        // Fade out animation
+        loadingScreen.animate()
+            .alpha(0f)
+            .setDuration(300)
+            .setListener(new Animator.AnimatorListener() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    loadingScreen.setVisibility(View.GONE);
+                    loadingScreen.setAlpha(1f);
+                }
+                @Override public void onAnimationStart(Animator animation) {}
+                @Override public void onAnimationCancel(Animator animation) {}
+                @Override public void onAnimationRepeat(Animator animation) {}
+            })
+            .start();
+    });
+  }
+  
   public void load(boolean dl) {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
+    updateLoadingProgress("Setting up WebView...");
+    
     WebSettings settings = web.getSettings();
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
@@ -115,6 +371,8 @@ public class MainActivity extends Activity {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
         settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
     }
+
+    updateLoadingProgress("Loading YouTube...");
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -170,15 +428,20 @@ public class MainActivity extends Activity {
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
         scriptsInjected = false;
+        updateLoadingProgress("Loading page...");
       }
 
       @Override
       public void onPageFinished(WebView p1, String url) {
+        updateLoadingProgress("Injecting YTPro scripts...");
+        
         // ✅ Inject scripts from assets
         if (!scriptsInjected) {
             injectYTProScriptsFromAssets();
             scriptsInjected = true;
         }
+        
+        updateLoadingProgress("Applying customizations...");
         
         // ✅ Hide YouTube bottom nav immediately
         web.evaluateJavascript(
@@ -217,13 +480,22 @@ public class MainActivity extends Activity {
             stopService(new Intent(getApplicationContext(), ForegroundService.class));
         }
 
+        // Hide loading after everything is done
+        new Handler().postDelayed(() -> {
+            updateLoadingProgress("Ready!");
+            new Handler().postDelayed(() -> hideLoadingScreen(), 300);
+        }, 500);
+
         super.onPageFinished(p1, url);
       }
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
           if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
-              runOnUiThread(() -> showOfflineScreen());
+              runOnUiThread(() -> {
+                  hideLoadingScreen();
+                  showOfflineScreen();
+              });
           }
           super.onReceivedError(view, errorCode, description, failingUrl);
       }
@@ -234,7 +506,10 @@ public class MainActivity extends Activity {
               if (request.isForMainFrame()) {
                   int errorCode = error.getErrorCode();
                   if (errorCode == WebViewClient.ERROR_HOST_LOOKUP || errorCode == WebViewClient.ERROR_CONNECT || errorCode == WebViewClient.ERROR_TIMEOUT) {
-                      runOnUiThread(() -> showOfflineScreen());
+                      runOnUiThread(() -> {
+                          hideLoadingScreen();
+                          showOfflineScreen();
+                      });
                   }
               }
           }
