@@ -61,8 +61,7 @@ public class MainActivity extends Activity {
   private RelativeLayout loadingScreen;
   private View outerCircle;
   private View innerCircle;
-  private View dot1, dot2, dot3;
-  private TextView progressText;
+  
   private ObjectAnimator outerRotation;
   private ObjectAnimator innerRotation;
 
@@ -106,85 +105,41 @@ public class MainActivity extends Activity {
         RelativeLayout.LayoutParams.MATCH_PARENT,
         RelativeLayout.LayoutParams.MATCH_PARENT
     ));
-    loadingScreen.setBackgroundColor(Color.parseColor("#CC0F0F0F"));
+    loadingScreen.setBackgroundColor(Color.parseColor("#CC0F0F0F")); // semi-transparent
     loadingScreen.setVisibility(View.GONE);
     
-    // Center container
-    LinearLayout centerLayout = new LinearLayout(this);
-    RelativeLayout.LayoutParams centerParams = new RelativeLayout.LayoutParams(
-        RelativeLayout.LayoutParams.WRAP_CONTENT,
-        RelativeLayout.LayoutParams.WRAP_CONTENT
-    );
-    centerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-    centerLayout.setLayoutParams(centerParams);
-    centerLayout.setOrientation(LinearLayout.VERTICAL);
-    centerLayout.setGravity(Gravity.CENTER);
-    
     // 🎨 TikTok Style Animation container
-RelativeLayout animContainer = new RelativeLayout(this);
-LinearLayout.LayoutParams animParams = new LinearLayout.LayoutParams(dpToPx(60), dpToPx(60)); // ✅ 120 -> 60
-animParams.bottomMargin = dpToPx(32);
-animContainer.setLayoutParams(animParams);
-
-// Ball 1 (Cyan)
-outerCircle = new View(this);
-RelativeLayout.LayoutParams ball1Params = new RelativeLayout.LayoutParams(dpToPx(25), dpToPx(25)); // ✅ 50 -> 25
-ball1Params.addRule(RelativeLayout.CENTER_IN_PARENT);
-outerCircle.setLayoutParams(ball1Params);
-outerCircle.setBackground(createCircle("#00F2EA"));
-animContainer.addView(outerCircle);
-
-// Ball 2 (Magenta)
-innerCircle = new View(this);
-RelativeLayout.LayoutParams ball2Params = new RelativeLayout.LayoutParams(dpToPx(25), dpToPx(25)); // ✅ 50 -> 25
-ball2Params.addRule(RelativeLayout.CENTER_IN_PARENT);
-innerCircle.setLayoutParams(ball2Params);
-innerCircle.setBackground(createCircle("#FF0050"));
-animContainer.addView(innerCircle);
-    
-    centerLayout.addView(animContainer);
-    
-    // Loading text
-    TextView loadingText = new TextView(this);
-    loadingText.setText("Loading YTPro");
-    loadingText.setTextColor(Color.WHITE);
-    loadingText.setTextSize(18);
-    loadingText.setTypeface(null, Typeface.BOLD);
-    LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.WRAP_CONTENT,
-        LinearLayout.LayoutParams.WRAP_CONTENT
+    RelativeLayout animContainer = new RelativeLayout(this);
+    RelativeLayout.LayoutParams animParams = new RelativeLayout.LayoutParams(
+        dpToPx(40), 
+        dpToPx(40)
     );
-    textParams.bottomMargin = dpToPx(8);
-    loadingText.setLayoutParams(textParams);
-    centerLayout.addView(loadingText);
+    animParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+    animContainer.setLayoutParams(animParams);
     
-    // Dots container
-    LinearLayout dotsLayout = new LinearLayout(this);
-    dotsLayout.setOrientation(LinearLayout.HORIZONTAL);
-    
-    dot1 = createDot();
-    dot2 = createDot();
-    dot3 = createDot();
-    
-    dotsLayout.addView(dot1);
-    dotsLayout.addView(dot2);
-    dotsLayout.addView(dot3);
-    centerLayout.addView(dotsLayout);
-    
-    // Progress text
-    progressText = new TextView(this);
-    progressText.setText("Initializing...");
-    progressText.setTextColor(Color.parseColor("#AAAAAA"));
-    progressText.setTextSize(12);
-    LinearLayout.LayoutParams progParams = new LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.WRAP_CONTENT,
-        LinearLayout.LayoutParams.WRAP_CONTENT
+    // Ball 1 (Cyan)
+    outerCircle = new View(this);
+    RelativeLayout.LayoutParams ball1Params = new RelativeLayout.LayoutParams(
+        dpToPx(16), 
+        dpToPx(16)
     );
-    progParams.topMargin = dpToPx(24);
-    progressText.setLayoutParams(progParams);
-    centerLayout.addView(progressText);
+    ball1Params.addRule(RelativeLayout.CENTER_IN_PARENT);
+    outerCircle.setLayoutParams(ball1Params);
+    outerCircle.setBackground(createCircle("#00F2EA"));
+    animContainer.addView(outerCircle);
     
-    loadingScreen.addView(centerLayout);
+    // Ball 2 (Magenta)
+    innerCircle = new View(this);
+    RelativeLayout.LayoutParams ball2Params = new RelativeLayout.LayoutParams(
+        dpToPx(16), 
+        dpToPx(16)
+    );
+    ball2Params.addRule(RelativeLayout.CENTER_IN_PARENT);
+    innerCircle.setLayoutParams(ball2Params);
+    innerCircle.setBackground(createCircle("#FF0050"));
+    animContainer.addView(innerCircle);
+    
+    loadingScreen.addView(animContainer);
     
     // Add to content view
     addContentView(loadingScreen, new ViewGroup.LayoutParams(
@@ -246,8 +201,9 @@ private void showLoadingScreen() {
         // 🎨 TikTok style ball animations
 // Ball 1 (Cyan) - Clockwise circular motion
 ObjectAnimator rotate1 = ObjectAnimator.ofFloat(outerCircle, "rotation", 0f, 360f);
-ObjectAnimator translateX1 = ObjectAnimator.ofFloat(outerCircle, "translationX", 0f, 15f, 0f, -15f, 0f); // ✅ 30 -> 15
-ObjectAnimator translateY1 = ObjectAnimator.ofFloat(outerCircle, "translationY", 0f, -15f, 0f, 15f, 0f); // ✅ 30 -> 15
+ObjectAnimator translateX1 = ObjectAnimator.ofFloat(outerCircle, "translationX", 0f, 10f, 0f, -10f, 0f); // ✅ 15 -> 10
+ObjectAnimator translateY1 = ObjectAnimator.ofFloat(outerCircle, "translationY", 0f, -10f, 0f, 10f, 0f); // ✅ 15 -> 10
+
 
         
         rotate1.setDuration(1200);
@@ -264,8 +220,9 @@ ObjectAnimator translateY1 = ObjectAnimator.ofFloat(outerCircle, "translationY",
         
 // Ball 2 (Magenta) - Counter-clockwise circular motion
 ObjectAnimator rotate2 = ObjectAnimator.ofFloat(innerCircle, "rotation", 360f, 0f);
-ObjectAnimator translateX2 = ObjectAnimator.ofFloat(innerCircle, "translationX", 0f, -15f, 0f, 15f, 0f); // ✅ 30 -> 15
-ObjectAnimator translateY2 = ObjectAnimator.ofFloat(innerCircle, "translationY", 0f, 15f, 0f, -15f, 0f); // ✅ 30 -> 15
+ObjectAnimator translateX2 = ObjectAnimator.ofFloat(innerCircle, "translationX", 0f, -10f, 0f, 10f, 0f); // ✅ 15 -> 10
+ObjectAnimator translateY2 = ObjectAnimator.ofFloat(innerCircle, "translationY", 0f, 10f, 0f, -10f, 0f); // ✅ 15 -> 10
+
         
         rotate2.setDuration(1200);
         translateX2.setDuration(1200);
@@ -291,8 +248,7 @@ ObjectAnimator translateY2 = ObjectAnimator.ofFloat(innerCircle, "translationY",
         outerRotation = rotate1;
         innerRotation = rotate2;
         
-        // Dots animation
-        startDotsAnimation();
+
     });
 }
   
@@ -367,7 +323,7 @@ private void hideLoadingScreen() {
     web = findViewById(R.id.web);
     audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
    
-    updateLoadingProgress("Setting up WebView...");
+    //updateLoadingProgress("Setting up WebView...");
     
     WebSettings settings = web.getSettings();
     settings.setJavaScriptEnabled(true);
@@ -404,7 +360,7 @@ private void hideLoadingScreen() {
         settings.setDatabasePath(getDir("databases", Context.MODE_PRIVATE).getPath());
     }
 
-    updateLoadingProgress("Loading YouTube...");
+  //  updateLoadingProgress("Loading YouTube...");
 
     Intent intent = getIntent();
     String action = intent.getAction();
@@ -460,12 +416,12 @@ private void hideLoadingScreen() {
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
         scriptsInjected = false;
-        updateLoadingProgress("Loading page...");
+      //  updateLoadingProgress("Loading page...");
       }
 
       @Override
       public void onPageFinished(WebView p1, String url) {
-        updateLoadingProgress("Injecting YTPro scripts...");
+      //  updateLoadingProgress("Injecting YTPro scripts...");
         
         // ✅ Inject scripts from assets
         if (!scriptsInjected) {
@@ -473,7 +429,7 @@ private void hideLoadingScreen() {
             scriptsInjected = true;
         }
         
-        updateLoadingProgress("Applying customizations...");
+      //  updateLoadingProgress("Applying customizations...");
         
         // ✅ Hide YouTube bottom nav immediately
         web.evaluateJavascript(
@@ -514,7 +470,7 @@ private void hideLoadingScreen() {
 
         // Hide loading after everything is done
         new Handler().postDelayed(() -> {
-            updateLoadingProgress("Ready!");
+          //  updateLoadingProgress("Ready!");
             new Handler().postDelayed(() -> hideLoadingScreen(), 300);
         }, 500);
 
