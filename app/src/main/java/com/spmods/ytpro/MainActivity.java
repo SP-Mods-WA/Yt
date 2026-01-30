@@ -559,9 +559,74 @@ public class MainActivity extends Activity {
     @JavascriptInterface public String getAllCookies(String url) { return CookieManager.getInstance().getCookie(url); }
     @JavascriptInterface public float getVolume() { return (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC); }
     @JavascriptInterface public void setVolume(float volume) { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (int) (audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume), 0); }
-    @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
+    @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTness) / 255f) * 100f; } catch (Exception e) { return 50f; } }
     @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
-    @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
+    @JavascriptInterface public void pipvid(String x) { 
+      if (Build.VERSION.SDK_INT >= 26) { 
+        try { 
+          enterPictureInPictureMode(new PictureInPictureParams.Builder()
+            .setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); 
+        } catch (Exception e) {} 
+      } else { 
+        Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); 
+      } 
+    }
+    
+    // ✅ NEW: Native PIP Player Launch Method
+    @JavascriptInterface 
+    public void launchPIP(String videoUrl, String title, String channel) {
+        runOnUiThread(() -> {
+            try {
+                Log.d("NativePIP", "🚀 Launching Native PIP");
+                Log.d("NativePIP", "Video URL: " + (videoUrl != null ? "Yes (" + videoUrl.length() + " chars)" : "No"));
+                Log.d("NativePIP", "Title: " + title);
+                Log.d("NativePIP", "Channel: " + channel);
+                
+                // Check if PIPVideoPlayer exists
+                boolean playerExists = false;
+                try {
+                    Class.forName("com.spmods.ytpro.PIPVideoPlayer");
+                    playerExists = true;
+                    Log.d("NativePIP", "✅ PIPVideoPlayer class found");
+                } catch (ClassNotFoundException e) {
+                    Log.d("NativePIP", "❌ PIPVideoPlayer class NOT found - using fallback");
+                }
+                
+                if (playerExists && videoUrl != null && !videoUrl.isEmpty()) {
+                    // Launch native PIP player
+                    Intent pipIntent = new Intent(MainActivity.this, PIPVideoPlayer.class);
+                    pipIntent.putExtra("VIDEO_URL", videoUrl);
+                    pipIntent.putExtra("VIDEO_TITLE", title != null ? title : "YouTube Video");
+                    pipIntent.putExtra("VIDEO_CHANNEL", channel != null ? channel : "YouTube");
+                    pipIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    
+                    startActivity(pipIntent);
+                    
+                    // Minimize main activity
+                    moveTaskToBack(true);
+                    
+                    Toast.makeText(MainActivity.this, "🎬 Opening Native PIP...", Toast.LENGTH_SHORT).show();
+                    
+                } else {
+                    // Fallback to old PIP
+                    Log.d("NativePIP", "⚠️ Using fallback PIP");
+                    pipvid("landscape");
+                    Toast.makeText(MainActivity.this, "Using standard PIP", Toast.LENGTH_SHORT).show();
+                }
+                
+            } catch (Exception e) {
+                Log.e("NativePIP", "❌ Failed to launch PIP: " + e.getMessage(), e);
+                Toast.makeText(MainActivity.this, "PIP Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                
+                // Emergency fallback
+                try {
+                    pipvid("landscape");
+                } catch (Exception e2) {
+                    Toast.makeText(MainActivity.this, "All PIP methods failed", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
   }
   
   public void setReceiver() {
