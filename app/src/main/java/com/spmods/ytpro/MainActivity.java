@@ -79,6 +79,9 @@ public class MainActivity extends Activity {
     
     requestNotificationPermission();
     
+    // ✅ Setup bottom nav FIRST (before loading)
+    setupBottomNavigation();
+    
     // Initialize loading screen
     initLoadingScreen();
     
@@ -91,7 +94,7 @@ public class MainActivity extends Activity {
         checkForAppUpdate();
         startNotificationService();
         checkNotificationsNow();
-        setupBottomNavigation();
+        
     }
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -103,7 +106,7 @@ public class MainActivity extends Activity {
         RelativeLayout.LayoutParams.MATCH_PARENT,
         RelativeLayout.LayoutParams.MATCH_PARENT
     ));
-    loadingScreen.setBackgroundColor(Color.parseColor("#0F0F0F"));
+    loadingScreen.setBackgroundColor(Color.parseColor("#CC0F0F0F"));
     loadingScreen.setVisibility(View.GONE);
     
     // Center container
@@ -118,26 +121,26 @@ public class MainActivity extends Activity {
     centerLayout.setGravity(Gravity.CENTER);
     
     // 🎨 TikTok Style Animation container
-    RelativeLayout animContainer = new RelativeLayout(this);
-    LinearLayout.LayoutParams animParams = new LinearLayout.LayoutParams(dpToPx(120), dpToPx(120));
-    animParams.bottomMargin = dpToPx(32);
-    animContainer.setLayoutParams(animParams);
-    
-    // Ball 1 (Cyan)
-    outerCircle = new View(this);
-    RelativeLayout.LayoutParams ball1Params = new RelativeLayout.LayoutParams(dpToPx(50), dpToPx(50));
-    ball1Params.addRule(RelativeLayout.CENTER_IN_PARENT);
-    outerCircle.setLayoutParams(ball1Params);
-    outerCircle.setBackground(createCircle("#00F2EA")); // Cyan
-    animContainer.addView(outerCircle);
-    
-    // Ball 2 (Magenta)
-    innerCircle = new View(this);
-    RelativeLayout.LayoutParams ball2Params = new RelativeLayout.LayoutParams(dpToPx(50), dpToPx(50));
-    ball2Params.addRule(RelativeLayout.CENTER_IN_PARENT);
-    innerCircle.setLayoutParams(ball2Params);
-    innerCircle.setBackground(createCircle("#FF0050")); // Magenta
-    animContainer.addView(innerCircle);
+RelativeLayout animContainer = new RelativeLayout(this);
+LinearLayout.LayoutParams animParams = new LinearLayout.LayoutParams(dpToPx(60), dpToPx(60)); // ✅ 120 -> 60
+animParams.bottomMargin = dpToPx(32);
+animContainer.setLayoutParams(animParams);
+
+// Ball 1 (Cyan)
+outerCircle = new View(this);
+RelativeLayout.LayoutParams ball1Params = new RelativeLayout.LayoutParams(dpToPx(25), dpToPx(25)); // ✅ 50 -> 25
+ball1Params.addRule(RelativeLayout.CENTER_IN_PARENT);
+outerCircle.setLayoutParams(ball1Params);
+outerCircle.setBackground(createCircle("#00F2EA"));
+animContainer.addView(outerCircle);
+
+// Ball 2 (Magenta)
+innerCircle = new View(this);
+RelativeLayout.LayoutParams ball2Params = new RelativeLayout.LayoutParams(dpToPx(25), dpToPx(25)); // ✅ 50 -> 25
+ball2Params.addRule(RelativeLayout.CENTER_IN_PARENT);
+innerCircle.setLayoutParams(ball2Params);
+innerCircle.setBackground(createCircle("#FF0050"));
+animContainer.addView(innerCircle);
     
     centerLayout.addView(animContainer);
     
@@ -241,10 +244,11 @@ private void showLoadingScreen() {
         loadingScreen.bringToFront();
         
         // 🎨 TikTok style ball animations
-        // Ball 1 (Cyan) - Clockwise circular motion
-        ObjectAnimator rotate1 = ObjectAnimator.ofFloat(outerCircle, "rotation", 0f, 360f);
-        ObjectAnimator translateX1 = ObjectAnimator.ofFloat(outerCircle, "translationX", 0f, 30f, 0f, -30f, 0f);
-        ObjectAnimator translateY1 = ObjectAnimator.ofFloat(outerCircle, "translationY", 0f, -30f, 0f, 30f, 0f);
+// Ball 1 (Cyan) - Clockwise circular motion
+ObjectAnimator rotate1 = ObjectAnimator.ofFloat(outerCircle, "rotation", 0f, 360f);
+ObjectAnimator translateX1 = ObjectAnimator.ofFloat(outerCircle, "translationX", 0f, 15f, 0f, -15f, 0f); // ✅ 30 -> 15
+ObjectAnimator translateY1 = ObjectAnimator.ofFloat(outerCircle, "translationY", 0f, -15f, 0f, 15f, 0f); // ✅ 30 -> 15
+
         
         rotate1.setDuration(1200);
         translateX1.setDuration(1200);
@@ -258,10 +262,10 @@ private void showLoadingScreen() {
         translateX1.setInterpolator(new LinearInterpolator());
         translateY1.setInterpolator(new LinearInterpolator());
         
-        // Ball 2 (Magenta) - Counter-clockwise circular motion
-        ObjectAnimator rotate2 = ObjectAnimator.ofFloat(innerCircle, "rotation", 360f, 0f);
-        ObjectAnimator translateX2 = ObjectAnimator.ofFloat(innerCircle, "translationX", 0f, -30f, 0f, 30f, 0f);
-        ObjectAnimator translateY2 = ObjectAnimator.ofFloat(innerCircle, "translationY", 0f, 30f, 0f, -30f, 0f);
+// Ball 2 (Magenta) - Counter-clockwise circular motion
+ObjectAnimator rotate2 = ObjectAnimator.ofFloat(innerCircle, "rotation", 360f, 0f);
+ObjectAnimator translateX2 = ObjectAnimator.ofFloat(innerCircle, "translationX", 0f, -15f, 0f, 15f, 0f); // ✅ 30 -> 15
+ObjectAnimator translateY2 = ObjectAnimator.ofFloat(innerCircle, "translationY", 0f, 15f, 0f, -15f, 0f); // ✅ 30 -> 15
         
         rotate2.setDuration(1200);
         translateX2.setDuration(1200);
