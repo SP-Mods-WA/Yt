@@ -19,3 +19,13 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Keep encryption utility
+-keep class com.spmods.ytpro.EncryptionUtil {
+    public static java.lang.String decrypt(java.lang.String);
+}
+
+# Obfuscate everything else in the class
+-keepclassmembers class com.spmods.ytpro.EncryptionUtil {
+    private static final java.lang.String SECRET_KEY;
+}
