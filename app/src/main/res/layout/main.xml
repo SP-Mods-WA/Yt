@@ -5,6 +5,81 @@
     android:background="#000000"
     android:layout_height="match_parent">
 
+     <!-- 🎨 Custom Header -->
+    <RelativeLayout
+        android:id="@+id/customHeader"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#000000"
+        android:elevation="4dp"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp">
+
+        <!-- YouTube Logo Text -->
+        <TextView
+            android:id="@+id/appLogo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:text="YouTube"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"/>
+
+        <!-- Right Icons Container -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Cast Icon -->
+            <ImageView
+                android:id="@+id/iconCast"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="20dp"
+                android:src="@drawable/ic_cast"
+                android:tint="#FFFFFF"
+                android:contentDescription="Cast"
+                android:padding="2dp"/>
+
+            <!-- Notifications Icon -->
+            <ImageView
+                android:id="@+id/iconNotifications"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="20dp"
+                android:src="@drawable/ic_notifications"
+                android:tint="#FFFFFF"
+                android:contentDescription="Notifications"
+                android:padding="2dp"/>
+
+            <!-- Search Icon -->
+            <ImageView
+                android:id="@+id/iconSearch"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="16dp"
+                android:src="@drawable/ic_search"
+                android:tint="#FFFFFF"
+                android:contentDescription="Search"
+                android:padding="2dp"/>
+
+            <!-- Profile Icon -->
+            <ImageView
+                android:id="@+id/iconProfile"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_profile"
+                android:contentDescription="Profile"/>
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
     <com.spmods.ytpro.YTProWebview
         android:id="@+id/web"
         android:layout_width="match_parent"
