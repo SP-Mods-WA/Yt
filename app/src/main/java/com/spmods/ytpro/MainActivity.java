@@ -573,16 +573,31 @@ public class MainActivity extends Activity {
   
   private String loadScriptFromAssets(String filename) {
     try {
-        InputStream inputStream = getAssets().open(filename);
+        // Read encrypted file (.enc extension)
+        InputStream inputStream = getAssets().open(filename + ".enc");
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-        StringBuilder content = new StringBuilder();
+        StringBuilder encoded = new StringBuilder();
         String line;
+        
         while ((line = reader.readLine()) != null) {
-            content.append(line).append("\n");
+            encoded.append(line);
         }
         reader.close();
         
-        String escaped = content.toString()
+        Log.d("Assets", "📂 Read " + filename + ".enc (" + encoded.length() + " chars)");
+        
+        // Decrypt using XOR
+        String content = EncryptionUtil.decrypt(encoded.toString());
+        
+        if (content.isEmpty()) {
+            Log.e("Assets", "❌ Decryption failed for " + filename);
+            return "";
+        }
+        
+        Log.d("Assets", "✅ Decrypted " + filename + " (" + content.length() + " chars)");
+        
+        // Escape for JavaScript (CSS සහිතව වැඩ කරයි)
+        String escaped = content
             .replace("\\", "\\\\")
             .replace("`", "\\`")
             .replace("${", "\\${")
@@ -590,11 +605,13 @@ public class MainActivity extends Activity {
             .replace("\r", "\\r");
             
         return "loadScriptFromString(`" + escaped + "`);";
+        
     } catch (IOException e) {
         Log.e("Assets", "❌ Failed to load " + filename + ": " + e.getMessage());
+        e.printStackTrace();
         return "";
     }
-  }
+}
   
   private void setupCustomHeader() {
     ImageView iconSearch = findViewById(R.id.iconSearch);
