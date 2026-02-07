@@ -70,11 +70,13 @@
 
             <!-- Profile Icon -->
             <ImageView
-                android:id="@+id/iconProfile"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_profile"
-                android:contentDescription="Profile"/>
+        android:id="@+id/iconSettings"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_settings"
+        android:tint="#FFFFFF"
+        android:contentDescription="Settings"
+        android:padding="2dp"/>
 
         </LinearLayout>
 
