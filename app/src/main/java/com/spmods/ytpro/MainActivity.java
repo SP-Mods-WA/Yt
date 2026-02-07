@@ -32,6 +32,7 @@ import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.content.Context;
 import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.EditorInfo;
 
 public class MainActivity extends Activity {
 
@@ -1097,5 +1098,6 @@ public class MainActivity extends Activity {
     });
   }
 }
+
 
 
