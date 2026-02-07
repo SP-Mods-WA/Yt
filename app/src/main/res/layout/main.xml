@@ -122,12 +122,7 @@
         android:imeOptions="actionSearch"/>
 
 </RelativeLayout>
-    <View
-        android:id="@+id/headerSpacer"
-        android:layout_width="match_parent"
-        android:layout_height="0.5dp"
-        android:layout_below="@id/customHeader"
-        android:background="#282828"/>
+    
 
     <com.spmods.ytpro.YTProWebview
         android:id="@+id/web"
@@ -135,7 +130,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#000000"
-        android:layout_below="@+id/customHeader"
         android:layout_above="@+id/bottomNavBar"/>
 
     <include
