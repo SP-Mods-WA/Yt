@@ -39,10 +39,6 @@ public class MainActivity extends Activity {
   private boolean portrait = false;
   private BroadcastReceiver broadcastReceiver;
   private AudioManager audioManager;
-  
-  // ✅ Native loader එක add කරන්න
-  private NativeScriptLoader nativeLoader = new NativeScriptLoader();
-  
 
   private String icon = "";
   private String title = "";
@@ -577,43 +573,10 @@ public class MainActivity extends Activity {
   
   private String loadScriptFromAssets(String filename) {
     try {
-        // ✅ Native library එකෙන් load කරනවා (.so file එකෙන්)
-        String content = nativeLoader.loadScript(filename);
-        
-        if (content.isEmpty()) {
-            Log.e("MainActivity", "❌ Failed to load from native: " + filename);
-            // Fallback: Try loading from assets
-            return loadScriptFromAssetsBackup(filename);
-        }
-        
-        Log.d("MainActivity", "✅ Loaded from native .so: " + filename);
-        
-        // JavaScript injection සඳහා escape කරනවා
-        String escaped = content
-            .replace("\\", "\\\\")
-            .replace("`", "\\`")
-            .replace("${", "\\${")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r");
-            
-        return "loadScriptFromString(`" + escaped + "`);";
-        
-    } catch (Exception e) {
-        Log.e("MainActivity", "❌ Exception: " + e.getMessage());
-        return "";
-    }
-}
-
-// ✅ Backup method (native library load වෙන්නේ නැත්තම්)
-private String loadScriptFromAssetsBackup(String filename) {
-    try {
-        Log.d("MainActivity", "⚠️ Using backup: loading from assets");
-        
         InputStream inputStream = getAssets().open(filename);
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         StringBuilder content = new StringBuilder();
         String line;
-        
         while ((line = reader.readLine()) != null) {
             content.append(line).append("\n");
         }
@@ -628,10 +591,11 @@ private String loadScriptFromAssetsBackup(String filename) {
             
         return "loadScriptFromString(`" + escaped + "`);";
     } catch (IOException e) {
-        Log.e("MainActivity", "❌ Backup also failed: " + e.getMessage());
+        Log.e("Assets", "❌ Failed to load " + filename + ": " + e.getMessage());
         return "";
     }
-}
+  }
+  
   private void setupCustomHeader() {
     ImageView iconSearch = findViewById(R.id.iconSearch);
     ImageView iconNotifications = findViewById(R.id.iconNotifications);
