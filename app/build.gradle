@@ -26,57 +26,10 @@ android {
 }
 
 dependencies {
+    // Add your dependencies here
     implementation 'androidx.core:core-splashscreen:1.0.1'
     implementation 'pl.droidsonroids.gif:android-gif-drawable:1.2.28'
     implementation 'androidx.media:media:1.7.0'
     implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
     implementation 'com.google.android.exoplayer:extension-mediasession:2.19.1'
-}
-
-// ========================================
-// 🔐 ENCRYPTION TASK
-// ========================================
-
-task encryptAssets(type: Exec) {
-    description = 'Encrypt JS assets before building'
-    group = 'build'
-    
-    workingDir rootProject.projectDir
-    
-    // Try python3 first, fallback to python
-    def pythonCmd = System.getProperty('os.name').toLowerCase().contains('windows') ? 'python' : 'python3'
-    
-    commandLine pythonCmd, 'scripts/encrypt.py'
-    
-    // Ignore exit value to prevent build failure if already encrypted
-    ignoreExitValue = false
-    
-    doFirst {
-        println ''
-        println '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-        println '🔐 Encrypting Assets...'
-        println '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-    }
-    
-    doLast {
-        println '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-        println '✅ Assets Encrypted Successfully!'
-        println '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-        println ''
-    }
-}
-
-// Build කරන කොට automatically encrypt වෙන්න
-tasks.whenTaskAdded { task ->
-    if (task.name == 'preBuild') {
-        task.dependsOn encryptAssets
-    }
-}
-
-// Clean කරනකොට encrypted files delete කරන්න
-clean.doLast {
-    delete fileTree('app/src/main/assets') {
-        include '*.enc'
-    }
-    println '🗑️  Cleaned encrypted assets'
 }
