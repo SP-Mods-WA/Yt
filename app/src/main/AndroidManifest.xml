@@ -126,14 +126,11 @@
 			</intent-filter>
 		</receiver>
 
-		<activity
-    android:name=".NativePlayerActivity"
-    android:configChanges="orientation|screenSize|keyboardHidden"
-    android:screenOrientation="landscape"
-    android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+		
 		
 	</application>
 </manifest>
+
 
 
 
