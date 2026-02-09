@@ -47,15 +47,43 @@
                 android:padding="2dp"/>
 
             <!-- Notifications Icon -->
-            <ImageView
-                android:id="@+id/iconNotifications"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_marginEnd="20dp"
-                android:src="@drawable/ic_notifications"
-                android:tint="#FFFFFF"
-                android:contentDescription="Notifications"
-                android:padding="2dp"/>
+                        <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp">
+                
+                <ImageView
+                    android:id="@+id/iconNotifications"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:src="@drawable/ic_notifications"
+                    android:tint="#FFFFFF"
+                    android:contentDescription="Notifications"
+                    android:padding="2dp"/>
+                
+                <!-- Notification Badge -->
+                <TextView
+                    android:id="@+id/notificationBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|top"
+                    android:layout_marginTop="-2dp"
+                    android:layout_marginEnd="-2dp"
+                    android:background="@drawable/notification_badge_bg"
+                    android:minWidth="16dp"
+                    android:minHeight="16dp"
+                    android:gravity="center"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingTop="1dp"
+                    android:paddingBottom="1dp"
+                    android:text="5"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"/>
+            </FrameLayout>
+
 
             <!-- Search Icon -->
             <ImageView
