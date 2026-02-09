@@ -127,9 +127,14 @@
 		</receiver>
 
 		
+		<activity
+    android:name=".NotificationActivity"
+    android:screenOrientation="portrait"
+    android:theme="@android:style/Theme.NoTitleBar"/>
 		
 	</application>
 </manifest>
+
 
 
 
