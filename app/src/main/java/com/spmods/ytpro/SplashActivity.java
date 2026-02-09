@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.Animation;
@@ -35,6 +36,18 @@ public class SplashActivity extends Activity {
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         );
+        
+        // ✅ Status bar color change කරන්න (white background එකට අනුව)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(0xFFFFFFFF); // White color
+            
+            // ✅ Status bar icons dark කරන්න (white background එකට readable වෙන්න)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                );
+            }
+        }
         
         setContentView(R.layout.activity_splash);
 
@@ -74,6 +87,6 @@ public class SplashActivity extends Activity {
     @Override
     public void onBackPressed() {
         // ✅ Disable back button during splash
-        // Do nothing
+        // Do nothing - prevent user from going back
     }
 }
