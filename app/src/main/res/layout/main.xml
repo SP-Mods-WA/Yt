@@ -16,16 +16,16 @@
         android:paddingRight="16dp">
 
         <!-- YouTube Logo Text -->
-        <TextView
+        
+
+        <ImageView
             android:id="@+id/appLogo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="100dp"
+            android:layout_height="24dp"
             android:layout_centerVertical="true"
-            android:text="YouTube"
-            android:textColor="#FFFFFF"
-            android:textSize="23sp"
-            android:textStyle="bold"
-            android:fontFamily="sans-serif-medium"/>
+            android:src="@drawable/ic_spyt_logo"
+            android:scaleType="fitStart"
+            android:contentDescription="YouTube"/>
 
         <!-- Right Icons Container -->
         <LinearLayout
