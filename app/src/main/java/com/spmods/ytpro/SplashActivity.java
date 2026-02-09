@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.Animation;
@@ -13,27 +12,24 @@ import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+// ✅ මේ import එක add කරන්න
+import androidx.core.splashscreen.SplashScreen;
+
 public class SplashActivity extends Activity {
 
     private static final int SPLASH_DURATION = 2500; // 2.5 seconds
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // ✅ CRITICAL: Disable Android 12+ default splash FIRST (before super.onCreate)
+        // ✅ Android 12+ automatic splash එක disable කරන්න
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                getSplashScreen().setOnExitAnimationListener(splashScreenView -> {
-                    // Immediately remove default splash screen
-                    splashScreenView.remove();
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
+            splashScreen.setKeepOnScreenCondition(() -> false);
         }
         
         super.onCreate(savedInstanceState);
         
-        // ✅ Full screen setup (optional - if you want full screen)
+        // ✅ Full screen setup
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -78,6 +74,6 @@ public class SplashActivity extends Activity {
     @Override
     public void onBackPressed() {
         // ✅ Disable back button during splash
-        // Do nothing - prevent user from going back
+        // Do nothing
     }
 }
