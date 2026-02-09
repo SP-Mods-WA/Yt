@@ -30,24 +30,26 @@ public class SplashActivity extends Activity {
         
         super.onCreate(savedInstanceState);
         
-        // ✅ Full screen setup
+        // ✅ Full screen setup (title bar remove)
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        
+        // ✅ Full Immersive Mode - Status bar සහ Navigation bar hide කරන්න
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            );
+        }
+        
+        // ✅ Full screen flag එකත් set කරන්න
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         );
-        
-        // ✅ Status bar color change කරන්න (white background එකට අනුව)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().setStatusBarColor(0xFFFFFFFF); // White color
-            
-            // ✅ Status bar icons dark කරන්න (white background එකට readable වෙන්න)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-                );
-            }
-        }
         
         setContentView(R.layout.activity_splash);
 
@@ -82,6 +84,22 @@ public class SplashActivity extends Activity {
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             }
         }, SPLASH_DURATION);
+    }
+    
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // ✅ User swipe කරලා status bar එක show කරද්දි ආයේ hide කරන්න
+        if (hasFocus && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            );
+        }
     }
     
     @Override
