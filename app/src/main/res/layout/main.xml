@@ -60,8 +60,8 @@
             <!-- Search Icon -->
             <ImageView
                 android:id="@+id/iconSearch"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:layout_marginEnd="16dp"
                 android:src="@drawable/ic_search"
                 android:tint="#FFFFFF"
@@ -71,8 +71,8 @@
             <!-- Profile Icon -->
             <ImageView
         android:id="@+id/iconSettings"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
         android:src="@drawable/ic_settings"
         android:tint="#FFFFFF"
         android:contentDescription="Settings"
