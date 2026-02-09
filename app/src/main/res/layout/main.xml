@@ -20,8 +20,8 @@
 
         <ImageView
             android:id="@+id/appLogo"
-            android:layout_width="4000dp"
-            android:layout_height="46dp"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_spyt_logo"
             android:scaleType="fitStart"
