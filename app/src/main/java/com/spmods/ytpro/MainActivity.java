@@ -593,6 +593,7 @@ public void onPageFinished(WebView p1, String url) {
             "  " + loadScriptFromAssets("script.js") + " " +
             "  " + loadScriptFromAssets("bgplay.js") + " " +
             "  " + loadScriptFromAssets("innertube.js") + " " +
+            "  " + loadScriptFromAssets("styles.js") + " " +
             "  window.YTPRO_LOADED = true;" +
             "  console.log('✅ YTPRO scripts loaded from res/raw');" +
             "})();";
