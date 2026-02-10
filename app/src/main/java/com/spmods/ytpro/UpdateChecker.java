@@ -135,13 +135,29 @@ public class UpdateChecker {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_update_compact);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        
+        // ✅ Background click disable කරන්න
+        dialog.setCanceledOnTouchOutside(false);
         dialog.setCancelable(!info.forceUpdate);
         
-        // Window setup
+        // Window setup with blur effect
         Window window = dialog.getWindow();
         window.setGravity(Gravity.CENTER);
         WindowManager.LayoutParams layoutParams = window.getAttributes();
         layoutParams.width = (int) (context.getResources().getDisplayMetrics().widthPixels * 0.88);
+        
+        // ✅ Background blur කරන්න (API 31+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            layoutParams.setBlurBehindRadius(60); // Blur radius වැඩි කරලා
+        }
+        
+        // ✅ Background dim කරන්න (blur නැති devices වලට)
+        layoutParams.dimAmount = 0.7f; // 0.0 to 1.0 (0.7 = 70% dark)
+        window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        
+        // ✅ Blur background (all API levels)
+        window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+        
         window.setAttributes(layoutParams);
         window.getAttributes().windowAnimations = R.style.DialogAnimation;
         
