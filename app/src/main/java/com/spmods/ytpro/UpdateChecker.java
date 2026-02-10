@@ -146,17 +146,14 @@ public class UpdateChecker {
         WindowManager.LayoutParams layoutParams = window.getAttributes();
         layoutParams.width = (int) (context.getResources().getDisplayMetrics().widthPixels * 0.88);
         
-        // ✅ Background blur කරන්න (API 31+)
+        // ✅ Normal blur effect (Android 12+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            layoutParams.setBlurBehindRadius(60); // Blur radius වැඩි කරලා
+            layoutParams.setBlurBehindRadius(20); // Normal blur
         }
         
-        // ✅ Background dim කරන්න (blur නැති devices වලට)
-        layoutParams.dimAmount = 0.7f; // 0.0 to 1.0 (0.7 = 70% dark)
+        // ✅ Normal background dim
+        layoutParams.dimAmount = 0.5f; // 50% dim - standard dialog blur
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        
-        // ✅ Blur background (all API levels)
-        window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
         
         window.setAttributes(layoutParams);
         window.getAttributes().windowAnimations = R.style.DialogAnimation;
