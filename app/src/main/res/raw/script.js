@@ -3213,3 +3213,119 @@ setTimeout(() => { monitorVideoState(); }, 2000);
 
 }
 
+// ✅✅✅ YouTube IFrame Player Interceptor - මෙතනින් පටන් ගන්න ✅✅✅
+
+(function() {
+    console.log('🎬 YouTube IFrame Interceptor loaded');
+    
+    let intercepted = false;
+    let playerCheckInterval = null;
+    
+    function getVideoId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('v');
+        
+        if (videoId) return videoId;
+        
+        // For shorts
+        if (window.location.pathname.includes('/shorts/')) {
+            return window.location.pathname.replace('/shorts/', '');
+        }
+        
+        return null;
+    }
+    
+    function getVideoTitle() {
+        return document.title.replace(' - YouTube', '') || 'YouTube Video';
+    }
+    
+    function hideYouTubePlayer() {
+        // Hide player container
+        const playerContainer = document.getElementById('player-container-id');
+        if (playerContainer) {
+            playerContainer.style.display = 'none';
+        }
+        
+        // Hide video element
+        const video = document.querySelector('video.video-stream');
+        if (video) {
+            video.pause();
+            video.style.display = 'none';
+        }
+        
+        console.log('🙈 YouTube player hidden');
+    }
+    
+    function interceptVideo() {
+        const videoId = getVideoId();
+        
+        if (!videoId || intercepted) return;
+        
+        const video = document.querySelector('video.video-stream');
+        
+        if (video) {
+            console.log('🎯 Video element found:', videoId);
+            
+            // Add play listener
+            video.addEventListener('play', function(e) {
+                console.log('▶️ Video play detected');
+                
+                const vId = getVideoId();
+                const vTitle = getVideoTitle();
+                
+                if (vId && window.Android && window.Android.playInYouTubePlayer) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    video.pause();
+                    hideYouTubePlayer();
+                    
+                    window.Android.playInYouTubePlayer(vId, vTitle);
+                    console.log('📹 Launching custom player:', vId);
+                    
+                    intercepted = true;
+                }
+            }, true);
+            
+            console.log('✅ Video interceptor attached');
+        }
+    }
+    
+    // Check for video element periodically
+    function startMonitoring() {
+        if (playerCheckInterval) {
+            clearInterval(playerCheckInterval);
+        }
+        
+        playerCheckInterval = setInterval(() => {
+            if (window.location.href.includes('/watch') || 
+                window.location.href.includes('/shorts/')) {
+                interceptVideo();
+            }
+        }, 1000);
+    }
+    
+    // Monitor navigation
+    if (window.navigation) {
+        navigation.addEventListener("navigate", (e) => {
+            intercepted = false;
+            
+            if (e.destination.url.includes('/watch') || 
+                e.destination.url.includes('/shorts/')) {
+                setTimeout(() => {
+                    interceptVideo();
+                }, 1000);
+            }
+        });
+    }
+    
+    // Start monitoring
+    startMonitoring();
+    
+    // Try immediately
+    setTimeout(interceptVideo, 2000);
+    
+})();
+
+// ✅✅✅ YouTube IFrame Player Interceptor - මෙතන අවසන් ✅✅✅
+
