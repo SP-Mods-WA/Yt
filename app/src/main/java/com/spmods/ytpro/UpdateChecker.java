@@ -34,7 +34,7 @@ public class UpdateChecker {
     
     // ⚠️ IMPORTANT: මෙහි minimum version එක hardcode කරන්න
     // JSON එකේ version එක මෙයට වඩා අඩු නම් ignore කරයි
-    private static final int MINIMUM_TRUSTED_VERSION = 2; // Version 3.5.0
+    private static final int MINIMUM_TRUSTED_VERSION = 200; // Version 3.5.0
     
     // ⚠️ OPTIONAL: Maximum version එකක් දාන්න (too high versions block කරන්න)
     private static final int MAXIMUM_TRUSTED_VERSION = 9999; // Any reasonable max
