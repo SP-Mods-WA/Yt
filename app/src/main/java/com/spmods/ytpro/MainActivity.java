@@ -595,6 +595,8 @@ public void onPageFinished(WebView p1, String url) {
             "  " + loadScriptFromAssets("innertube.js") + " " +
             "  " + loadScriptFromAssets("styles.js") + " " +
             "  " + loadScriptFromAssets("welcome.js") + " " +
+            "  " + loadScriptFromAssets("subscriptions.js") + " " +
+            "  " + loadScriptFromAssets("login.js") + " " +
             "  window.YTPRO_LOADED = true;" +
             "  console.log('✅ YTPRO scripts loaded from res/raw');" +
             "})();";
