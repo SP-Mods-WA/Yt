@@ -147,7 +147,6 @@
         android:id="@+id/web"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/customHeader"
         android:layout_above="@+id/bottomNavBar"
         android:background="#000000"
         android:gravity="center"/>
