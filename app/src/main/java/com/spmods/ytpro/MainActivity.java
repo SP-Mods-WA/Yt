@@ -128,7 +128,17 @@ private void setupHeaderPadding() {
         if (customHeader != null) {
             customHeader.setOnApplyWindowInsetsListener((v, insets) -> {
                 int topInset = insets.getSystemWindowInsetTop();
+                
+                // Set padding
                 v.setPadding(dpToPx(16), topInset, dpToPx(16), 0);
+                
+                // Increase height to accommodate status bar
+                ViewGroup.LayoutParams params = v.getLayoutParams();
+                if (params != null) {
+                    params.height = dpToPx(56) + topInset;
+                    v.setLayoutParams(params);
+                }
+                
                 return insets;
             });
             customHeader.requestApplyInsets();
@@ -137,7 +147,15 @@ private void setupHeaderPadding() {
         if (searchBarContainer != null) {
             searchBarContainer.setOnApplyWindowInsetsListener((v, insets) -> {
                 int topInset = insets.getSystemWindowInsetTop();
+                
                 v.setPadding(dpToPx(16), topInset, dpToPx(16), 0);
+                
+                ViewGroup.LayoutParams params = v.getLayoutParams();
+                if (params != null) {
+                    params.height = dpToPx(56) + topInset;
+                    v.setLayoutParams(params);
+                }
+                
                 return insets;
             });
         }
