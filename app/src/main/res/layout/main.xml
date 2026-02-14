@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/main"  <!-- ✅ ADDED -->
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0F0F0F"
     android:clipChildren="false"
     android:clipToPadding="false"
-    android:fitsSystemWindows="false">  <!-- ✅ ADDED -->
+    android:fitsSystemWindows="false">
 
      <!-- 🎨 Custom Header -->
     <RelativeLayout
@@ -143,19 +143,17 @@
 
     </RelativeLayout>
     
-    <!-- ✅ CHANGED: WebView constraints -->
     <com.spmods.ytpro.YTProWebview
         android:id="@+id/web"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/customHeader"  <!-- ✅ ADDED -->
+        android:layout_below="@+id/customHeader"
         android:layout_above="@+id/bottomNavBar"
         android:background="#000000"
         android:gravity="center"/>
 
-    <!-- ✅ CHANGED: Added ID -->
     <include
-        android:id="@+id/bottomNavBar"  <!-- ✅ ADDED -->
+        android:id="@+id/bottomNavBar"
         layout="@layout/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
