@@ -1,7 +1,9 @@
-// YouTube Subscriptions - Simple Login Screen
+// YouTube Subscriptions - Wait for Content Load Version
 
 (function() {
     'use strict';
+    
+    var contentCheckComplete = false;
     
     function replaceSubscriptionsEmpty() {
         // Subscriptions page එකේ ද කියලා check කරන්න
@@ -9,6 +11,49 @@
                                  window.location.hash.includes('subscriptions');
         
         if (!isSubscriptionsPage) {
+            // Custom screen එක remove කරන්න if exists
+            var existingScreen = document.getElementById('spmods-subs-screen');
+            if (existingScreen) {
+                existingScreen.remove();
+            }
+            contentCheckComplete = false;
+            return false;
+        }
+        
+        // දැනටමත් custom screen එකක් තියෙනවනම් return
+        if (document.getElementById('spmods-subs-screen')) {
+            return true;
+        }
+        
+        // Check if user is logged in and has actual subscriptions content
+        var hasActualContent = false;
+        
+        // Video thumbnails තියෙනවද බලන්න
+        var videoThumbnails = document.querySelectorAll('ytm-thumbnail-overlay-time-status-renderer, ytm-video-with-context-renderer, ytm-compact-video-renderer, ytm-rich-item-renderer');
+        if (videoThumbnails.length >= 1) {
+            hasActualContent = true;
+        }
+        
+        // Video titles තියෙනවද
+        var videoTitles = document.querySelectorAll('#video-title, .compact-media-item-headline, [class*="video-title"]');
+        if (videoTitles.length >= 1) {
+            hasActualContent = true;
+        }
+        
+        // Feed items
+        var feedItems = document.querySelectorAll('ytm-item-section-renderer, ytm-rich-item-renderer');
+        if (feedItems.length >= 1) {
+            hasActualContent = true;
+        }
+        
+        // If has actual content, mark as complete and don't show custom screen
+        if (hasActualContent) {
+            contentCheckComplete = true;
+            return false;
+        }
+        
+        // Content check complete නැත්නම් තව wait කරන්න (don't show screen yet)
+        if (!contentCheckComplete) {
             return false;
         }
         
@@ -17,10 +62,12 @@
         var hasEmptyState = pageText.includes('Sign in to see') || 
                            pageText.includes('subscriptions') && pageText.includes('sign') ||
                            pageText.includes('No subscriptions') ||
-                           pageText.includes('Don\'t miss') ||
-                           pageText.length < 500;
+                           pageText.includes('Don\'t miss');
         
-        if (!hasEmptyState) {
+        // Page එක කෙටි නම් හෝ empty state message එකක් තියෙනවනම්
+        var isReallyEmpty = pageText.length < 1000 || hasEmptyState;
+        
+        if (!isReallyEmpty) {
             return false;
         }
         
@@ -31,11 +78,6 @@
         
         if (!container) {
             return false;
-        }
-        
-        // දැනටමත් custom message එකක් තියෙනවද
-        if (document.getElementById('spmods-subs-screen')) {
-            return true;
         }
         
         // Original content hide කරන්න
@@ -138,21 +180,44 @@
         return true;
     }
     
-    // Repeatedly check කරන්න
-    var attempts = 0;
-    var maxAttempts = 25;
-    
-    var checkInterval = setInterval(function() {
-        attempts++;
+    // Wait කරන function - content load වෙනකන්
+    function waitAndCheck() {
+        var attempts = 0;
+        var maxAttempts = 30; // 30 attempts = 3 seconds wait
         
-        var success = replaceSubscriptionsEmpty();
-        
-        if (success) {
-            clearInterval(checkInterval);
-        } else if (attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-        }
-    }, 500);
+        var checkInterval = setInterval(function() {
+            attempts++;
+            
+            var isSubscriptionsPage = window.location.pathname.includes('/feed/subscriptions') ||
+                                     window.location.hash.includes('subscriptions');
+            
+            if (!isSubscriptionsPage) {
+                clearInterval(checkInterval);
+                return;
+            }
+            
+            // Check for content
+            var videoThumbnails = document.querySelectorAll('ytm-thumbnail-overlay-time-status-renderer, ytm-video-with-context-renderer, ytm-compact-video-renderer, ytm-rich-item-renderer');
+            var videoTitles = document.querySelectorAll('#video-title, .compact-media-item-headline, [class*="video-title"]');
+            var feedItems = document.querySelectorAll('ytm-item-section-renderer, ytm-rich-item-renderer');
+            
+            var hasContent = videoThumbnails.length >= 1 || videoTitles.length >= 1 || feedItems.length >= 1;
+            
+            if (hasContent) {
+                // Content loaded! Mark as complete and stop checking
+                contentCheckComplete = true;
+                clearInterval(checkInterval);
+                return;
+            }
+            
+            // Max attempts reached - assume no content
+            if (attempts >= maxAttempts) {
+                contentCheckComplete = true;
+                clearInterval(checkInterval);
+                replaceSubscriptionsEmpty();
+            }
+        }, 100); // Check every 100ms
+    }
     
     // URL changes watch කරන්න
     var lastUrl = location.href;
@@ -162,21 +227,23 @@
             lastUrl = currentUrl;
             
             if (currentUrl.includes('subscriptions')) {
-                attempts = 0;
-                setTimeout(function() {
-                    checkInterval = setInterval(function() {
-                        attempts++;
-                        var success = replaceSubscriptionsEmpty();
-                        if (success || attempts >= maxAttempts) {
-                            clearInterval(checkInterval);
-                        }
-                    }, 500);
-                }, 300);
+                // Remove existing screen
+                var existingScreen = document.getElementById('spmods-subs-screen');
+                if (existingScreen) {
+                    existingScreen.remove();
+                }
+                
+                // Reset and wait for content
+                contentCheckComplete = false;
+                setTimeout(waitAndCheck, 300);
             }
         }
     }).observe(document.body, {
         childList: true,
         subtree: true
     });
+    
+    // Initial load
+    setTimeout(waitAndCheck, 500);
     
 })();
