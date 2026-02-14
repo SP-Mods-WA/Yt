@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"  <!-- ✅ ADDED -->
     android:layout_width="match_parent"
-    android:background="#0F0F0F"
     android:layout_height="match_parent"
+    android:background="#0F0F0F"
     android:clipChildren="false"
-    android:clipToPadding="false">
+    android:clipToPadding="false"
+    android:fitsSystemWindows="false">  <!-- ✅ ADDED -->
 
      <!-- 🎨 Custom Header -->
     <RelativeLayout
@@ -19,9 +21,6 @@
         android:clipChildren="false"
         android:clipToPadding="false">
 
-        <!-- YouTube Logo Text -->
-        
-
         <ImageView
             android:id="@+id/appLogo"
             android:layout_width="wrap_content"
@@ -31,7 +30,6 @@
             android:scaleType="fitStart"
             android:contentDescription="YouTube"/>
 
-        <!-- Right Icons Container -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
@@ -41,7 +39,6 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
-            <!-- Cast Icon -->
             <ImageView
                 android:id="@+id/iconCast"
                 android:layout_width="0dp"
@@ -52,7 +49,6 @@
                 android:contentDescription="Cast"
                 android:padding="2dp"/>
 
-            <!-- Notifications Icon -->
             <FrameLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -61,7 +57,6 @@
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
-                <!-- Bell Icon -->
                 <ImageView
                     android:id="@+id/iconNotifications"
                     android:layout_width="26dp"
@@ -70,7 +65,6 @@
                     android:tint="#FFFFFF"
                     android:contentDescription="Notifications"/>
 
-                <!-- Badge -->
                 <TextView
                     android:id="@+id/notificationBadge"
                     android:layout_width="16dp"
@@ -87,8 +81,6 @@
                     android:background="@drawable/notification_badge_bg"/>
             </FrameLayout>
 
-
-            <!-- Search Icon -->
             <ImageView
                 android:id="@+id/iconSearch"
                 android:layout_width="26dp"
@@ -99,7 +91,6 @@
                 android:contentDescription="Search"
                 android:padding="2dp"/>
 
-            <!-- Profile Icon -->
             <ImageView
                 android:id="@+id/iconSettings"
                 android:layout_width="26dp"
@@ -124,7 +115,6 @@
         android:paddingRight="16dp"
         android:visibility="gone">
 
-        <!-- Back Button -->
         <ImageView
             android:id="@+id/searchBackButton"
             android:layout_width="24dp"
@@ -134,7 +124,6 @@
             android:tint="#FFFFFF"
             android:contentDescription="Back"/>
 
-        <!-- Search Input -->
         <EditText
             android:id="@+id/searchInput"
             android:layout_width="match_parent"
@@ -154,16 +143,19 @@
 
     </RelativeLayout>
     
-
+    <!-- ✅ CHANGED: WebView constraints -->
     <com.spmods.ytpro.YTProWebview
         android:id="@+id/web"
-        android:gravity="center"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@+id/customHeader"  <!-- ✅ ADDED -->
+        android:layout_above="@+id/bottomNavBar"
         android:background="#000000"
-        android:layout_above="@+id/bottomNavBar"/>
+        android:gravity="center"/>
 
+    <!-- ✅ CHANGED: Added ID -->
     <include
+        android:id="@+id/bottomNavBar"  <!-- ✅ ADDED -->
         layout="@layout/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
