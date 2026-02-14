@@ -653,7 +653,7 @@ public void onPageFinished(WebView p1, String url) {
         );
         
         if (resourceId == 0) {
-            Log.e("Script", "❌ File not found: " + filename);
+            Log.e("Script", "File not found: " + filename);
             return "";
         }
         
@@ -674,10 +674,10 @@ public void onPageFinished(WebView p1, String url) {
             .replace("\n", "\\n")
             .replace("\r", "\\r");
             
-        return "loadScriptFromString(\`" + escaped + "\`);";
+        return "loadScriptFromString(`" + escaped + "`);";
         
     } catch (IOException e) {
-        Log.e("Script", "❌ Failed to load " + filename + ": " + e.getMessage());
+        Log.e("Script", "Failed to load " + filename + ": " + e.getMessage());
         return "";
     }
   }
@@ -1016,7 +1016,7 @@ public void onPageFinished(WebView p1, String url) {
     @JavascriptInterface public void bgPlay(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "play")); }
     @JavascriptInterface public void bgBuffer(long ct) { isPlaying=true; sendBroadcast(new Intent("UPDATE_NOTIFICATION").putExtra("icon", icon).putExtra("title", title).putExtra("subtitle", subtitle).putExtra("duration", duration).putExtra("currentPosition", ct).putExtra("action", "buffer")); }
     
-    @JavascriptInterface public void getSNlM0e(String cookies) { new Thread(() -> { String response = GeminiWrapper.getSNlM0e(cookies); runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(\`" + response + "\`)", null)); }).start(); }
+    @JavascriptInterface public void getSNlM0e(String cookies) { new Thread(() -> { String response = GeminiWrapper.getSNlM0e(cookies); runOnUiThread(() -> web.evaluateJavascript("callbackSNlM0e.resolve(`" + response + "`)", null)); }).start(); }
     @JavascriptInterface public void GeminiClient(String url, String headers, String body) { new Thread(() -> { JSONObject response = GeminiWrapper.getStream(url, headers, body); runOnUiThread(() -> web.evaluateJavascript("callbackGeminiClient.resolve(" + response + ")", null)); }).start(); }
     @JavascriptInterface public String getAllCookies(String url) { return CookieManager.getInstance().getCookie(url); }
     @JavascriptInterface public float getVolume() { return (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC); }
