@@ -71,43 +71,27 @@ public class MainActivity extends Activity {
   private ObjectAnimator innerRotation;
   
   private TextView notificationBadge;
-  private NotificationPreferences notificationPrefs;
-  private NotificationFetcher notificationFetcher;
+private NotificationPreferences notificationPrefs;
+private NotificationFetcher notificationFetcher;
   
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    
-    // ✅ ADDED: Edge-to-edge mode
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        getWindow().setDecorFitsSystemWindows(false);
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-        );
-    }
-    
     setContentView(R.layout.main);
     
     // ✅ Set initial status bar color to match header
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.setStatusBarColor(Color.parseColor("#0F0F0F"));
-        window.setNavigationBarColor(Color.parseColor("#0F0F0F")); // ADDED
+        window.setStatusBarColor(Color.parseColor("#0F0F0F")); // Header color
         
         // ✅ White icons for dark background
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             View decorView = window.getDecorView();
-            decorView.setSystemUiVisibility(0);
+            decorView.setSystemUiVisibility(0); // Default (white icons)
         }
     }
-    
-    // ✅ ADDED: Handle system insets
-    handleSystemInsets();
+
 
     SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
 
@@ -128,14 +112,14 @@ public class MainActivity extends Activity {
     setupCustomHeader();
     
     // Initialize notification system
-    notificationPrefs = new NotificationPreferences(this);
-    notificationFetcher = new NotificationFetcher(this);
+notificationPrefs = new NotificationPreferences(this);
+notificationFetcher = new NotificationFetcher(this);
 
-    // Find notification badge
-    notificationBadge = findViewById(R.id.notificationBadge);
+// Find notification badge
+notificationBadge = findViewById(R.id.notificationBadge);
 
-    // Fetch and update notifications
-    fetchAndUpdateNotifications();
+// Fetch and update notifications
+fetchAndUpdateNotifications();
     
     // ✅ Setup bottom nav
     setupBottomNavigation();
@@ -373,170 +357,170 @@ public class MainActivity extends Activity {
         scriptsInjected = false;
       }
 
-      @Override
-      public void onPageFinished(WebView p1, String url) {
-        
-        // ✅ Fix body alignment first
+@Override
+public void onPageFinished(WebView p1, String url) {
+      
+    // ✅ Fix body alignment first
+    p1.evaluateJavascript(
+        "(function() {" +
+        "  document.body.style.margin = '0';" +
+        "  document.body.style.padding = '0';" +
+        "  document.documentElement.style.margin = '0';" +
+        "  document.documentElement.style.padding = '0';" +
+        "  document.documentElement.style.overflow = 'auto';" +
+        "})();",
+        null
+    );
+
+    // ✅ Special handling for notifications page
+    if (url.contains("/feed/notifications")) {
         p1.evaluateJavascript(
             "(function() {" +
-            "  document.body.style.margin = '0';" +
-            "  document.body.style.padding = '0';" +
-            "  document.documentElement.style.margin = '0';" +
-            "  document.documentElement.style.padding = '0';" +
-            "  document.documentElement.style.overflow = 'auto';" +
-            "})();",
-            null
-        );
-
-        // ✅ Special handling for notifications page
-        if (url.contains("/feed/notifications")) {
-            p1.evaluateJavascript(
-                "(function() {" +
-                "  var style = document.createElement('style');" +
-                "  style.innerHTML = '" +
-                "    * { margin: 0; padding: 0; box-sizing: border-box; }" +
-                "    html, body { " +
-                "      margin: 0 !important; " +
-                "      padding: 0 !important; " +
-                "      width: 100% !important; " +
-                "      overflow-x: hidden !important; " +
-                "    }" +
-                "    ytm-mobile-topbar-renderer { display: none !important; }" +
-                "    ytm-pivot-bar-renderer { display: none !important; }" +
-                "    #masthead { display: none !important; }" +
-                "    body { " +
-                "      padding-top: 0px !important; " +
-                "      padding-bottom: 70px !important; " +
-                "      background: #0F0F0F !important; " +
-                "    }" +
-                "    ytm-item-section-renderer { margin-top: 0 !important; }" +
-                "  ';" +
-                "  document.head.appendChild(style);" +
-                "  console.log('✅ Notifications page styled');" +
-                "})();",
-                null
-            );
-            
-            hideLoadingScreen();
-            Log.d("WebView", "✅ Notifications page loaded");
-            return;
-        }
-
-        // ✅ Inject scripts from assets
-        if (!scriptsInjected) {
-            injectYTProScriptsFromAssets();
-            scriptsInjected = true;
-        }
-
-        // ✅✅ FORCE HIDE YOUTUBE HEADER & BOTTOM BAR ✅✅
-        web.evaluateJavascript(
-            "(function() {" +
-            "  function hideYouTubeNavigation() {" +
-            // Create style if not exists
-            "    if (!document.getElementById('ytpro-hide-nav')) {" +
-            "      var style = document.createElement('style');" +
-            "      style.id = 'ytpro-hide-nav';" +
-            "      style.innerHTML = '" +
-            // Header
-            "        ytm-mobile-topbar-renderer," +
-            "        #masthead," +
-            "        .mobile-topbar-header," +
-            // Bottom Navigation Bar (වැදගත්!)
-            "        ytm-pivot-bar-renderer," +
-            "        ytm-pivot-bar-item-renderer," +
-            "        .pivot-bar-item-tab," +
-            "        .pivot-bar," +
-            "        c3-tab-bar-renderer," +
-            "        ytm-app > ytm-pivot-bar-renderer," +
-            "        div[class*=\"pivot\"]," +
-            "        div[id*=\"pivot\"] {" +
-            "          display: none !important;" +
-            "          visibility: hidden !important;" +
-            "          height: 0 !important;" +
-            "          min-height: 0 !important;" +
-            "          max-height: 0 !important;" +
-            "          opacity: 0 !important;" +
-            "          overflow: hidden !important;" +
-            "        }" +
-            "        body {" +
-            "          padding-top: 0px !important;" +
-            "          padding-bottom: 70px !important;" +
-            "        }" +
-            "        #page-manager {" +
-            "          padding-bottom: 70px !important;" +
-            "        }" +
-            "      ';" +
-            "      document.head.appendChild(style);" +
-            "      console.log('✅ Style injected');" +
+            "  var style = document.createElement('style');" +
+            "  style.innerHTML = '" +
+            "    * { margin: 0; padding: 0; box-sizing: border-box; }" +
+            "    html, body { " +
+            "      margin: 0 !important; " +
+            "      padding: 0 !important; " +
+            "      width: 100% !important; " +
+            "      overflow-x: hidden !important; " +
             "    }" +
-            // Also manually hide elements
-            "    var hideSelectors = [" +
-            "      'ytm-mobile-topbar-renderer'," +
-            "      '#masthead'," +
-            "      'ytm-pivot-bar-renderer'," +
-            "      'ytm-pivot-bar-item-renderer'," +
-            "      'c3-tab-bar-renderer'" +
-            "    ];" +
-            "    hideSelectors.forEach(function(selector) {" +
-            "      var elements = document.querySelectorAll(selector);" +
-            "      if (elements.length > 0) {" +
-            "        console.log('🎯 Found ' + elements.length + ' elements for: ' + selector);" +
-            "      }" +
-            "      elements.forEach(function(el) {" +
-            "        el.style.display = 'none';" +
-            "        el.style.visibility = 'hidden';" +
-            "        el.style.height = '0px';" +
-            "        el.style.opacity = '0';" +
-            "      });" +
-            "    });" +
-            "  }" +
-            // Run immediately
-            "  hideYouTubeNavigation();" +
-            // Watch for new elements
-            "  var observer = new MutationObserver(function() {" +
-            "    hideYouTubeNavigation();" +
-            "  });" +
-            "  observer.observe(document.body, { childList: true, subtree: true });" +
-            // Run every 500ms as backup
-            "  setInterval(hideYouTubeNavigation, 500);" +
-            "  console.log('✅ YouTube navigation hiding active');" +
+            "    ytm-mobile-topbar-renderer { display: none !important; }" +
+            "    ytm-pivot-bar-renderer { display: none !important; }" +
+            "    #masthead { display: none !important; }" +
+            "    body { " +
+            "      padding-top: 0px !important; " +
+            "      padding-bottom: 70px !important; " +
+            "      background: #0F0F0F !important; " +
+            "    }" +
+            "    ytm-item-section-renderer { margin-top: 0 !important; }" +
+            "  ';" +
+            "  document.head.appendChild(style);" +
+            "  console.log('✅ Notifications page styled');" +
             "})();",
             null
         );
         
-        // ✅ Block shorts auto-redirect
-        web.evaluateJavascript(
-            "(function() {" +
-            "  var originalPushState = history.pushState;" +
-            "  history.pushState = function(state, title, url) {" +
-            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
-            "      return;" +
-            "    }" +
-            "    return originalPushState.apply(this, arguments);" +
-            "  };" +
-            "})();",
-            null
-        );
+        hideLoadingScreen();
+        Log.d("WebView", "✅ Notifications page loaded");
+        return;
+    }
 
-        if (dL) {
-            web.postDelayed(() -> {
-                web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
-                dL = false;
-            }, 2000);
-        }
+    // ✅ Inject scripts from assets
+    if (!scriptsInjected) {
+        injectYTProScriptsFromAssets();
+        scriptsInjected = true;
+    }
 
-        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-            isPlaying = false;
-            mediaSession = false;
-            stopService(new Intent(getApplicationContext(), ForegroundService.class));
-        }
+    // ✅✅ FORCE HIDE YOUTUBE HEADER & BOTTOM BAR ✅✅
+    web.evaluateJavascript(
+        "(function() {" +
+        "  function hideYouTubeNavigation() {" +
+        // Create style if not exists
+        "    if (!document.getElementById('ytpro-hide-nav')) {" +
+        "      var style = document.createElement('style');" +
+        "      style.id = 'ytpro-hide-nav';" +
+        "      style.innerHTML = '" +
+        // Header
+        "        ytm-mobile-topbar-renderer," +
+        "        #masthead," +
+        "        .mobile-topbar-header," +
+        // Bottom Navigation Bar (වැදගත්!)
+        "        ytm-pivot-bar-renderer," +
+        "        ytm-pivot-bar-item-renderer," +
+        "        .pivot-bar-item-tab," +
+        "        .pivot-bar," +
+        "        c3-tab-bar-renderer," +
+        "        ytm-app > ytm-pivot-bar-renderer," +
+        "        div[class*=\"pivot\"]," +
+        "        div[id*=\"pivot\"] {" +
+        "          display: none !important;" +
+        "          visibility: hidden !important;" +
+        "          height: 0 !important;" +
+        "          min-height: 0 !important;" +
+        "          max-height: 0 !important;" +
+        "          opacity: 0 !important;" +
+        "          overflow: hidden !important;" +
+        "        }" +
+        "        body {" +
+        "          padding-top: 0px !important;" +
+        "          padding-bottom: 70px !important;" +
+        "        }" +
+        "        #page-manager {" +
+        "          padding-bottom: 70px !important;" +
+        "        }" +
+        "      ';" +
+        "      document.head.appendChild(style);" +
+        "      console.log('✅ Style injected');" +
+        "    }" +
+        // Also manually hide elements
+        "    var hideSelectors = [" +
+        "      'ytm-mobile-topbar-renderer'," +
+        "      '#masthead'," +
+        "      'ytm-pivot-bar-renderer'," +  // Bottom bar
+        "      'ytm-pivot-bar-item-renderer'," +
+        "      'c3-tab-bar-renderer'" +
+        "    ];" +
+        "    hideSelectors.forEach(function(selector) {" +
+        "      var elements = document.querySelectorAll(selector);" +
+        "      if (elements.length > 0) {" +
+        "        console.log('🎯 Found ' + elements.length + ' elements for: ' + selector);" +
+        "      }" +
+        "      elements.forEach(function(el) {" +
+        "        el.style.display = 'none';" +
+        "        el.style.visibility = 'hidden';" +
+        "        el.style.height = '0px';" +
+        "        el.style.opacity = '0';" +
+        "      });" +
+        "    });" +
+        "  }" +
+        // Run immediately
+        "  hideYouTubeNavigation();" +
+        // Watch for new elements
+        "  var observer = new MutationObserver(function() {" +
+        "    hideYouTubeNavigation();" +
+        "  });" +
+        "  observer.observe(document.body, { childList: true, subtree: true });" +
+        // Run every 500ms as backup
+        "  setInterval(hideYouTubeNavigation, 500);" +
+        "  console.log('✅ YouTube navigation hiding active');" +
+        "})();",
+        null
+    );
+    
+    // ✅ Block shorts auto-redirect
+    web.evaluateJavascript(
+        "(function() {" +
+        "  var originalPushState = history.pushState;" +
+        "  history.pushState = function(state, title, url) {" +
+        "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+        "      return;" +
+        "    }" +
+        "    return originalPushState.apply(this, arguments);" +
+        "  };" +
+        "})();",
+        null
+    );
 
-        new Handler().postDelayed(() -> {
-            hideLoadingScreen();
-        }, 500);
+    if (dL) {
+        web.postDelayed(() -> {
+            web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
+            dL = false;
+        }, 2000);
+    }
 
-        super.onPageFinished(p1, url);
-      }
+    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+        isPlaying = false;
+        mediaSession = false;
+        stopService(new Intent(getApplicationContext(), ForegroundService.class));
+    }
+
+    new Handler().postDelayed(() -> {
+        hideLoadingScreen();
+    }, 500);
+
+    super.onPageFinished(p1, url);
+}
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -596,7 +580,7 @@ public class MainActivity extends Activity {
             null
         );
         
-        // 2. Load scripts from res/raw
+        // 2. Load scripts from res/raw (✅ Changed)
         String scriptLoader = 
             "(function() {" +
             "  if(window.YTPRO_LOADED) return;" +
@@ -673,12 +657,13 @@ public class MainActivity extends Activity {
     } catch (Exception e) {
         Log.e("Script Injection", "❌ Error: " + e.getMessage());
     }
-  }
+}
   
-  private String loadScriptFromAssets(String filename) {
+private String loadScriptFromAssets(String filename) {
     try {
+        // ✅ Get resource ID from res/raw
         int resourceId = getResources().getIdentifier(
-            filename.replace(".js", ""),
+            filename.replace(".js", ""),  // "script" from "script.js"
             "raw",
             getPackageName()
         );
@@ -688,6 +673,7 @@ public class MainActivity extends Activity {
             return "";
         }
         
+        // ✅ Read from res/raw
         InputStream inputStream = getResources().openRawResource(resourceId);
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         StringBuilder content = new StringBuilder();
@@ -698,6 +684,7 @@ public class MainActivity extends Activity {
         }
         reader.close();
         
+        // ✅ Escape for JavaScript injection
         String escaped = content.toString()
             .replace("\\", "\\\\")
             .replace("`", "\\`")
@@ -711,7 +698,7 @@ public class MainActivity extends Activity {
         Log.e("Script", "❌ Failed to load " + filename + ": " + e.getMessage());
         return "";
     }
-  }
+}
   
   private void setupCustomHeader() {
     ImageView iconSearch = findViewById(R.id.iconSearch);
@@ -723,6 +710,7 @@ public class MainActivity extends Activity {
     ImageView searchBackButton = findViewById(R.id.searchBackButton);
     EditText searchInput = findViewById(R.id.searchInput);
 
+    // ✅ Search - Show custom search bar with animation
     iconSearch.setOnClickListener(v -> {
         searchBarContainer.setVisibility(View.VISIBLE);
         searchBarContainer.setAlpha(0f);
@@ -739,6 +727,7 @@ public class MainActivity extends Activity {
         imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
     });
 
+    // ✅ Back button - Hide search bar
     searchBackButton.setOnClickListener(v -> {
         searchBarContainer.animate()
             .alpha(0f)
@@ -751,6 +740,7 @@ public class MainActivity extends Activity {
         imm.hideSoftInputFromWindow(searchInput.getWindowToken(), 0);
     });
 
+    // ✅ Search action
     searchInput.setOnEditorActionListener((v, actionId, event) -> {
         if (actionId == EditorInfo.IME_ACTION_SEARCH) {
             String query = searchInput.getText().toString();
@@ -765,17 +755,21 @@ public class MainActivity extends Activity {
         return false;
     });
 
+
     iconNotifications.setOnClickListener(v -> {
-        Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
-        startActivity(intent);
-    });
+    Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
+    startActivity(intent);
+});
+
 
     iconCast.setOnClickListener(v -> {
         Toast.makeText(this, "Cast feature coming soon! 📡", Toast.LENGTH_SHORT).show();
     });
 
+// ✅ Settings - Open YTPRO settings
     iconSettings.setOnClickListener(v -> {
         userNavigated = true;
+        // ✅ Trigger your script.js settings by setting hash
         web.evaluateJavascript("window.location.hash='settings';", null);
     });
   }
@@ -877,12 +871,15 @@ public class MainActivity extends Activity {
     web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
     isPip = isInPictureInPictureMode;
     
+    // ✅ Manage wake lock for PIP mode
     if (isInPictureInPictureMode && isPlaying) {
+        // Entering PIP mode while playing - acquire wake lock
         if (wakeLock != null && !wakeLock.isHeld()) {
-            wakeLock.acquire(10*60*1000L);
+            wakeLock.acquire(10*60*1000L); // 10 minutes timeout
             Log.d("PIP", "🔒 Wake lock acquired - display can turn off");
         }
     } else {
+        // Exiting PIP mode - release wake lock
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
             Log.d("PIP", "🔓 Wake lock released");
@@ -919,6 +916,7 @@ public class MainActivity extends Activity {
   public void onDestroy() {
     super.onDestroy();
     
+    // ✅ Release wake lock if held
     if (wakeLock != null && wakeLock.isHeld()) {
         wakeLock.release();
         Log.d("MainActivity", "🔓 Wake lock released on destroy");
@@ -1278,7 +1276,9 @@ public class MainActivity extends Activity {
         @Override
         public void onSuccess(List<NotificationModel> notifications) {
             runOnUiThread(() -> {
+                // Save notifications
                 notificationPrefs.saveNotifications(notifications);
+                // Update badge
                 updateNotificationBadge();
             });
         }
@@ -1286,13 +1286,14 @@ public class MainActivity extends Activity {
         @Override
         public void onError(String error) {
             runOnUiThread(() -> {
+                // Update badge with saved data
                 updateNotificationBadge();
             });
         }
     });
-  }
+}
 
-  private void updateNotificationBadge() {
+private void updateNotificationBadge() {
     int unviewedCount = notificationPrefs.getUnviewedCount();
     
     if (unviewedCount > 0) {
@@ -1301,103 +1302,18 @@ public class MainActivity extends Activity {
     } else {
         notificationBadge.setVisibility(View.GONE);
     }
-  }
+}
 
-  @Override
-  protected void onResume() {
+@Override
+protected void onResume() {
     super.onResume();
+    // Update badge when returning from notification page
     if (notificationPrefs != null) {
         updateNotificationBadge();
     }
-  }
-
-  // ✅✅✅ ADDED: System Insets Fix Methods ✅✅✅
-  
-  private void handleSystemInsets() {
-    View rootView = findViewById(android.R.id.content);
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
-            android.graphics.Insets systemBars = insets.getInsets(
-                android.view.WindowInsets.Type.systemBars()
-            );
-            applyInsets(systemBars.top, systemBars.bottom);
-            return android.view.WindowInsets.CONSUMED;
-        });
-    } else {
-        rootView.post(() -> {
-            
-            int navBarHeight = getNavigationBarHeight();
-            applyInsets(navBarHeight);
-        });
-    }
-  }
-
-  private void applyInsets(int topInset, int bottomInset) {
-    View customHeader = findViewById(R.id.customHeader);
-    if (customHeader != null) {
-        customHeader.setPadding(
-            customHeader.getPaddingLeft(),
-            topInset,
-            customHeader.getPaddingRight(),
-            customHeader.getPaddingBottom()
-        );
-    }
-    
-    View bottomNav = findViewById(R.id.bottomNavBar);
-    if (bottomNav != null) {
-        bottomNav.setPadding(
-            bottomNav.getPaddingLeft(),
-            bottomNav.getPaddingTop(),
-            bottomNav.getPaddingRight(),
-            bottomInset
-        );
-    }
-  }
-
-  private int getStatusBarHeight() {
-    int result = 0;
-    int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-    if (resourceId > 0) {
-        result = getResources().getDimensionPixelSize(resourceId);
-    }
-    if (result == 0) {
-        result = (int) Math.ceil(25 * getResources().getDisplayMetrics().density);
-    }
-    return result;
-  }
-
-  private int getNavigationBarHeight() {
-    if (!hasNavigationBar()) return 0;
-    
-    int result = 0;
-    int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
-    if (resourceId > 0) {
-        result = getResources().getDimensionPixelSize(resourceId);
-    }
-    return result;
-  }
-
-  private boolean hasNavigationBar() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-        Display display = getWindowManager().getDefaultDisplay();
-        android.util.DisplayMetrics realMetrics = new android.util.DisplayMetrics();
-        display.getRealMetrics(realMetrics);
-        
-        int realHeight = realMetrics.heightPixels;
-        int realWidth = realMetrics.widthPixels;
-        
-        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
-        display.getMetrics(displayMetrics);
-        
-        int displayHeight = displayMetrics.heightPixels;
-        int displayWidth = displayMetrics.widthPixels;
-        
-        return (realWidth - displayWidth) > 0 || (realHeight - displayHeight) > 0;
-    }
-    
-    boolean hasMenuKey = ViewConfiguration.get(this).hasPermanentMenuKey();
-    boolean hasBackKey = KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_BACK);
-    return !hasMenuKey && !hasBackKey;
-  }
 }
+
+}
+
+
+
