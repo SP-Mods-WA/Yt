@@ -1326,7 +1326,7 @@ public class MainActivity extends Activity {
         });
     } else {
         rootView.post(() -> {
-            int statusBarHeight = getStatusBarHeight();
+            
             int navBarHeight = getNavigationBarHeight();
             applyInsets(statusBarHeight, navBarHeight);
         });
