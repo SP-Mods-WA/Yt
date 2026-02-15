@@ -1457,6 +1457,7 @@ protected void onResume() {
     // Force initial layout
     rootView.requestApplyInsets();
 }
+}
 
   private void applyInsetsToViews(int topInset, int bottomInset, int leftInset, int rightInset) {
     runOnUiThread(() -> {
@@ -1505,7 +1506,7 @@ protected void onResume() {
         }
     });
 }
-}
+
 
 
 
