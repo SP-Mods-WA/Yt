@@ -117,7 +117,7 @@
     </RelativeLayout>
 
         <RelativeLayout
-        android:id="@id/searchBarContainer"
+        android:id="@+id/searchBarContainer"
         android:background="#ff0f0f0f"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
