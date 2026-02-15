@@ -6,13 +6,13 @@
     android:background="#0F0F0F"
     android:fitsSystemWindows="false">
 
-    <!-- ✅ Custom Header (MUST be visible) -->
+    <!-- ✅ Custom Header -->
     <RelativeLayout
         android:id="@+id/customHeader"
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_alignParentTop="true"
-        android:background="#FF0000"
+        android:background="#0F0F0F"
         android:elevation="8dp"
         android:paddingLeft="16dp"
         android:paddingRight="16dp">
@@ -42,7 +42,8 @@
                 android:padding="8dp"
                 android:src="@drawable/ic_cast"
                 android:tint="#FFFFFF"
-                android:background="?attr/selectableItemBackgroundBorderless"/>
+                android:clickable="true"
+                android:focusable="true"/>
 
             <FrameLayout
                 android:layout_width="40dp"
@@ -55,7 +56,8 @@
                     android:padding="8dp"
                     android:src="@drawable/ic_notifications"
                     android:tint="#FFFFFF"
-                    android:background="?attr/selectableItemBackgroundBorderless"/>
+                    android:clickable="true"
+                    android:focusable="true"/>
                 
                 <TextView
                     android:id="@+id/notificationBadge"
@@ -80,7 +82,8 @@
                 android:padding="8dp"
                 android:src="@drawable/ic_search"
                 android:tint="#FFFFFF"
-                android:background="?attr/selectableItemBackgroundBorderless"/>
+                android:clickable="true"
+                android:focusable="true"/>
 
             <ImageView
                 android:id="@+id/iconSettings"
@@ -89,7 +92,8 @@
                 android:padding="8dp"
                 android:src="@drawable/ic_settings"
                 android:tint="#FFFFFF"
-                android:background="?attr/selectableItemBackgroundBorderless"/>
+                android:clickable="true"
+                android:focusable="true"/>
         </LinearLayout>
 
     </RelativeLayout>
@@ -114,7 +118,8 @@
             android:padding="8dp"
             android:src="@drawable/ic_arrow_back"
             android:tint="#FFFFFF"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:clickable="true"
+            android:focusable="true"/>
 
         <EditText
             android:id="@+id/searchInput"
@@ -130,7 +135,8 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:singleLine="true"
-            android:imeOptions="actionSearch"/>
+            android:imeOptions="actionSearch"
+            android:inputType="text"/>
     </RelativeLayout>
 
     <!-- WebView -->
