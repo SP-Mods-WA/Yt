@@ -883,25 +883,86 @@ private String loadScriptFromAssets(String filename) {
   }
 
   @Override
-  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
+public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+    
+    web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();", null);
     isPip = isInPictureInPictureMode;
     
-    // ✅ Manage wake lock for PIP mode
+    // ✅ FIX: Reset custom header and WebView layout when exiting PIP
+    if (!isInPictureInPictureMode) {
+        runOnUiThread(() -> {
+            // Force layout refresh
+            View customHeader = findViewById(R.id.customHeader);
+            View searchBarContainer = findViewById(R.id.searchBarContainer);
+            View bottomNavBar = findViewById(R.id.bottomNavBar);
+            
+            if (customHeader != null) {
+                customHeader.requestLayout();
+                customHeader.invalidate();
+            }
+            
+            if (searchBarContainer != null) {
+                searchBarContainer.setVisibility(View.GONE);
+            }
+            
+            if (bottomNavBar != null) {
+                bottomNavBar.requestLayout();
+                bottomNavBar.invalidate();
+            }
+            
+            // ✅ Reset WebView position
+            if (web != null) {
+                web.requestLayout();
+                web.invalidate();
+                
+                // Force scroll to top to prevent offset issues
+                web.scrollTo(0, 0);
+            }
+            
+            // ✅ Reapply system insets
+            handleSystemInsets();
+        });
+        
+        // ✅ Hide YouTube navigation again after slight delay
+        new Handler().postDelayed(() -> {
+            web.evaluateJavascript(
+                "(function() {" +
+                "  document.body.style.paddingTop = '0px';" +
+                "  document.body.style.marginTop = '0px';" +
+                "  var header = document.querySelector('ytm-mobile-topbar-renderer');" +
+                "  if (header) header.remove();" +
+                "  var pivot = document.querySelector('ytm-pivot-bar-renderer');" +
+                "  if (pivot) pivot.remove();" +
+                "})();",
+                null
+            );
+        }, 100);
+        
+        new Handler().postDelayed(() -> {
+            web.evaluateJavascript(
+                "(function() {" +
+                "  document.body.style.paddingTop = '0px';" +
+                "  document.body.style.marginTop = '0px';" +
+                "})();",
+                null
+            );
+        }, 500);
+    }
+    
+    // Wake lock management
     if (isInPictureInPictureMode && isPlaying) {
-        // Entering PIP mode while playing - acquire wake lock
         if (wakeLock != null && !wakeLock.isHeld()) {
-            wakeLock.acquire(10*60*1000L); // 10 minutes timeout
-            Log.d("PIP", "🔒 Wake lock acquired - display can turn off");
+            wakeLock.acquire(10*60*1000L);
+            Log.d("PIP", "🔒 Wake lock acquired");
         }
     } else {
-        // Exiting PIP mode - release wake lock
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
             Log.d("PIP", "🔓 Wake lock released");
         }
     }
-  }
+}
 
   @Override
   protected void onUserLeaveHint() {
