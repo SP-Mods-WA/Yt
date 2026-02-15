@@ -81,6 +81,17 @@ private NotificationFetcher notificationFetcher;
 
     
     setContentView(R.layout.main);
+
+        // ✅ Ensure header stays fixed
+    View customHeader = findViewById(R.id.customHeader);
+    if (customHeader != null) {
+        customHeader.bringToFront();
+    }
+    
+    View bottomNav = findViewById(R.id.bottomNavBar);
+    if (bottomNav != null) {
+        bottomNav.bringToFront();
+    }
     
     // ✅ Set initial status bar color to match header
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
