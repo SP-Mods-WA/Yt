@@ -3198,13 +3198,20 @@ function closeMiniPlayer() {
 if (typeof Android !== 'undefined') {
     const og = Android.gohome;
     Android.gohome = function() {
-        if (window.location.pathname.includes('/watch') && isVideoPlaying && !miniPlayerActive) {
-            createMiniPlayer();
-        } else if (miniPlayerActive) {
+        console.log('🏠 Home button pressed');
+        
+        // ✅ Close mini player if already open
+        if (miniPlayerActive) {
             closeMiniPlayer();
-        } else {
-            if(og) og.call(Android);
         }
+        
+        // ✅ Exit PIP if active
+        if (window.isPIP) {
+            removePIP();
+        }
+        
+        // ✅ Always call original gohome - DON'T create mini player
+        if(og) og.call(Android);
     };
 }
 
