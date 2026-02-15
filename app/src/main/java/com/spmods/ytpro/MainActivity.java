@@ -860,24 +860,13 @@ public class MainActivity extends Activity {
     }
   }
 
-  @Override
-  protected void onUserLeaveHint() {
+@Override
+protected void onUserLeaveHint() {
     super.onUserLeaveHint();
-    if (android.os.Build.VERSION.SDK_INT >= 26 && web.getUrl().contains("watch") && isPlaying) {
-        try {
-          PictureInPictureParams params;
-          isPip=true;
-          if (portrait) {
-            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(9, 16)).build();
-          } else{
-            params = new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build();
-          }
-          enterPictureInPictureMode(params);
-        } catch (IllegalStateException e) {
-          e.printStackTrace();
-        }
-    }
-  }
+    // ✅ Home button pressed - do NOTHING
+    // User must manually click PIP button to enter PIP mode
+    Log.d("MainActivity", "🏠 Home button - PIP disabled");
+}
 
   @Override
   protected void onPause() {
