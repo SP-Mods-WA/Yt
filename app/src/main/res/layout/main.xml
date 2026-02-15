@@ -116,16 +116,17 @@
 
     </RelativeLayout>
 
-    <RelativeLayout
-        android:id="@+id/searchBarContainer"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_below="@id/customHeader"
-        android:background="#0F0F0F"
-        android:elevation="4dp"
+        <RelativeLayout
+        android:id="@id/searchBarContainer"
+        android:background="#ff0f0f0f"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
-        android:visibility="gone">
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_alignParentTop="true"
+        android:translationZ="8dp"
+        android:elevation="8dp">
 
         <!-- Back Button -->
         <ImageView
@@ -162,6 +163,7 @@
         android:id="@+id/web"
         android:gravity="center"
         android:layout_width="match_parent"
+        android:layout_marginTop="40dp"
         android:layout_height="match_parent"
         android:background="#000000"
         android:layout_below="@+id/customHeader"
