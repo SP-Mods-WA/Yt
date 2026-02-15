@@ -82,6 +82,25 @@ private NotificationFetcher notificationFetcher;
     
     setContentView(R.layout.main);
 
+            // ✅ STEP 1: Configure window for proper insets
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        // Android 11+ (API 30+)
+        getWindow().setDecorFitsSystemWindows(false);
+        
+        WindowInsetsController controller = getWindow().getInsetsController();
+        if (controller != null) {
+            // Show system bars but draw behind them
+            controller.show(WindowInsets.Type.systemBars());
+        }
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        // Android 5-10 (API 21-29)
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        );
+    }
+
         // ✅ Ensure header stays fixed
     View customHeader = findViewById(R.id.customHeader);
     if (customHeader != null) {
@@ -92,6 +111,8 @@ private NotificationFetcher notificationFetcher;
     if (bottomNav != null) {
         bottomNav.bringToFront();
     }
+
+
     
     // ✅ Set initial status bar color to match header
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -106,7 +127,7 @@ private NotificationFetcher notificationFetcher;
         }
     }
 
-    handleSystemInsets();
+    setupSystemBarsInsets();
 
 
     SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
@@ -1391,97 +1412,99 @@ protected void onResume() {
 }
 
 
-    // ✅✅✅ ADDED: System Insets Fix Methods ✅✅✅
-  
-  private void handleSystemInsets() {
+    private void setupSystemBarsInsets() {
     View rootView = findViewById(android.R.id.content);
     
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        // Android 11+ - Modern approach
         rootView.setOnApplyWindowInsetsListener((v, insets) -> {
             android.graphics.Insets systemBars = insets.getInsets(
-                android.view.WindowInsets.Type.systemBars()
+                WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
             );
-            applyInsets(systemBars.top, systemBars.bottom);
-            return android.view.WindowInsets.CONSUMED;
+            
+            Log.d("Insets", "Top: " + systemBars.top + ", Bottom: " + systemBars.bottom + 
+                  ", Left: " + systemBars.left + ", Right: " + systemBars.right);
+            
+            applyInsetsToViews(systemBars.top, systemBars.bottom, 
+                             systemBars.left, systemBars.right);
+            
+            return WindowInsets.CONSUMED;
+        });
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+        // Android 5-10 - Legacy approach
+        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+            int top = insets.getSystemWindowInsetTop();
+            int bottom = insets.getSystemWindowInsetBottom();
+            int left = insets.getSystemWindowInsetLeft();
+            int right = insets.getSystemWindowInsetRight();
+            
+            Log.d("Insets", "Top: " + top + ", Bottom: " + bottom + 
+                  ", Left: " + left + ", Right: " + right);
+            
+            applyInsetsToViews(top, bottom, left, right);
+            
+            return insets.consumeSystemWindowInsets();
         });
     } else {
+        // Android 4.4 and below - Fallback
         rootView.post(() -> {
             int statusBarHeight = getStatusBarHeight();
             int navBarHeight = getNavigationBarHeight();
-            applyInsets(statusBarHeight, navBarHeight);
+            applyInsetsToViews(statusBarHeight, navBarHeight, 0, 0);
         });
     }
-  }
-
-  private void applyInsets(int topInset, int bottomInset) {
-    View customHeader = findViewById(R.id.customHeader);
-    if (customHeader != null) {
-        customHeader.setPadding(
-            customHeader.getPaddingLeft(),
-            topInset,
-            customHeader.getPaddingRight(),
-            customHeader.getPaddingBottom()
-        );
-    }
     
-    View bottomNav = findViewById(R.id.bottomNavBar);
-    if (bottomNav != null) {
-        bottomNav.setPadding(
-            bottomNav.getPaddingLeft(),
-            bottomNav.getPaddingTop(),
-            bottomNav.getPaddingRight(),
-            bottomInset
-        );
-    }
-  }
-
-  private int getStatusBarHeight() {
-    int result = 0;
-    int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-    if (resourceId > 0) {
-        result = getResources().getDimensionPixelSize(resourceId);
-    }
-    if (result == 0) {
-        result = (int) Math.ceil(25 * getResources().getDisplayMetrics().density);
-    }
-    return result;
-  }
-
-  private int getNavigationBarHeight() {
-    if (!hasNavigationBar()) return 0;
-    
-    int result = 0;
-    int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
-    if (resourceId > 0) {
-        result = getResources().getDimensionPixelSize(resourceId);
-    }
-    return result;
-  }
-
-  private boolean hasNavigationBar() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-        Display display = getWindowManager().getDefaultDisplay();
-        android.util.DisplayMetrics realMetrics = new android.util.DisplayMetrics();
-        display.getRealMetrics(realMetrics);
-        
-        int realHeight = realMetrics.heightPixels;
-        int realWidth = realMetrics.widthPixels;
-        
-        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
-        display.getMetrics(displayMetrics);
-        
-        int displayHeight = displayMetrics.heightPixels;
-        int displayWidth = displayMetrics.widthPixels;
-        
-        return (realWidth - displayWidth) > 0 || (realHeight - displayHeight) > 0;
-    }
-    
-    boolean hasMenuKey = ViewConfiguration.get(this).hasPermanentMenuKey();
-    boolean hasBackKey = KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_BACK);
-    return !hasMenuKey && !hasBackKey;
-  }
+    // Force initial layout
+    rootView.requestApplyInsets();
 }
 
+  private void applyInsetsToViews(int topInset, int bottomInset, int leftInset, int rightInset) {
+    runOnUiThread(() -> {
+        // Apply to custom header
+        View customHeader = findViewById(R.id.customHeader);
+        if (customHeader != null) {
+            RelativeLayout.LayoutParams headerParams = 
+                (RelativeLayout.LayoutParams) customHeader.getLayoutParams();
+            headerParams.topMargin = topInset;
+            customHeader.setLayoutParams(headerParams);
+            customHeader.requestLayout();
+            
+            Log.d("Insets", "✅ Header top margin set to: " + topInset);
+        }
+        
+        // Apply to search bar container
+        View searchBarContainer = findViewById(R.id.searchBarContainer);
+        if (searchBarContainer != null) {
+            RelativeLayout.LayoutParams searchParams = 
+                (RelativeLayout.LayoutParams) searchBarContainer.getLayoutParams();
+            searchParams.topMargin = topInset;
+            searchBarContainer.setLayoutParams(searchParams);
+        }
+        
+        // Apply to bottom navigation
+        View bottomNav = findViewById(R.id.bottomNavBar);
+        if (bottomNav != null) {
+            RelativeLayout.LayoutParams navParams = 
+                (RelativeLayout.LayoutParams) bottomNav.getLayoutParams();
+            navParams.bottomMargin = bottomInset;
+            bottomNav.setLayoutParams(navParams);
+            bottomNav.requestLayout();
+            
+            Log.d("Insets", "✅ Bottom nav margin set to: " + bottomInset);
+        }
+        
+        // Apply to WebView
+        View webView = findViewById(R.id.web);
+        if (webView != null) {
+            RelativeLayout.LayoutParams webParams = 
+                (RelativeLayout.LayoutParams) webView.getLayoutParams();
+            // WebView should be between header and bottom nav
+            // No need to add margins since it's layout_below header and layout_above bottom
+            webView.setLayoutParams(webParams);
+            webView.requestLayout();
+        }
+    });
+}
 
 
 
