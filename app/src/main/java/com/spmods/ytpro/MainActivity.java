@@ -903,36 +903,48 @@ private String loadScriptFromAssets(String filename) {
     }
   }
 
-@Override
+  @Override
 public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
     
     web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();", null);
     isPip = isInPictureInPictureMode;
     
-    // ✅ Reapply insets when exiting PIP
+    // ✅ FIX: Reset custom header and WebView layout when exiting PIP
     if (!isInPictureInPictureMode) {
-        new Handler().postDelayed(() -> {
-            setupSystemBarsInsets();
-        }, 100);
+        runOnUiThread(() -> {
+            // Force layout refresh
+            View customHeader = findViewById(R.id.customHeader);
+            View searchBarContainer = findViewById(R.id.searchBarContainer);
+            View bottomNavBar = findViewById(R.id.bottomNavBar);
+            
+            if (customHeader != null) {
+                customHeader.requestLayout();
+                customHeader.invalidate();
+            }
+            
+            if (searchBarContainer != null) {
+                searchBarContainer.setVisibility(View.GONE);
+            }
+            
+            if (bottomNavBar != null) {
+                bottomNavBar.requestLayout();
+                bottomNavBar.invalidate();
+            }
+            
+            // ✅ Reset WebView position
+            if (web != null) {
+                web.requestLayout();
+                web.invalidate();
+                
+                // Force scroll to top to prevent offset issues
+                web.scrollTo(0, 0);
+            }
+            
+            // ✅ Reapply system insets
+            handleSystemInsets();
+        });
         
-        new Handler().postDelayed(() -> {
-            setupSystemBarsInsets();
-        }, 500);
-    }
-    
-    // Wake lock management
-    if (isInPictureInPictureMode && isPlaying) {
-        if (wakeLock != null && !wakeLock.isHeld()) {
-            wakeLock.acquire(10*60*1000L);
-        }
-    } else {
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
-        }
-    }
-}
-  
         // ✅ Hide YouTube navigation again after slight delay
         new Handler().postDelayed(() -> {
             web.evaluateJavascript(
