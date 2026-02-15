@@ -77,6 +77,20 @@ private NotificationFetcher notificationFetcher;
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
+        // ✅ ADDED: Edge-to-edge mode
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        getWindow().setDecorFitsSystemWindows(false);
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        View decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        );
+    }
+
+    
     setContentView(R.layout.main);
     
     // ✅ Set initial status bar color to match header
