@@ -78,17 +78,6 @@ private NotificationFetcher notificationFetcher;
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
-        // ✅ ADDED: Edge-to-edge mode
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        getWindow().setDecorFitsSystemWindows(false);
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-        );
-    }
 
     
     setContentView(R.layout.main);
@@ -105,6 +94,8 @@ private NotificationFetcher notificationFetcher;
             decorView.setSystemUiVisibility(0); // Default (white icons)
         }
     }
+
+    handleSystemInsets();
 
 
     SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
@@ -1327,7 +1318,100 @@ protected void onResume() {
     }
 }
 
+
+    // ✅✅✅ ADDED: System Insets Fix Methods ✅✅✅
+  
+  private void handleSystemInsets() {
+    View rootView = findViewById(android.R.id.content);
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+            android.graphics.Insets systemBars = insets.getInsets(
+                android.view.WindowInsets.Type.systemBars()
+            );
+            applyInsets(systemBars.top, systemBars.bottom);
+            return android.view.WindowInsets.CONSUMED;
+        });
+    } else {
+        rootView.post(() -> {
+            int statusBarHeight = getStatusBarHeight();
+            int navBarHeight = getNavigationBarHeight();
+            applyInsets(statusBarHeight, navBarHeight);
+        });
+    }
+  }
+
+  private void applyInsets(int topInset, int bottomInset) {
+    View customHeader = findViewById(R.id.customHeader);
+    if (customHeader != null) {
+        customHeader.setPadding(
+            customHeader.getPaddingLeft(),
+            topInset,
+            customHeader.getPaddingRight(),
+            customHeader.getPaddingBottom()
+        );
+    }
+    
+    View bottomNav = findViewById(R.id.bottomNavBar);
+    if (bottomNav != null) {
+        bottomNav.setPadding(
+            bottomNav.getPaddingLeft(),
+            bottomNav.getPaddingTop(),
+            bottomNav.getPaddingRight(),
+            bottomInset
+        );
+    }
+  }
+
+  private int getStatusBarHeight() {
+    int result = 0;
+    int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+    if (resourceId > 0) {
+        result = getResources().getDimensionPixelSize(resourceId);
+    }
+    if (result == 0) {
+        result = (int) Math.ceil(25 * getResources().getDisplayMetrics().density);
+    }
+    return result;
+  }
+
+  private int getNavigationBarHeight() {
+    if (!hasNavigationBar()) return 0;
+    
+    int result = 0;
+    int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+    if (resourceId > 0) {
+        result = getResources().getDimensionPixelSize(resourceId);
+    }
+    return result;
+  }
+
+  private boolean hasNavigationBar() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+        Display display = getWindowManager().getDefaultDisplay();
+        android.util.DisplayMetrics realMetrics = new android.util.DisplayMetrics();
+        display.getRealMetrics(realMetrics);
+        
+        int realHeight = realMetrics.heightPixels;
+        int realWidth = realMetrics.widthPixels;
+        
+        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+        display.getMetrics(displayMetrics);
+        
+        int displayHeight = displayMetrics.heightPixels;
+        int displayWidth = displayMetrics.widthPixels;
+        
+        return (realWidth - displayWidth) > 0 || (realHeight - displayHeight) > 0;
+    }
+    
+    boolean hasMenuKey = ViewConfiguration.get(this).hasPermanentMenuKey();
+    boolean hasBackKey = KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_BACK);
+    return !hasMenuKey && !hasBackKey;
+  }
 }
+
+
+
 
 
 
