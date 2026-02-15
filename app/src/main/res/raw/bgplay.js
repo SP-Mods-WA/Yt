@@ -95,18 +95,8 @@ configurable: true
 });
 
 
-// ✅ Force video to keep playing when visibility changes in PIP mode
-document.addEventListener('visibilitychange', function() {
-    if (window.isPIP && document.hidden) {
-        console.log('🔒 Screen off detected in PIP mode - forcing play');
-        setTimeout(() => {
-            var ytproAud = document.getElementsByClassName('video-stream')[0];
-            if (ytproAud && ytproAud.paused) {
-                ytproAud.play().catch(e => console.log('Play failed:', e));
-            }
-        }, 100);
-    }
-}, true); // Use capture phase to run before YouTube's listener
+// ✅✅✅ COMPLETELY REMOVED - No visibility change handling
+// This prevents any auto-play behavior on home button press
 
 
 
@@ -220,14 +210,12 @@ handlers.seekto({ seekTime: t/1000 });
 
 /*Daamm , its play*/
 function playVideo(){
+    if(!pauseAllowed){
+        window.PIPause = false;
+        navigator.mediaSession.playbackState = 'playing';
+    }
 
-
-if(!pauseAllowed){
-window.PIPause = false;
-navigator.mediaSession.playbackState = 'playing';
-}
-
-handlers.play();
+    handlers.play();
 }
 
 /*Daamm , its pause*/
