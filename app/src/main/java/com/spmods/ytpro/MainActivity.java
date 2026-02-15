@@ -2,11 +2,13 @@ package com.spmods.ytpro;
 
 import android.Manifest;
 import android.animation.Animator;
+import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.*;
 import android.os.*;
 import android.view.*;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.*;
 import android.content.*;
@@ -20,13 +22,16 @@ import org.json.*;
 import android.content.pm.*;
 import android.provider.Settings;
 import java.net.URLEncoder;
+import android.content.SharedPreferences;
 import android.webkit.CookieManager;
 import android.media.AudioManager;
 import android.os.PowerManager;
 import java.net.*;
+import javax.net.ssl.HttpsURLConnection;
 import java.util.*;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
+import android.content.Context;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.EditorInfo;
 
@@ -36,6 +41,7 @@ public class MainActivity extends Activity {
   private BroadcastReceiver broadcastReceiver;
   private AudioManager audioManager;
   private PowerManager.WakeLock wakeLock;
+
   private String icon = "";
   private String title = "";
   private String subtitle = "";
@@ -44,47 +50,94 @@ public class MainActivity extends Activity {
   private boolean mediaSession = false;
   private boolean isPip = false;
   private boolean dL = false;
+
   private YTProWebview web;
   private OnBackInvokedCallback backCallback;
+  
   private RelativeLayout offlineLayout;
   private boolean isOffline = false;
+  
   private boolean userNavigated = false;
   private String lastUrl = "";
+  
   private boolean scriptsInjected = false;
+  
+  // Loading Animation Views
   private RelativeLayout loadingScreen;
   private View outerCircle;
   private View innerCircle;
+  
   private ObjectAnimator outerRotation;
   private ObjectAnimator innerRotation;
+  
   private TextView notificationBadge;
   private NotificationPreferences notificationPrefs;
   private NotificationFetcher notificationFetcher;
   
-@Override
-protected void onCreate(Bundle savedInstanceState) {
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    
+    // ✅ Edge-to-edge mode enable කරන්න (Android 11+)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        getWindow().setDecorFitsSystemWindows(false);
+    }
+    
     setContentView(R.layout.main);
     
-    setupSystemBars();
-    setupHeaderPadding();
+    // ✅ Status bar & Navigation bar colors set කරන්න
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        Window window = getWindow();
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.setStatusBarColor(Color.parseColor("#0F0F0F"));
+        window.setNavigationBarColor(Color.parseColor("#0F0F0F"));
+        
+        // ✅ Android 10 වලට පහළ devices වලට
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            View decorView = window.getDecorView();
+            decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            );
+        }
+    }
+    
+    // ✅ System insets handle කරන්න (සියලුම Android versions වලට)
+    handleSystemInsets();
 
     SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
+
     if (!prefs.contains("bgplay")) {
       prefs.edit().putBoolean("bgplay", true).apply();
     }
     
+    // ✅ Initialize Wake Lock for PIP mode
     PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-    wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "YTPro::PIPWakeLock");
+    wakeLock = powerManager.newWakeLock(
+        PowerManager.PARTIAL_WAKE_LOCK, 
+        "YTPro::PIPWakeLock"
+    );
     
     requestNotificationPermission();
+    
+    // ✅ Setup custom header FIRST
     setupCustomHeader();
     
+    // Initialize notification system
     notificationPrefs = new NotificationPreferences(this);
     notificationFetcher = new NotificationFetcher(this);
+
+    // Find notification badge
     notificationBadge = findViewById(R.id.notificationBadge);
+
+    // Fetch and update notifications
     fetchAndUpdateNotifications();
     
+    // ✅ Setup bottom nav
     setupBottomNavigation();
+    
+    // Initialize loading screen
     initLoadingScreen();
     
     if (!isNetworkAvailable()) {
@@ -98,112 +151,185 @@ protected void onCreate(Bundle savedInstanceState) {
         checkNotificationsNow();
     }
     
-    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-}
-
-private void setupSystemBars() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        Window window = getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.BLACK);
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+    MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+  }
+  
+  // ✅ System Insets Handle කරන Method
+  private void handleSystemInsets() {
+    View rootView = findViewById(android.R.id.content);
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        // ✅ Android 11+ (API 30+)
+        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+            android.graphics.Insets systemBars = insets.getInsets(
+                android.view.WindowInsets.Type.systemBars()
             );
-        }
+            
+            Log.d("Insets", "📏 Status bar height: " + systemBars.top + "px");
+            Log.d("Insets", "📏 Navigation bar height: " + systemBars.bottom + "px");
+            
+            applyInsets(systemBars.top, systemBars.bottom);
+            
+            return android.view.WindowInsets.CONSUMED;
+        });
+    } else {
+        // ✅ Android 10 වලට පහළ (API 29-)
+        rootView.post(() -> {
+            int statusBarHeight = getStatusBarHeight();
+            int navBarHeight = getNavigationBarHeight();
+            
+            Log.d("Insets", "📏 Status bar height (legacy): " + statusBarHeight + "px");
+            Log.d("Insets", "📏 Navigation bar height (legacy): " + navBarHeight + "px");
+            
+            applyInsets(statusBarHeight, navBarHeight);
+        });
     }
-}
+  }
 
-private void setupHeaderPadding() {
-    final View customHeader = findViewById(R.id.customHeader);
-    final View searchBarContainer = findViewById(R.id.searchBarContainer);
-    final View bottomNavBar = findViewById(R.id.bottomNavBar);
-    final View rootLayout = findViewById(R.id.main);
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
-        if (customHeader != null) {
-            customHeader.setOnApplyWindowInsetsListener((v, insets) -> {
-                int topInset = insets.getSystemWindowInsetTop();
-                
-                // Set padding
-                v.setPadding(dpToPx(16), topInset, dpToPx(16), 0);
-                
-                // Increase height to accommodate status bar
-                ViewGroup.LayoutParams params = v.getLayoutParams();
-                if (params != null) {
-                    params.height = dpToPx(56) + topInset;
-                    v.setLayoutParams(params);
-                }
-                
-                return insets;
-            });
-            customHeader.requestApplyInsets();
+  private void applyInsets(int topInset, int bottomInset) {
+    // ✅ Custom header එකට top padding add කරන්න
+    View customHeader = findViewById(R.id.customHeader);
+    if (customHeader != null) {
+        ViewGroup.LayoutParams headerParams = customHeader.getLayoutParams();
+        if (headerParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
+            headerParams.height = dpToPx(56) + topInset;
         }
+        customHeader.setLayoutParams(headerParams);
         
-        if (searchBarContainer != null) {
-            searchBarContainer.setOnApplyWindowInsetsListener((v, insets) -> {
-                int topInset = insets.getSystemWindowInsetTop();
-                
-                v.setPadding(dpToPx(16), topInset, dpToPx(16), 0);
-                
-                ViewGroup.LayoutParams params = v.getLayoutParams();
-                if (params != null) {
-                    params.height = dpToPx(56) + topInset;
-                    v.setLayoutParams(params);
-                }
-                
-                return insets;
-            });
-        }
+        customHeader.setPadding(
+            customHeader.getPaddingLeft(),
+            topInset,
+            customHeader.getPaddingRight(),
+            customHeader.getPaddingBottom()
+        );
         
-        if (bottomNavBar != null) {
-            bottomNavBar.setOnApplyWindowInsetsListener((v, insets) -> {
-                int bottomInset = insets.getSystemWindowInsetBottom();
-                v.setPadding(0, 0, 0, bottomInset);
-                return insets;
-            });
-            bottomNavBar.requestApplyInsets();
-        }
+        Log.d("Header", "✅ Header padding top: " + topInset + "px");
     }
     
-    if (rootLayout != null) {
-        rootLayout.setPadding(0, 0, 0, 0);
+    // ✅ Bottom navigation එකට bottom padding add කරන්න
+    View bottomNav = findViewById(R.id.bottomNavigation);
+    if (bottomNav != null) {
+        ViewGroup.LayoutParams navParams = bottomNav.getLayoutParams();
+        if (navParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
+            navParams.height = dpToPx(56) + bottomInset;
+        }
+        bottomNav.setLayoutParams(navParams);
+        
+        bottomNav.setPadding(
+            bottomNav.getPaddingLeft(),
+            bottomNav.getPaddingTop(),
+            bottomNav.getPaddingRight(),
+            bottomInset
+        );
+        
+        Log.d("BottomNav", "✅ Bottom nav padding bottom: " + bottomInset + "px");
     }
-}
+  }
+
+  // ✅ Status bar height ගන්න method (legacy devices වලට)
+  private int getStatusBarHeight() {
+    int result = 0;
+    int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+    if (resourceId > 0) {
+        result = getResources().getDimensionPixelSize(resourceId);
+    }
+    
+    // Fallback
+    if (result == 0) {
+        result = (int) Math.ceil(25 * getResources().getDisplayMetrics().density);
+    }
+    
+    return result;
+  }
+
+  // ✅ Navigation bar height ගන්න method (legacy devices වලට)
+  private int getNavigationBarHeight() {
+    // Check if device has navigation bar
+    if (!hasNavigationBar()) {
+        return 0;
+    }
+    
+    int result = 0;
+    int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+    if (resourceId > 0) {
+        result = getResources().getDimensionPixelSize(resourceId);
+    }
+    
+    return result;
+  }
+
+  // ✅ Device එකේ navigation bar එකක් තියෙනවද check කරන්න
+  private boolean hasNavigationBar() {
+    // Samsung, Xiaomi වගේ phones වල navigation bar hide කරන්න පුළුවන්
+    // ඒක check කරන්න
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+        Display display = getWindowManager().getDefaultDisplay();
+        android.util.DisplayMetrics realMetrics = new android.util.DisplayMetrics();
+        display.getRealMetrics(realMetrics);
+        
+        int realHeight = realMetrics.heightPixels;
+        int realWidth = realMetrics.widthPixels;
+        
+        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+        display.getMetrics(displayMetrics);
+        
+        int displayHeight = displayMetrics.heightPixels;
+        int displayWidth = displayMetrics.widthPixels;
+        
+        return (realWidth - displayWidth) > 0 || (realHeight - displayHeight) > 0;
+    }
+    
+    // Default - assume has nav bar
+    boolean hasMenuKey = ViewConfiguration.get(this).hasPermanentMenuKey();
+    boolean hasBackKey = KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_BACK);
+    return !hasMenuKey && !hasBackKey;
+  }
   
   private void initLoadingScreen() {
     loadingScreen = new RelativeLayout(this);
     loadingScreen.setLayoutParams(new RelativeLayout.LayoutParams(
-        RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        RelativeLayout.LayoutParams.MATCH_PARENT,
+        RelativeLayout.LayoutParams.MATCH_PARENT
+    ));
     loadingScreen.setBackgroundColor(Color.parseColor("#CC0F0F0F"));
     loadingScreen.setVisibility(View.GONE);
     
     RelativeLayout animContainer = new RelativeLayout(this);
-    RelativeLayout.LayoutParams animParams = new RelativeLayout.LayoutParams(dpToPx(40), dpToPx(40));
+    RelativeLayout.LayoutParams animParams = new RelativeLayout.LayoutParams(
+        dpToPx(40), 
+        dpToPx(40)
+    );
     animParams.addRule(RelativeLayout.CENTER_IN_PARENT);
     animContainer.setLayoutParams(animParams);
     
+    // Ball 1 (Cyan)
     outerCircle = new View(this);
-    RelativeLayout.LayoutParams ball1Params = new RelativeLayout.LayoutParams(dpToPx(16), dpToPx(16));
+    RelativeLayout.LayoutParams ball1Params = new RelativeLayout.LayoutParams(
+        dpToPx(16), 
+        dpToPx(16)
+    );
     ball1Params.addRule(RelativeLayout.CENTER_IN_PARENT);
     outerCircle.setLayoutParams(ball1Params);
     outerCircle.setBackground(createCircle("#00F2EA"));
     animContainer.addView(outerCircle);
     
+    // Ball 2 (Magenta)
     innerCircle = new View(this);
-    RelativeLayout.LayoutParams ball2Params = new RelativeLayout.LayoutParams(dpToPx(16), dpToPx(16));
+    RelativeLayout.LayoutParams ball2Params = new RelativeLayout.LayoutParams(
+        dpToPx(16), 
+        dpToPx(16)
+    );
     ball2Params.addRule(RelativeLayout.CENTER_IN_PARENT);
     innerCircle.setLayoutParams(ball2Params);
     innerCircle.setBackground(createCircle("#FF0050"));
     animContainer.addView(innerCircle);
     
     loadingScreen.addView(animContainer);
+    
     addContentView(loadingScreen, new ViewGroup.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT
+    ));
   }
   
   private void showLoadingScreen() {
@@ -288,6 +414,7 @@ private void setupHeaderPadding() {
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
+    
     settings.setCacheMode(WebSettings.LOAD_DEFAULT);
     
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -296,16 +423,14 @@ private void setupHeaderPadding() {
     
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setLoadsImagesAutomatically(true);
+    settings.setBlockNetworkImage(false);
+    settings.setBlockNetworkLoads(false);
+    
     settings.setUseWideViewPort(true);
     settings.setLoadWithOverviewMode(true);
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
-    } else {
-        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
-    }
-    
+    settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
     settings.setSupportZoom(false);
+    
     settings.setAllowFileAccess(true);
     settings.setAllowContentAccess(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
@@ -376,158 +501,173 @@ private void setupHeaderPadding() {
         scriptsInjected = false;
       }
 
-@Override
-public void onPageFinished(WebView p1, String url) {
-      
-    p1.evaluateJavascript(
-        "(function() {" +
-        "  document.body.style.margin = '0';" +
-        "  document.body.style.padding = '0';" +
-        "  document.documentElement.style.margin = '0';" +
-        "  document.documentElement.style.padding = '0';" +
-        "  document.documentElement.style.overflow = 'auto';" +
-        "})();",
-        null
-    );
-
-    if (url.contains("/feed/notifications")) {
+      @Override
+      public void onPageFinished(WebView p1, String url) {
+        
+        // ✅ Fix body alignment first
         p1.evaluateJavascript(
             "(function() {" +
-            "  var style = document.createElement('style');" +
-            "  style.innerHTML = '" +
-            "    * { margin: 0; padding: 0; box-sizing: border-box; }" +
-            "    html, body { " +
-            "      margin: 0 !important; " +
-            "      padding: 0 !important; " +
-            "      width: 100% !important; " +
-            "      overflow-x: hidden !important; " +
+            "  document.body.style.margin = '0';" +
+            "  document.body.style.padding = '0';" +
+            "  document.body.style.paddingTop = '0';" +
+            "  document.body.style.paddingBottom = '70px';" +
+            "  document.documentElement.style.margin = '0';" +
+            "  document.documentElement.style.padding = '0';" +
+            "})();",
+            null
+        );
+
+        // ✅ Special handling for notifications page
+        if (url.contains("/feed/notifications")) {
+            p1.evaluateJavascript(
+                "(function() {" +
+                "  var style = document.createElement('style');" +
+                "  style.innerHTML = '" +
+                "    * { margin: 0; padding: 0; box-sizing: border-box; }" +
+                "    html, body { " +
+                "      margin: 0 !important; " +
+                "      padding: 0 !important; " +
+                "      width: 100% !important; " +
+                "      overflow-x: hidden !important; " +
+                "    }" +
+                "    ytm-mobile-topbar-renderer { display: none !important; }" +
+                "    ytm-pivot-bar-renderer { display: none !important; }" +
+                "    #masthead { display: none !important; }" +
+                "    body { " +
+                "      padding-top: 0px !important; " +
+                "      padding-bottom: 70px !important; " +
+                "      background: #0F0F0F !important; " +
+                "    }" +
+                "    ytm-item-section-renderer { margin-top: 0 !important; }" +
+                "  ';" +
+                "  document.head.appendChild(style);" +
+                "  console.log('✅ Notifications page styled');" +
+                "})();",
+                null
+            );
+            
+            hideLoadingScreen();
+            Log.d("WebView", "✅ Notifications page loaded");
+            return;
+        }
+
+        // ✅ Inject scripts from assets
+        if (!scriptsInjected) {
+            injectYTProScriptsFromAssets();
+            scriptsInjected = true;
+        }
+
+        // ✅✅ ENHANCED FORCE HIDE YOUTUBE HEADER & BOTTOM BAR ✅✅
+        web.evaluateJavascript(
+            "(function() {" +
+            "  'use strict';" +
+            "  " +
+            "  function hideYouTubeUI() {" +
+            // Create style if not exists
+            "    if (!document.getElementById('ytpro-force-hide')) {" +
+            "      var style = document.createElement('style');" +
+            "      style.id = 'ytpro-force-hide';" +
+            "      style.textContent = `" +
+            // Header
+            "        ytm-mobile-topbar-renderer," +
+            "        #masthead," +
+            "        .mobile-topbar-header," +
+            // Bottom Navigation Bar
+            "        ytm-pivot-bar-renderer," +
+            "        ytm-pivot-bar-item-renderer," +
+            "        .pivot-bar-item-tab," +
+            "        .pivot-bar," +
+            "        c3-tab-bar-renderer," +
+            "        ytm-app > ytm-pivot-bar-renderer," +
+            "        div[class*='pivot']," +
+            "        div[id*='pivot']," +
+            "        ytm-pivot-bar-renderer[slot='player-bar'] {" +
+            "          display: none !important;" +
+            "          visibility: hidden !important;" +
+            "          height: 0 !important;" +
+            "          min-height: 0 !important;" +
+            "          max-height: 0 !important;" +
+            "          opacity: 0 !important;" +
+            "          overflow: hidden !important;" +
+            "        }" +
+            "        body {" +
+            "          padding-top: 0px !important;" +
+            "          padding-bottom: 70px !important;" +
+            "          margin: 0 !important;" +
+            "        }" +
+            "        #page-manager {" +
+            "          padding-bottom: 70px !important;" +
+            "        }" +
+            "      `;" +
+            "      document.head.appendChild(style);" +
+            "      console.log('✅ YTPRO Style injected');" +
             "    }" +
-            "    ytm-mobile-topbar-renderer { display: none !important; }" +
-            "    ytm-pivot-bar-renderer { display: none !important; }" +
-            "    #masthead { display: none !important; }" +
-            "    body { " +
-            "      padding-top: 0px !important; " +
-            "      padding-bottom: 70px !important; " +
-            "      background: #0F0F0F !important; " +
-            "    }" +
-            "    ytm-item-section-renderer { margin-top: 0 !important; }" +
-            "  ';" +
-            "  document.head.appendChild(style);" +
-            "  console.log('✅ Notifications page styled');" +
+            // Also manually hide and remove elements
+            "    var hideSelectors = [" +
+            "      'ytm-mobile-topbar-renderer'," +
+            "      '#masthead'," +
+            "      'ytm-pivot-bar-renderer'," +
+            "      'ytm-pivot-bar-item-renderer'," +
+            "      'c3-tab-bar-renderer'" +
+            "    ];" +
+            "    hideSelectors.forEach(function(selector) {" +
+            "      var elements = document.querySelectorAll(selector);" +
+            "      elements.forEach(function(el) {" +
+            "        el.style.display = 'none';" +
+            "        el.style.visibility = 'hidden';" +
+            "        el.style.height = '0px';" +
+            "        el.style.opacity = '0';" +
+            "        el.remove();" + // Actually remove from DOM
+            "      });" +
+            "    });" +
+            "  }" +
+            // Run immediately
+            "  hideYouTubeUI();" +
+            // Watch for new elements
+            "  var observer = new MutationObserver(function() {" +
+            "    hideYouTubeUI();" +
+            "  });" +
+            "  observer.observe(document.body, { childList: true, subtree: true });" +
+            // Run every 500ms as backup
+            "  setInterval(hideYouTubeUI, 500);" +
+            "  console.log('✅ YTPRO YouTube navigation hiding active');" +
             "})();",
             null
         );
         
-        hideLoadingScreen();
-        Log.d("WebView", "✅ Notifications page loaded");
-        return;
-    }
+        // ✅ Block shorts auto-redirect
+        web.evaluateJavascript(
+            "(function() {" +
+            "  var originalPushState = history.pushState;" +
+            "  history.pushState = function(state, title, url) {" +
+            "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
+            "      return;" +
+            "    }" +
+            "    return originalPushState.apply(this, arguments);" +
+            "  };" +
+            "})();",
+            null
+        );
 
-    if (!scriptsInjected) {
-        injectYTProScriptsFromAssets();
-        scriptsInjected = true;
-    }
+        if (dL) {
+            web.postDelayed(() -> {
+                web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
+                dL = false;
+            }, 2000);
+        }
 
-    web.evaluateJavascript(
-        "(function() {" +
-        "  function hideYouTubeNavigation() {" +
-        "    if (!document.getElementById('ytpro-hide-nav')) {" +
-        "      var style = document.createElement('style');" +
-        "      style.id = 'ytpro-hide-nav';" +
-        "      style.innerHTML = '" +
-        "        ytm-mobile-topbar-renderer," +
-        "        #masthead," +
-        "        .mobile-topbar-header," +
-        "        ytm-pivot-bar-renderer," +
-        "        ytm-pivot-bar-item-renderer," +
-        "        .pivot-bar-item-tab," +
-        "        .pivot-bar," +
-        "        c3-tab-bar-renderer," +
-        "        ytm-app > ytm-pivot-bar-renderer," +
-        "        div[class*=\"pivot\"]," +
-        "        div[id*=\"pivot\"] {" +
-        "          display: none !important;" +
-        "          visibility: hidden !important;" +
-        "          height: 0 !important;" +
-        "          min-height: 0 !important;" +
-        "          max-height: 0 !important;" +
-        "          opacity: 0 !important;" +
-        "          overflow: hidden !important;" +
-        "        }" +
-        "        body {" +
-        "          padding-top: 0px !important;" +
-        "          padding-bottom: 70px !important;" +
-        "        }" +
-        "        #page-manager {" +
-        "          padding-bottom: 70px !important;" +
-        "        }" +
-        "      ';" +
-        "      document.head.appendChild(style);" +
-        "      console.log('✅ Style injected');" +
-        "    }" +
-        "    var hideSelectors = [" +
-        "      'ytm-mobile-topbar-renderer'," +
-        "      '#masthead'," +
-        "      'ytm-pivot-bar-renderer'," +
-        "      'ytm-pivot-bar-item-renderer'," +
-        "      'c3-tab-bar-renderer'" +
-        "    ];" +
-        "    hideSelectors.forEach(function(selector) {" +
-        "      var elements = document.querySelectorAll(selector);" +
-        "      if (elements.length > 0) {" +
-        "        console.log('🎯 Found ' + elements.length + ' elements for: ' + selector);" +
-        "      }" +
-        "      elements.forEach(function(el) {" +
-        "        el.style.display = 'none';" +
-        "        el.style.visibility = 'hidden';" +
-        "        el.style.height = '0px';" +
-        "        el.style.opacity = '0';" +
-        "      });" +
-        "    });" +
-        "  }" +
-        "  hideYouTubeNavigation();" +
-        "  var observer = new MutationObserver(function() {" +
-        "    hideYouTubeNavigation();" +
-        "  });" +
-        "  observer.observe(document.body, { childList: true, subtree: true });" +
-        "  setInterval(hideYouTubeNavigation, 500);" +
-        "  console.log('✅ YouTube navigation hiding active');" +
-        "})();",
-        null
-    );
-    
-    web.evaluateJavascript(
-        "(function() {" +
-        "  var originalPushState = history.pushState;" +
-        "  history.pushState = function(state, title, url) {" +
-        "    if (url && url.includes('/shorts') && !window.location.href.includes('/shorts')) {" +
-        "      return;" +
-        "    }" +
-        "    return originalPushState.apply(this, arguments);" +
-        "  };" +
-        "})();",
-        null
-    );
+        if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
+            isPlaying = false;
+            mediaSession = false;
+            stopService(new Intent(getApplicationContext(), ForegroundService.class));
+        }
 
-    if (dL) {
-        web.postDelayed(() -> {
-            web.evaluateJavascript("if (typeof window.ytproDownVid === 'function') { window.location.hash='download'; }", null);
-            dL = false;
-        }, 2000);
-    }
+        new Handler().postDelayed(() -> {
+            hideLoadingScreen();
+        }, 500);
 
-    if (!url.contains("youtube.com/watch") && !url.contains("youtube.com/shorts") && isPlaying) {
-        isPlaying = false;
-        mediaSession = false;
-        stopService(new Intent(getApplicationContext(), ForegroundService.class));
-    }
-
-    new Handler().postDelayed(() -> {
-        hideLoadingScreen();
-    }, 500);
-
-    super.onPageFinished(p1, url);
-}
+        super.onPageFinished(p1, url);
+      }
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -575,6 +715,7 @@ public void onPageFinished(WebView p1, String url) {
   
   private void injectYTProScriptsFromAssets() {
     try {
+        // 1. Trusted Types policy
         web.evaluateJavascript(
             "if (window.trustedTypes && window.trustedTypes.createPolicy && !window.trustedTypes.defaultPolicy) {" +
             "  window.trustedTypes.createPolicy('default', {" +
@@ -586,6 +727,7 @@ public void onPageFinished(WebView p1, String url) {
             null
         );
         
+        // 2. Load scripts from res/raw
         String scriptLoader = 
             "(function() {" +
             "  if(window.YTPRO_LOADED) return;" +
@@ -608,6 +750,7 @@ public void onPageFinished(WebView p1, String url) {
         
         web.evaluateJavascript(scriptLoader, null);
         
+        // 3. Additional YouTube modifications
         web.evaluateJavascript(
             "(function() {" +
             "  setTimeout(function() {" +
@@ -623,6 +766,7 @@ public void onPageFinished(WebView p1, String url) {
             null
         );
         
+        // 4. Status bar color sync
         web.evaluateJavascript(
             "(function() {" +
             "  console.log('🎨 Status bar sync initialized');" +
@@ -664,6 +808,7 @@ public void onPageFinished(WebView p1, String url) {
   
   private String loadScriptFromAssets(String filename) {
     try {
+        // ✅ Get resource ID from res/raw
         int resourceId = getResources().getIdentifier(
             filename.replace(".js", ""),
             "raw",
@@ -671,10 +816,11 @@ public void onPageFinished(WebView p1, String url) {
         );
         
         if (resourceId == 0) {
-            Log.e("Script", "File not found: " + filename);
+            Log.e("Script", "❌ File not found: " + filename);
             return "";
         }
         
+        // ✅ Read from res/raw
         InputStream inputStream = getResources().openRawResource(resourceId);
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         StringBuilder content = new StringBuilder();
@@ -685,6 +831,7 @@ public void onPageFinished(WebView p1, String url) {
         }
         reader.close();
         
+        // ✅ Escape for JavaScript injection
         String escaped = content.toString()
             .replace("\\", "\\\\")
             .replace("`", "\\`")
@@ -695,7 +842,7 @@ public void onPageFinished(WebView p1, String url) {
         return "loadScriptFromString(`" + escaped + "`);";
         
     } catch (IOException e) {
-        Log.e("Script", "Failed to load " + filename + ": " + e.getMessage());
+        Log.e("Script", "❌ Failed to load " + filename + ": " + e.getMessage());
         return "";
     }
   }
@@ -710,6 +857,7 @@ public void onPageFinished(WebView p1, String url) {
     ImageView searchBackButton = findViewById(R.id.searchBackButton);
     EditText searchInput = findViewById(R.id.searchInput);
 
+    // ✅ Search - Show custom search bar with animation
     iconSearch.setOnClickListener(v -> {
         searchBarContainer.setVisibility(View.VISIBLE);
         searchBarContainer.setAlpha(0f);
@@ -726,6 +874,7 @@ public void onPageFinished(WebView p1, String url) {
         imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
     });
 
+    // ✅ Back button - Hide search bar
     searchBackButton.setOnClickListener(v -> {
         searchBarContainer.animate()
             .alpha(0f)
@@ -738,6 +887,7 @@ public void onPageFinished(WebView p1, String url) {
         imm.hideSoftInputFromWindow(searchInput.getWindowToken(), 0);
     });
 
+    // ✅ Search action
     searchInput.setOnEditorActionListener((v, actionId, event) -> {
         if (actionId == EditorInfo.IME_ACTION_SEARCH) {
             String query = searchInput.getText().toString();
@@ -761,6 +911,7 @@ public void onPageFinished(WebView p1, String url) {
         Toast.makeText(this, "Cast feature coming soon! 📡", Toast.LENGTH_SHORT).show();
     });
 
+    // ✅ Settings - Open YTPRO settings
     iconSettings.setOnClickListener(v -> {
         userNavigated = true;
         web.evaluateJavascript("window.location.hash='settings';", null);
@@ -864,10 +1015,11 @@ public void onPageFinished(WebView p1, String url) {
     web.loadUrl(isInPictureInPictureMode ? "javascript:PIPlayer();" : "javascript:removePIP();",null);
     isPip = isInPictureInPictureMode;
     
+    // ✅ Manage wake lock for PIP mode
     if (isInPictureInPictureMode && isPlaying) {
         if (wakeLock != null && !wakeLock.isHeld()) {
             wakeLock.acquire(10*60*1000L);
-            Log.d("PIP", "🔒 Wake lock acquired");
+            Log.d("PIP", "🔒 Wake lock acquired - display can turn off");
         }
     } else {
         if (wakeLock != null && wakeLock.isHeld()) {
@@ -906,6 +1058,7 @@ public void onPageFinished(WebView p1, String url) {
   public void onDestroy() {
     super.onDestroy();
     
+    // ✅ Release wake lock if held
     if (wakeLock != null && wakeLock.isHeld()) {
         wakeLock.release();
         Log.d("MainActivity", "🔓 Wake lock released on destroy");
@@ -936,19 +1089,12 @@ public void onPageFinished(WebView p1, String url) {
     public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback viewCallback) {
       this.mOriginalOrientation = portrait ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
       if (isPip) this.mOriginalOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
-      
-      // ✅ HIDE HEADER & BOTTOM NAV FOR FULLSCREEN
-      View customHeader = findViewById(R.id.customHeader);
-      View bottomNavBar = findViewById(R.id.bottomNavBar);
-      if (customHeader != null) customHeader.setVisibility(View.GONE);
-      if (bottomNavBar != null) bottomNavBar.setVisibility(View.GONE);
-      
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         WindowManager.LayoutParams params = MainActivity.this.getWindow().getAttributes();
         params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         MainActivity.this.getWindow().setAttributes(params);
       }
-      
       if (this.mCustomView != null) {
         onHideCustomView();
         return;
@@ -963,12 +1109,6 @@ public void onPageFinished(WebView p1, String url) {
     }
 
     public void onHideCustomView() {
-      // ✅ SHOW HEADER & BOTTOM NAV WHEN EXITING FULLSCREEN
-      View customHeader = findViewById(R.id.customHeader);
-      View bottomNavBar = findViewById(R.id.bottomNavBar);
-      if (customHeader != null) customHeader.setVisibility(View.VISIBLE);
-      if (bottomNavBar != null) bottomNavBar.setVisibility(View.VISIBLE);
-      
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         WindowManager.LayoutParams params = getWindow().getAttributes();
@@ -1133,12 +1273,16 @@ public void onPageFinished(WebView p1, String url) {
     isOffline = true;
     offlineLayout = new RelativeLayout(this);
     offlineLayout.setLayoutParams(new RelativeLayout.LayoutParams(
-        RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        RelativeLayout.LayoutParams.MATCH_PARENT,
+        RelativeLayout.LayoutParams.MATCH_PARENT
+    ));
     offlineLayout.setBackgroundColor(Color.parseColor("#0F0F0F"));
     
     LinearLayout centerLayout = new LinearLayout(this);
     RelativeLayout.LayoutParams centerParams = new RelativeLayout.LayoutParams(
-        RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        RelativeLayout.LayoutParams.WRAP_CONTENT,
+        RelativeLayout.LayoutParams.WRAP_CONTENT
+    );
     centerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
     centerLayout.setLayoutParams(centerParams);
     centerLayout.setOrientation(LinearLayout.VERTICAL);
@@ -1148,7 +1292,9 @@ public void onPageFinished(WebView p1, String url) {
     iconView.setText("📡");
     iconView.setTextSize(80);
     LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
     iconParams.bottomMargin = dpToPx(24);
     iconView.setLayoutParams(iconParams);
     iconView.setGravity(Gravity.CENTER);
@@ -1160,17 +1306,22 @@ public void onPageFinished(WebView p1, String url) {
     titleView.setTextColor(Color.WHITE);
     titleView.setTypeface(null, Typeface.BOLD);
     LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
     titleParams.bottomMargin = dpToPx(8);
     titleView.setLayoutParams(titleParams);
     centerLayout.addView(titleView);
     
     TextView messageView = new TextView(this);
-    messageView.setText("Check your Wi-Fi or mobile data\\nconnection.");
+    messageView.setText("Check your Wi-Fi or mobile data\nconnection.");
     messageView.setTextSize(14);
     messageView.setTextColor(Color.parseColor("#AAAAAA"));
     messageView.setGravity(Gravity.CENTER);
-    LinearLayout.LayoutParams msgParams = new LinearLayout.LayoutParams(dpToPx(280), LinearLayout.LayoutParams.WRAP_CONTENT);
+    LinearLayout.LayoutParams msgParams = new LinearLayout.LayoutParams(
+        dpToPx(280),
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    );
     msgParams.bottomMargin = dpToPx(32);
     messageView.setLayoutParams(msgParams);
     centerLayout.addView(messageView);
@@ -1183,7 +1334,9 @@ public void onPageFinished(WebView p1, String url) {
     retryButton.setAllCaps(false);
     
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        retryButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FF0000")));
+        retryButton.setBackgroundTintList(
+            android.content.res.ColorStateList.valueOf(Color.parseColor("#FF0000"))
+        );
     } else {
         retryButton.setBackgroundColor(Color.parseColor("#FF0000"));
     }
@@ -1203,7 +1356,9 @@ public void onPageFinished(WebView p1, String url) {
     centerLayout.addView(retryButton);
     offlineLayout.addView(centerLayout);
     addContentView(offlineLayout, new ViewGroup.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT
+    ));
   }
 
   private void hideOfflineScreen() {
@@ -1226,7 +1381,10 @@ public void onPageFinished(WebView p1, String url) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != 
             PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 102);
+            requestPermissions(
+                new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                102
+            );
         }
     }
   }
