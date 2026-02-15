@@ -165,6 +165,7 @@
         android:layout_above="@+id/bottomNavBar"/>
 
     <include
+        android:id="@+id/bottomNavBar"
         layout="@layout/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
