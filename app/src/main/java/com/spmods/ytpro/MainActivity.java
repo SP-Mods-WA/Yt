@@ -40,6 +40,8 @@ import android.accounts.AccountManagerCallback;
 import android.accounts.AccountManagerFuture;
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
+import android.content.DialogInterface;
+import android.os.Handler;
 
 public class MainActivity extends Activity {
 
@@ -177,7 +179,7 @@ public class MainActivity extends Activity {
         if (checkSelfPermission(android.Manifest.permission.GET_ACCOUNTS) != 
             PackageManager.PERMISSION_GRANTED) {
             
-            Toast.makeText(this, "Please grant account permission first", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Requesting account permission...", Toast.LENGTH_SHORT).show();
             requestPermissions(
                 new String[]{android.Manifest.permission.GET_ACCOUNTS},
                 300
@@ -186,53 +188,66 @@ public class MainActivity extends Activity {
         }
     }
     
-    AccountManager accountManager = AccountManager.get(this);
-    Account[] accounts = accountManager.getAccountsByType("com.google");
-    
-    Log.d("AccountPicker", "📱 Found " + accounts.length + " Google accounts");
-    
-    if (accounts.length == 0) {
-        // No Google accounts found
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("No Google Account Found")
-            .setMessage("Please add a Google account to your device first.\n\nGo to:\nSettings → Accounts → Add Account → Google")
-            .setPositiveButton("Add Account", (dialog, which) -> {
-                try {
-                    Intent intent = new Intent(android.provider.Settings.ACTION_ADD_ACCOUNT);
-                    intent.putExtra(android.provider.Settings.EXTRA_ACCOUNT_TYPES, new String[]{"com.google"});
-                    startActivity(intent);
-                } catch (Exception e) {
-                    Toast.makeText(this, "Please add a Google account in Settings → Accounts", Toast.LENGTH_LONG).show();
-                }
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
-        return;
+    try {
+        AccountManager accountManager = AccountManager.get(this);
+        Account[] accounts = accountManager.getAccountsByType("com.google");
+        
+        Log.d("AccountPicker", "📱 Found " + accounts.length + " Google accounts");
+        
+        // Log all accounts for debugging
+        for (int i = 0; i < accounts.length; i++) {
+            Log.d("AccountPicker", "  Account " + i + ": " + accounts[i].name);
+        }
+        
+        if (accounts.length == 0) {
+            // No Google accounts - show message
+            new android.app.AlertDialog.Builder(this)
+                .setTitle("No Google Account")
+                .setMessage("No Google accounts found on this device.\n\nPlease add a Google account first in:\nSettings → Accounts → Add Account → Google")
+                .setPositiveButton("OK", null)
+                .show();
+            return;
+        }
+        
+        // ✅ Create simple list dialog
+        final String[] accountNames = new String[accounts.length];
+        for (int i = 0; i < accounts.length; i++) {
+            accountNames[i] = accounts[i].name;
+        }
+        
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Choose an account");
+        
+        // ✅ Use setSingleChoiceItems for better UI
+        builder.setSingleChoiceItems(accountNames, -1, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Account selectedAccount = accounts[which];
+                Log.d("AccountPicker", "✅ Selected: " + selectedAccount.name);
+                
+                dialog.dismiss();
+                loginWithAccount(selectedAccount);
+            }
+        });
+        
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        
+        // Show dialog
+        android.app.AlertDialog dialog = builder.create();
+        dialog.show();
+        
+        Log.d("AccountPicker", "✅ Dialog shown with " + accounts.length + " accounts");
+        
+    } catch (Exception e) {
+        Log.e("AccountPicker", "❌ Error: " + e.getMessage());
+        e.printStackTrace();
+        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
     }
-    
-    // Show account picker dialog
-    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-    builder.setTitle("Choose an account");
-    
-    // Create account names array with icons
-    String[] accountNames = new String[accounts.length];
-    for (int i = 0; i < accounts.length; i++) {
-        accountNames[i] = "📧 " + accounts[i].name;
-    }
-    
-    builder.setItems(accountNames, (dialog, which) -> {
-        Account selectedAccount = accounts[which];
-        Log.d("AccountPicker", "✅ Selected: " + selectedAccount.name);
-        loginWithAccount(selectedAccount);
-    });
-    
-    builder.setNegativeButton("Cancel", null);
-    
-    // Show the dialog
-    android.app.AlertDialog dialog = builder.create();
-    dialog.show();
-    
-    Log.d("AccountPicker", "🎯 Account picker dialog shown");
 }
 
 private void loginWithAccount(Account account) {
@@ -241,7 +256,7 @@ private void loginWithAccount(Account account) {
     
     // Name calculate කරන්න
     String[] parts = email.split("@");
-    if (parts.length > 0) {
+    if (parts.length > 0 && parts[0].length() > 0) {
         String tempName = parts[0];
         name = tempName.substring(0, 1).toUpperCase() + tempName.substring(1);
     } else {
@@ -260,7 +275,7 @@ private void loginWithAccount(Account account) {
     
     Toast.makeText(this, "Logging in as " + email + "...", Toast.LENGTH_SHORT).show();
     
-    // Get auth token
+    // Get auth token in background
     new Thread(new Runnable() {
         @Override
         public void run() {
@@ -268,24 +283,26 @@ private void loginWithAccount(Account account) {
                 android.accounts.AccountManager accountManager = 
                     android.accounts.AccountManager.get(MainActivity.this);
                 
-                String token = accountManager.blockingGetAuthToken(
+                // Get auth token
+                final String token = accountManager.blockingGetAuthToken(
                     account, 
                     "oauth2:https://www.googleapis.com/auth/youtube", 
                     true
                 );
                 
-                Log.d("Login", "✅ Got auth token: " + (token != null ? "Yes" : "No"));
+                Log.d("Login", "✅ Auth token: " + (token != null ? "Success" : "Failed"));
                 
                 if (token != null) {
-                    final String finalToken = token;
-                    
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            setCookiesForAccount(email, finalToken);
-                            Toast.makeText(MainActivity.this, 
-                                "✅ Logged in successfully!", Toast.LENGTH_SHORT).show();
+                            // Set cookies
+                            setCookiesForAccount(email, token);
                             
+                            Toast.makeText(MainActivity.this, 
+                                "✅ Signed in as " + name, Toast.LENGTH_SHORT).show();
+                            
+                            // Notify JavaScript
                             if (web != null) {
                                 web.evaluateJavascript(
                                     "if (window.onUserLoggedIn) { " +
@@ -294,6 +311,7 @@ private void loginWithAccount(Account account) {
                                     null
                                 );
                                 
+                                // Reload page
                                 new Handler().postDelayed(new Runnable() {
                                     @Override
                                     public void run() {
@@ -303,10 +321,20 @@ private void loginWithAccount(Account account) {
                             }
                         }
                     });
+                } else {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, 
+                                "❌ Could not get auth token", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
                 
             } catch (Exception e) {
-                Log.e("Login", "❌ Error: " + e.getMessage());
+                Log.e("Login", "❌ Login error: " + e.getMessage());
+                e.printStackTrace();
+                
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -318,6 +346,7 @@ private void loginWithAccount(Account account) {
         }
     }).start();
 }
+    
 
 private void setCookiesForAccount(String email, String token) {
     CookieManager cookieManager = CookieManager.getInstance();
