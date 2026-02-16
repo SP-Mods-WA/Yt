@@ -177,50 +177,49 @@ public class MainActivity extends Activity {
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
   
-  private void showAccountPickerDialog() {
+  // ✅ Account Picker - Full Working Code
+
+private void showAccountPickerDialog() {
+    // Check permission
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (checkSelfPermission(android.Manifest.permission.GET_ACCOUNTS) != 
+            PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.GET_ACCOUNTS}, 300);
+            return;
+        }
+    }
+    
     try {
-        // ✅ Use Android's built-in Account Picker
+        // Try system account picker first
         Intent intent = AccountManager.newChooseAccountIntent(
-            null,                           // Selected account
-            null,                           // Allowed accounts list
-            new String[]{"com.google"},     // Allowed account types
-            null,                           // Description text header
-            null,                           // Required features
-            null,                           // Account options
-            null                            // Return result
+            null, null, new String[]{"com.google"}, null, null, null, null
         );
-        
         startActivityForResult(intent, 301);
-        Log.d("AccountPicker", "🎯 System account picker launched");
+        Log.d("AccountPicker", "🎯 System picker launched");
         
     } catch (Exception e) {
-        Log.e("AccountPicker", "❌ Error: " + e.getMessage());
-        e.printStackTrace();
-        
-        // Fallback - Try direct account manager
+        Log.e("AccountPicker", "❌ System picker failed, trying fallback");
         showAccountPickerFallback();
     }
 }
 
-// ✅ Fallback method
+
 private void showAccountPickerFallback() {
     try {
         AccountManager accountManager = AccountManager.get(this);
-        
-        // Try without permission (may work on some devices)
         Account[] accounts = accountManager.getAccountsByType("com.google");
         
+        Log.d("AccountPicker", "📱 Found " + accounts.length + " accounts");
+        
         if (accounts.length == 0) {
-            // No accounts OR no permission
             new android.app.AlertDialog.Builder(this)
                 .setTitle("No Google Account")
-                .setMessage("No Google accounts found.\n\nThis could mean:\n• No accounts are added to this device\n• App doesn't have permission to access accounts\n\nPlease add a Google account in Settings.")
+                .setMessage("No Google accounts found on this device.\n\nPlease add one in Settings → Accounts")
                 .setPositiveButton("OK", null)
                 .show();
             return;
         }
         
-        // Show accounts
         final String[] accountNames = new String[accounts.length];
         for (int i = 0; i < accounts.length; i++) {
             accountNames[i] = accounts[i].name;
@@ -228,24 +227,37 @@ private void showAccountPickerFallback() {
         
         new android.app.AlertDialog.Builder(this)
             .setTitle("Choose an account")
-            .setItems(accountNames, new DialogInterface.OnClickListener() {
-                @Override
+            .setSingleChoiceItems(accountNames, -1, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
                     loginWithAccount(accounts[which]);
                 }
             })
             .setNegativeButton("Cancel", null)
             .show();
             
-    } catch (SecurityException e) {
-        Log.e("AccountPicker", "❌ Permission denied: " + e.getMessage());
-        
-        Toast.makeText(this, 
-            "Permission needed to access accounts.\n\nPlease grant permission in Settings.", 
-            Toast.LENGTH_LONG).show();
     } catch (Exception e) {
         Log.e("AccountPicker", "❌ Error: " + e.getMessage());
         Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+    }
+}
+
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+    
+    if (requestCode == 301 && resultCode == RESULT_OK && data != null) {
+        String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+        String accountType = data.getStringExtra(AccountManager.KEY_ACCOUNT_TYPE);
+        
+        Log.d("AccountPicker", "✅ Selected: " + accountName);
+        
+        if (accountName != null) {
+            Account account = new Account(
+                accountName, 
+                accountType != null ? accountType : "com.google"
+            );
+            loginWithAccount(account);
+        }
     }
 }
 
@@ -253,7 +265,6 @@ private void loginWithAccount(Account account) {
     final String email = account.name;
     final String name;
     
-    // Name calculate කරන්න
     String[] parts = email.split("@");
     if (parts.length > 0 && parts[0].length() > 0) {
         String tempName = parts[0];
@@ -264,7 +275,6 @@ private void loginWithAccount(Account account) {
     
     Log.d("Login", "🔑 Logging in as: " + email);
     
-    // Save to preferences
     SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
     prefs.edit()
         .putString("user_name", name)
@@ -274,34 +284,27 @@ private void loginWithAccount(Account account) {
     
     Toast.makeText(this, "Logging in as " + email + "...", Toast.LENGTH_SHORT).show();
     
-    // Get auth token in background
     new Thread(new Runnable() {
-        @Override
         public void run() {
             try {
                 android.accounts.AccountManager accountManager = 
                     android.accounts.AccountManager.get(MainActivity.this);
                 
-                // Get auth token
                 final String token = accountManager.blockingGetAuthToken(
                     account, 
                     "oauth2:https://www.googleapis.com/auth/youtube", 
                     true
                 );
                 
-                Log.d("Login", "✅ Auth token: " + (token != null ? "Success" : "Failed"));
+                Log.d("Login", "✅ Token: " + (token != null ? "OK" : "Failed"));
                 
                 if (token != null) {
                     runOnUiThread(new Runnable() {
-                        @Override
                         public void run() {
-                            // Set cookies
                             setCookiesForAccount(email, token);
-                            
                             Toast.makeText(MainActivity.this, 
                                 "✅ Signed in as " + name, Toast.LENGTH_SHORT).show();
                             
-                            // Notify JavaScript
                             if (web != null) {
                                 web.evaluateJavascript(
                                     "if (window.onUserLoggedIn) { " +
@@ -310,9 +313,7 @@ private void loginWithAccount(Account account) {
                                     null
                                 );
                                 
-                                // Reload page
                                 new Handler().postDelayed(new Runnable() {
-                                    @Override
                                     public void run() {
                                         web.reload();
                                     }
@@ -320,22 +321,11 @@ private void loginWithAccount(Account account) {
                             }
                         }
                     });
-                } else {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(MainActivity.this, 
-                                "❌ Could not get auth token", Toast.LENGTH_SHORT).show();
-                        }
-                    });
                 }
                 
             } catch (Exception e) {
-                Log.e("Login", "❌ Login error: " + e.getMessage());
-                e.printStackTrace();
-                
+                Log.e("Login", "❌ Error: " + e.getMessage());
                 runOnUiThread(new Runnable() {
-                    @Override
                     public void run() {
                         Toast.makeText(MainActivity.this, 
                             "Login failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -718,29 +708,7 @@ private String generateRandomString(int length) {
         super.onPageFinished(p1, url);
       }
 
-// ✅ Handle result from system account picker
-@Override
-protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-    super.onActivityResult(requestCode, resultCode, data);
-    
-    if (requestCode == 301) { // Account picker request
-        if (resultCode == RESULT_OK && data != null) {
-            String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-            String accountType = data.getStringExtra(AccountManager.KEY_ACCOUNT_TYPE);
-            
-            Log.d("AccountPicker", "✅ Selected account: " + accountName);
-            
-            if (accountName != null) {
-                // Create Account object
-                Account account = new Account(accountName, accountType != null ? accountType : "com.google");
-                loginWithAccount(account);
-            }
-        } else {
-            Log.d("AccountPicker", "❌ Account picker cancelled");
-        }
-    }
-}
-      
+
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
