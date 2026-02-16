@@ -43,6 +43,10 @@ import android.accounts.OperationCanceledException;
 import android.content.DialogInterface;
 import android.os.Handler;
 
+import java.util.ArrayList;
+import java.util.List;
+
+
 public class MainActivity extends Activity {
 
   private boolean portrait = false;
@@ -174,78 +178,73 @@ public class MainActivity extends Activity {
   }
   
   private void showAccountPickerDialog() {
-    // Check permission first
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        if (checkSelfPermission(android.Manifest.permission.GET_ACCOUNTS) != 
-            PackageManager.PERMISSION_GRANTED) {
-            
-            Toast.makeText(this, "Requesting account permission...", Toast.LENGTH_SHORT).show();
-            requestPermissions(
-                new String[]{android.Manifest.permission.GET_ACCOUNTS},
-                300
-            );
-            return;
-        }
+    try {
+        // ✅ Use Android's built-in Account Picker
+        Intent intent = AccountManager.newChooseAccountIntent(
+            null,                           // Selected account
+            null,                           // Allowed accounts list
+            new String[]{"com.google"},     // Allowed account types
+            null,                           // Description text header
+            null,                           // Required features
+            null,                           // Account options
+            null                            // Return result
+        );
+        
+        startActivityForResult(intent, 301);
+        Log.d("AccountPicker", "🎯 System account picker launched");
+        
+    } catch (Exception e) {
+        Log.e("AccountPicker", "❌ Error: " + e.getMessage());
+        e.printStackTrace();
+        
+        // Fallback - Try direct account manager
+        showAccountPickerFallback();
     }
-    
+}
+
+// ✅ Fallback method
+private void showAccountPickerFallback() {
     try {
         AccountManager accountManager = AccountManager.get(this);
+        
+        // Try without permission (may work on some devices)
         Account[] accounts = accountManager.getAccountsByType("com.google");
         
-        Log.d("AccountPicker", "📱 Found " + accounts.length + " Google accounts");
-        
-        // Log all accounts for debugging
-        for (int i = 0; i < accounts.length; i++) {
-            Log.d("AccountPicker", "  Account " + i + ": " + accounts[i].name);
-        }
-        
         if (accounts.length == 0) {
-            // No Google accounts - show message
+            // No accounts OR no permission
             new android.app.AlertDialog.Builder(this)
                 .setTitle("No Google Account")
-                .setMessage("No Google accounts found on this device.\n\nPlease add a Google account first in:\nSettings → Accounts → Add Account → Google")
+                .setMessage("No Google accounts found.\n\nThis could mean:\n• No accounts are added to this device\n• App doesn't have permission to access accounts\n\nPlease add a Google account in Settings.")
                 .setPositiveButton("OK", null)
                 .show();
             return;
         }
         
-        // ✅ Create simple list dialog
+        // Show accounts
         final String[] accountNames = new String[accounts.length];
         for (int i = 0; i < accounts.length; i++) {
             accountNames[i] = accounts[i].name;
         }
         
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("Choose an account");
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Choose an account")
+            .setItems(accountNames, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    loginWithAccount(accounts[which]);
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+            
+    } catch (SecurityException e) {
+        Log.e("AccountPicker", "❌ Permission denied: " + e.getMessage());
         
-        // ✅ Use setSingleChoiceItems for better UI
-        builder.setSingleChoiceItems(accountNames, -1, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                Account selectedAccount = accounts[which];
-                Log.d("AccountPicker", "✅ Selected: " + selectedAccount.name);
-                
-                dialog.dismiss();
-                loginWithAccount(selectedAccount);
-            }
-        });
-        
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
-        
-        // Show dialog
-        android.app.AlertDialog dialog = builder.create();
-        dialog.show();
-        
-        Log.d("AccountPicker", "✅ Dialog shown with " + accounts.length + " accounts");
-        
+        Toast.makeText(this, 
+            "Permission needed to access accounts.\n\nPlease grant permission in Settings.", 
+            Toast.LENGTH_LONG).show();
     } catch (Exception e) {
         Log.e("AccountPicker", "❌ Error: " + e.getMessage());
-        e.printStackTrace();
         Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
     }
 }
@@ -718,6 +717,30 @@ private String generateRandomString(int length) {
     }
         super.onPageFinished(p1, url);
       }
+
+// ✅ Handle result from system account picker
+@Override
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+    
+    if (requestCode == 301) { // Account picker request
+        if (resultCode == RESULT_OK && data != null) {
+            String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+            String accountType = data.getStringExtra(AccountManager.KEY_ACCOUNT_TYPE);
+            
+            Log.d("AccountPicker", "✅ Selected account: " + accountName);
+            
+            if (accountName != null) {
+                // Create Account object
+                Account account = new Account(accountName, accountType != null ? accountType : "com.google");
+                loginWithAccount(account);
+            }
+        } else {
+            Log.d("AccountPicker", "❌ Account picker cancelled");
+        }
+    }
+}
+      
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
