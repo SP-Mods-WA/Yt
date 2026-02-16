@@ -1149,7 +1149,7 @@ protected void onUserLeaveHint() {
             }
         });
     }
-}
+
     
     @JavascriptInterface 
     public void setStatusBarColor(String color) { 
