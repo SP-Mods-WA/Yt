@@ -90,8 +90,8 @@ public class MainActivity extends Activity {
             PackageManager.PERMISSION_GRANTED) {
             requestPermissions(
                 new String[]{
-                    android.Manifest.permission.GET_ACCOUNTS,
-                    android.Manifest.permission.USE_CREDENTIALS
+                    android.Manifest.permission.GET_ACCOUNTS
+                    
                 },
                 300
             );
