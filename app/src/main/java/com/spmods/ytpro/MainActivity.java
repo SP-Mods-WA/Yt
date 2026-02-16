@@ -591,6 +591,31 @@ private String generateRandomString(int length) {
         }
 
         new Handler().postDelayed(() -> hideLoadingScreen(), 500);
+        
+        // ✅ YouTube accounts page එකේ නම් account picker එක show කරන්න
+    if (url.contains("accounts.google.com") || 
+        url.contains("accounts.youtube.com") ||
+        url.contains("ServiceLogin")) {
+        
+        p1.evaluateJavascript(
+            "(function() {" +
+            "  setTimeout(function() {" +
+            "    var allButtons = document.querySelectorAll('button, a, div[role=\"button\"]');" +
+            "    allButtons.forEach(function(btn) {" +
+            "      btn.addEventListener('click', function(e) {" +
+            "        e.preventDefault();" +
+            "        e.stopPropagation();" +
+            "        if (window.Android && window.Android.openAccountPicker) {" +
+            "          window.Android.openAccountPicker();" +
+            "        }" +
+            "        return false;" +
+            "      }, true);" +
+            "    });" +
+            "  }, 500);" +
+            "})();",
+            null
+        );
+    }
         super.onPageFinished(p1, url);
       }
 
