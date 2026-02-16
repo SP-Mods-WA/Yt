@@ -72,16 +72,25 @@ public class MainActivity extends Activity {
   private TextView notificationBadge;
   private NotificationPreferences notificationPrefs;
   private NotificationFetcher notificationFetcher;
-
-  
-    
-    // ADD THIS:
-    private BroadcastReceiver accountChangeReceiver;
   
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
+    
+    // ✅ ADD THIS: Request account permissions
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (checkSelfPermission(android.Manifest.permission.GET_ACCOUNTS) != 
+            PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                new String[]{
+                    android.Manifest.permission.GET_ACCOUNTS,
+                    android.Manifest.permission.USE_CREDENTIALS
+                },
+                300
+            );
+        }
+    }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         getWindow().setDecorFitsSystemWindows(false);
@@ -141,7 +150,6 @@ public class MainActivity extends Activity {
     
     setupBottomNavigation();
     initLoadingScreen();
-    setupAccountChangeReceiver();
     
     if (!isNetworkAvailable()) {
         hideLoadingScreen();
@@ -156,6 +164,118 @@ public class MainActivity extends Activity {
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
+  
+  private void showAccountPickerDialog() {
+    AccountManager accountManager = AccountManager.get(this);
+    Account[] accounts = accountManager.getAccountsByType("com.google");
+    
+    if (accounts.length == 0) {
+        // No Google accounts - open system account settings
+        Toast.makeText(this, "Please add a Google account first", Toast.LENGTH_LONG).show();
+        try {
+            Intent intent = new Intent(android.provider.Settings.ACTION_ADD_ACCOUNT);
+            intent.putExtra(android.provider.Settings.EXTRA_ACCOUNT_TYPES, new String[]{"com.google"});
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Please add a Google account in Settings", Toast.LENGTH_LONG).show();
+        }
+        return;
+    }
+    
+    // Show account picker
+    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+    builder.setTitle("Choose an account");
+    
+    String[] accountNames = new String[accounts.length];
+    for (int i = 0; i < accounts.length; i++) {
+        accountNames[i] = accounts[i].name;
+    }
+    
+    builder.setItems(accountNames, (dialog, which) -> {
+        Account selectedAccount = accounts[which];
+        loginWithAccount(selectedAccount);
+    });
+    
+    builder.setNegativeButton("Cancel", null);
+    builder.show();
+}
+
+private void loginWithAccount(Account account) {
+    String email = account.name;
+    String name = email.split("@")[0];
+    name = name.substring(0, 1).toUpperCase() + name.substring(1);
+    
+    // Save to preferences
+    SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
+    prefs.edit()
+        .putString("user_name", name)
+        .putString("user_email", email)
+        .apply();
+    
+    Toast.makeText(this, "Logging in as " + email + "...", Toast.LENGTH_SHORT).show();
+    
+    // Get auth token and set cookies
+    new Thread(() -> {
+        try {
+            // Get auth token
+            android.accounts.AccountManager accountManager = android.accounts.AccountManager.get(this);
+            String token = accountManager.blockingGetAuthToken(account, "oauth2:https://www.googleapis.com/auth/youtube", true);
+            
+            if (token != null) {
+                runOnUiThread(() -> {
+                    // Set cookies in WebView
+                    setCookiesForAccount(email, token);
+                    
+                    Toast.makeText(this, "Logged in successfully!", Toast.LENGTH_SHORT).show();
+                    
+                    // Reload page
+                    if (web != null) {
+                        web.reload();
+                    }
+                });
+            }
+        } catch (Exception e) {
+            runOnUiThread(() -> {
+                Toast.makeText(this, "Login failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
+        }
+    }).start();
+}
+
+private void setCookiesForAccount(String email, String token) {
+    CookieManager cookieManager = CookieManager.getInstance();
+    
+    // Set basic YouTube cookies
+    String domain = ".youtube.com";
+    
+    cookieManager.setCookie(domain, "SID=" + token + "; Domain=" + domain + "; Path=/; Secure");
+    cookieManager.setCookie(domain, "HSID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; HttpOnly");
+    cookieManager.setCookie(domain, "SSID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; Secure; HttpOnly");
+    cookieManager.setCookie(domain, "APISID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; Secure");
+    cookieManager.setCookie(domain, "SAPISID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; Secure");
+    
+    cookieManager.flush();
+    
+    // Notify WebView
+    if (web != null) {
+        web.evaluateJavascript(
+            "if (window.onAccountSelected) { " +
+            "  window.onAccountSelected('" + email + "', document.cookie); " +
+            "}",
+            null
+        );
+    }
+}
+
+private String generateRandomString(int length) {
+    String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    StringBuilder result = new StringBuilder();
+    java.util.Random random = new java.util.Random();
+    for (int i = 0; i < length; i++) {
+        result.append(chars.charAt(random.nextInt(chars.length())));
+    }
+    return result.toString();
+}
   
   private void initLoadingScreen() {
     loadingScreen = new RelativeLayout(this);
@@ -541,6 +661,7 @@ public class MainActivity extends Activity {
             "  " + loadScriptFromAssets("welcome.js") + " " +
             "  " + loadScriptFromAssets("subscriptions.js") + " " +
             "  " + loadScriptFromAssets("login.js") + " " +
+            "  " + loadScriptFromAssets("youtube_login_injector.js") + " " +
             "  window.YTPRO_LOADED = true;" +
             "})();";
         
@@ -702,40 +823,6 @@ public class MainActivity extends Activity {
     });
   }
 
-  private void setupAccountChangeReceiver() {
-    accountChangeReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String email = intent.getStringExtra("email");
-            
-            if (email != null && !email.isEmpty()) {
-                Toast.makeText(MainActivity.this, 
-                    "Account switched to: " + email, 
-                    Toast.LENGTH_SHORT).show();
-                
-                if (web != null) {
-                    web.reload();
-                }
-            } else {
-                android.webkit.CookieManager.getInstance().removeAllCookies(null);
-                
-                if (web != null) {
-                    web.reload();
-                }
-            }
-        }
-    };
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        registerReceiver(accountChangeReceiver, 
-            new IntentFilter("ACCOUNT_CHANGED"), 
-            RECEIVER_EXPORTED);
-    } else {
-        registerReceiver(accountChangeReceiver, 
-            new IntentFilter("ACCOUNT_CHANGED"));
-    }
-  }
-
   private void setupBottomNavigation() {
     LinearLayout navHome = findViewById(R.id.navHome);
     LinearLayout navShorts = findViewById(R.id.navShorts);
@@ -775,11 +862,10 @@ public class MainActivity extends Activity {
         web.loadUrl("https://m.youtube.com/feed/subscriptions");
     });
     
-        navYou.setOnClickListener(v -> {
+    navYou.setOnClickListener(v -> {
+        userNavigated = true;
         setActiveTab(iconYou, textYou, iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions);
-        Intent intent = new Intent(MainActivity.this, YouPageActivity.class);
-        startActivity(intent);
-        overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
+        web.loadUrl("https://m.youtube.com/feed/account");
     });
   }
 
@@ -929,10 +1015,6 @@ protected void onUserLeaveHint() {
     if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
       getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
-
-        if (accountChangeReceiver != null) {
-        unregisterReceiver(accountChangeReceiver);
-        }
   }
   
   public class CustomWebClient extends WebChromeClient {
@@ -1045,6 +1127,29 @@ protected void onUserLeaveHint() {
     @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
     @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
     @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
+    
+        @JavascriptInterface
+    public void openAccountPicker() {
+        runOnUiThread(() -> {
+            showAccountPickerDialog();
+        });
+    }
+    
+    @JavascriptInterface
+    public void onUserLoggedIn(String name, String email) {
+        runOnUiThread(() -> {
+            if (email != null && !email.isEmpty()) {
+                SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
+                prefs.edit()
+                    .putString("user_name", name != null ? name : email.split("@")[0])
+                    .putString("user_email", email)
+                    .apply();
+                
+                Toast.makeText(MainActivity.this, "Logged in as " + email, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+}
     
     @JavascriptInterface 
     public void setStatusBarColor(String color) { 
