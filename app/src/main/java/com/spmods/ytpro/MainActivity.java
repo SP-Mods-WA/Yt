@@ -1016,6 +1016,22 @@ private String generateRandomString(int length) {
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+    if (requestCode == 300) { // GET_ACCOUNTS permission
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Log.d("Permission", "✅ GET_ACCOUNTS permission granted");
+            // Permission granted - දැන් account picker show කරන්න
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    showAccountPickerDialog();
+                }
+            }, 500);
+        } else {
+            Log.d("Permission", "❌ GET_ACCOUNTS permission denied");
+            Toast.makeText(this, "Account permission is required to sign in", Toast.LENGTH_LONG).show();
+        }
+    }
     
     if (requestCode == 101) {
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
