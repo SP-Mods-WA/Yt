@@ -172,38 +172,67 @@ public class MainActivity extends Activity {
   }
   
   private void showAccountPickerDialog() {
+    // Check permission first
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (checkSelfPermission(android.Manifest.permission.GET_ACCOUNTS) != 
+            PackageManager.PERMISSION_GRANTED) {
+            
+            Toast.makeText(this, "Please grant account permission first", Toast.LENGTH_LONG).show();
+            requestPermissions(
+                new String[]{android.Manifest.permission.GET_ACCOUNTS},
+                300
+            );
+            return;
+        }
+    }
+    
     AccountManager accountManager = AccountManager.get(this);
     Account[] accounts = accountManager.getAccountsByType("com.google");
     
+    Log.d("AccountPicker", "📱 Found " + accounts.length + " Google accounts");
+    
     if (accounts.length == 0) {
-        // No Google accounts - open system account settings
-        Toast.makeText(this, "Please add a Google account first", Toast.LENGTH_LONG).show();
-        try {
-            Intent intent = new Intent(android.provider.Settings.ACTION_ADD_ACCOUNT);
-            intent.putExtra(android.provider.Settings.EXTRA_ACCOUNT_TYPES, new String[]{"com.google"});
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Please add a Google account in Settings", Toast.LENGTH_LONG).show();
-        }
+        // No Google accounts found
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("No Google Account Found")
+            .setMessage("Please add a Google account to your device first.\n\nGo to:\nSettings → Accounts → Add Account → Google")
+            .setPositiveButton("Add Account", (dialog, which) -> {
+                try {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_ADD_ACCOUNT);
+                    intent.putExtra(android.provider.Settings.EXTRA_ACCOUNT_TYPES, new String[]{"com.google"});
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Please add a Google account in Settings → Accounts", Toast.LENGTH_LONG).show();
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
         return;
     }
     
-    // Show account picker
+    // Show account picker dialog
     android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
     builder.setTitle("Choose an account");
     
+    // Create account names array with icons
     String[] accountNames = new String[accounts.length];
     for (int i = 0; i < accounts.length; i++) {
-        accountNames[i] = accounts[i].name;
+        accountNames[i] = "📧 " + accounts[i].name;
     }
     
     builder.setItems(accountNames, (dialog, which) -> {
         Account selectedAccount = accounts[which];
+        Log.d("AccountPicker", "✅ Selected: " + selectedAccount.name);
         loginWithAccount(selectedAccount);
     });
     
     builder.setNegativeButton("Cancel", null);
-    builder.show();
+    
+    // Show the dialog
+    android.app.AlertDialog dialog = builder.create();
+    dialog.show();
+    
+    Log.d("AccountPicker", "🎯 Account picker dialog shown");
 }
 
 private void loginWithAccount(Account account) {
@@ -211,38 +240,82 @@ private void loginWithAccount(Account account) {
     String name = email.split("@")[0];
     name = name.substring(0, 1).toUpperCase() + name.substring(1);
     
+    Log.d("Login", "🔑 Logging in as: " + email);
+    
     // Save to preferences
     SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
     prefs.edit()
         .putString("user_name", name)
         .putString("user_email", email)
+        .putBoolean("is_logged_in", true)
         .apply();
     
+    // Show loading toast
     Toast.makeText(this, "Logging in as " + email + "...", Toast.LENGTH_SHORT).show();
     
-    // Get auth token and set cookies
+    // Get auth token in background
     new Thread(() -> {
         try {
-            // Get auth token
             android.accounts.AccountManager accountManager = android.accounts.AccountManager.get(this);
-            String token = accountManager.blockingGetAuthToken(account, "oauth2:https://www.googleapis.com/auth/youtube", true);
+            
+            // Get YouTube auth token
+            String token = accountManager.blockingGetAuthToken(
+                account, 
+                "oauth2:https://www.googleapis.com/auth/youtube", 
+                true
+            );
+            
+            Log.d("Login", "✅ Got auth token: " + (token != null ? "Yes" : "No"));
             
             if (token != null) {
                 runOnUiThread(() -> {
-                    // Set cookies in WebView
+                    // Set cookies
                     setCookiesForAccount(email, token);
                     
-                    Toast.makeText(this, "Logged in successfully!", Toast.LENGTH_SHORT).show();
+                    // Show success
+                    Toast.makeText(this, "✅ Logged in successfully!", Toast.LENGTH_SHORT).show();
                     
-                    // Reload page
+                    // Notify JavaScript
                     if (web != null) {
-                        web.reload();
+                        web.evaluateJavascript(
+                            "if (window.onUserLoggedIn) { " +
+                            "  window.onUserLoggedIn('" + name + "', '" + email + "'); " +
+                            "}",
+                            null
+                        );
+                        
+                        // Reload page after short delay
+                        new Handler().postDelayed(() -> {
+                            web.reload();
+                        }, 1000);
                     }
                 });
+            } else {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "❌ Could not get auth token", Toast.LENGTH_SHORT).show();
+                });
             }
-        } catch (Exception e) {
+            
+        } catch (android.accounts.OperationCanceledException e) {
+            Log.e("Login", "❌ Operation cancelled: " + e.getMessage());
             runOnUiThread(() -> {
-                Toast.makeText(this, "Login failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Login cancelled", Toast.LENGTH_SHORT).show();
+            });
+        } catch (android.accounts.AuthenticatorException e) {
+            Log.e("Login", "❌ Authenticator error: " + e.getMessage());
+            runOnUiThread(() -> {
+                Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show();
+            });
+        } catch (IOException e) {
+            Log.e("Login", "❌ Network error: " + e.getMessage());
+            runOnUiThread(() -> {
+                Toast.makeText(this, "Network error. Please try again", Toast.LENGTH_SHORT).show();
+            });
+        } catch (Exception e) {
+            Log.e("Login", "❌ Login failed: " + e.getMessage());
+            e.printStackTrace();
+            runOnUiThread(() -> {
+                Toast.makeText(this, "Login failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
             });
         }
     }).start();
