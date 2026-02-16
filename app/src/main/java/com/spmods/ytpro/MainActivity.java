@@ -236,9 +236,17 @@ public class MainActivity extends Activity {
 }
 
 private void loginWithAccount(Account account) {
-    String email = account.name;
-    String name = email.split("@")[0];
-    name = name.substring(0, 1).toUpperCase() + name.substring(1);
+    final String email = account.name;
+    final String name;
+    
+    // Name calculate කරන්න
+    String[] parts = email.split("@");
+    if (parts.length > 0) {
+        String tempName = parts[0];
+        name = tempName.substring(0, 1).toUpperCase() + tempName.substring(1);
+    } else {
+        name = "User";
+    }
     
     Log.d("Login", "🔑 Logging in as: " + email);
     
@@ -250,73 +258,63 @@ private void loginWithAccount(Account account) {
         .putBoolean("is_logged_in", true)
         .apply();
     
-    // Show loading toast
     Toast.makeText(this, "Logging in as " + email + "...", Toast.LENGTH_SHORT).show();
     
-    // Get auth token in background
-    new Thread(() -> {
-        try {
-            android.accounts.AccountManager accountManager = android.accounts.AccountManager.get(this);
-            
-            // Get YouTube auth token
-            String token = accountManager.blockingGetAuthToken(
-                account, 
-                "oauth2:https://www.googleapis.com/auth/youtube", 
-                true
-            );
-            
-            Log.d("Login", "✅ Got auth token: " + (token != null ? "Yes" : "No"));
-            
-            if (token != null) {
-                runOnUiThread(() -> {
-                    // Set cookies
-                    setCookiesForAccount(email, token);
+    // Get auth token
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            try {
+                android.accounts.AccountManager accountManager = 
+                    android.accounts.AccountManager.get(MainActivity.this);
+                
+                String token = accountManager.blockingGetAuthToken(
+                    account, 
+                    "oauth2:https://www.googleapis.com/auth/youtube", 
+                    true
+                );
+                
+                Log.d("Login", "✅ Got auth token: " + (token != null ? "Yes" : "No"));
+                
+                if (token != null) {
+                    final String finalToken = token;
                     
-                    // Show success
-                    Toast.makeText(this, "✅ Logged in successfully!", Toast.LENGTH_SHORT).show();
-                    
-                    // Notify JavaScript
-                    if (web != null) {
-                        web.evaluateJavascript(
-                            "if (window.onUserLoggedIn) { " +
-                            "  window.onUserLoggedIn('" + name + "', '" + email + "'); " +
-                            "}",
-                            null
-                        );
-                        
-                        // Reload page after short delay
-                        new Handler().postDelayed(() -> {
-                            web.reload();
-                        }, 1000);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            setCookiesForAccount(email, finalToken);
+                            Toast.makeText(MainActivity.this, 
+                                "✅ Logged in successfully!", Toast.LENGTH_SHORT).show();
+                            
+                            if (web != null) {
+                                web.evaluateJavascript(
+                                    "if (window.onUserLoggedIn) { " +
+                                    "  window.onUserLoggedIn('" + name + "', '" + email + "'); " +
+                                    "}",
+                                    null
+                                );
+                                
+                                new Handler().postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        web.reload();
+                                    }
+                                }, 1000);
+                            }
+                        }
+                    });
+                }
+                
+            } catch (Exception e) {
+                Log.e("Login", "❌ Error: " + e.getMessage());
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, 
+                            "Login failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     }
                 });
-            } else {
-                runOnUiThread(() -> {
-                    Toast.makeText(this, "❌ Could not get auth token", Toast.LENGTH_SHORT).show();
-                });
             }
-            
-        } catch (android.accounts.OperationCanceledException e) {
-            Log.e("Login", "❌ Operation cancelled: " + e.getMessage());
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Login cancelled", Toast.LENGTH_SHORT).show();
-            });
-        } catch (android.accounts.AuthenticatorException e) {
-            Log.e("Login", "❌ Authenticator error: " + e.getMessage());
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show();
-            });
-        } catch (IOException e) {
-            Log.e("Login", "❌ Network error: " + e.getMessage());
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Network error. Please try again", Toast.LENGTH_SHORT).show();
-            });
-        } catch (Exception e) {
-            Log.e("Login", "❌ Login failed: " + e.getMessage());
-            e.printStackTrace();
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Login failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            });
         }
     }).start();
 }
