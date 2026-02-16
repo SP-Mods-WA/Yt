@@ -72,6 +72,12 @@ public class MainActivity extends Activity {
   private TextView notificationBadge;
   private NotificationPreferences notificationPrefs;
   private NotificationFetcher notificationFetcher;
+
+  // Existing variables...
+    private BroadcastReceiver broadcastReceiver;
+    
+    // ADD THIS:
+    private BroadcastReceiver accountChangeReceiver;
   
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -136,6 +142,7 @@ public class MainActivity extends Activity {
     
     setupBottomNavigation();
     initLoadingScreen();
+    setupAccountChangeReceiver();
     
     if (!isNetworkAvailable()) {
         hideLoadingScreen();
@@ -696,6 +703,40 @@ public class MainActivity extends Activity {
     });
   }
 
+  private void setupAccountChangeReceiver() {
+    accountChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String email = intent.getStringExtra("email");
+            
+            if (email != null && !email.isEmpty()) {
+                Toast.makeText(MainActivity.this, 
+                    "Account switched to: " + email, 
+                    Toast.LENGTH_SHORT).show();
+                
+                if (web != null) {
+                    web.reload();
+                }
+            } else {
+                android.webkit.CookieManager.getInstance().removeAllCookies(null);
+                
+                if (web != null) {
+                    web.reload();
+                }
+            }
+        }
+    };
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        registerReceiver(accountChangeReceiver, 
+            new IntentFilter("ACCOUNT_CHANGED"), 
+            RECEIVER_EXPORTED);
+    } else {
+        registerReceiver(accountChangeReceiver, 
+            new IntentFilter("ACCOUNT_CHANGED"));
+    }
+  }
+
   private void setupBottomNavigation() {
     LinearLayout navHome = findViewById(R.id.navHome);
     LinearLayout navShorts = findViewById(R.id.navShorts);
@@ -735,10 +776,11 @@ public class MainActivity extends Activity {
         web.loadUrl("https://m.youtube.com/feed/subscriptions");
     });
     
-    navYou.setOnClickListener(v -> {
-        userNavigated = true;
+        navYou.setOnClickListener(v -> {
         setActiveTab(iconYou, textYou, iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions);
-        web.loadUrl("https://m.youtube.com/feed/account");
+        Intent intent = new Intent(MainActivity.this, YouPageActivity.class);
+        startActivity(intent);
+        overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
     });
   }
 
@@ -888,6 +930,10 @@ protected void onUserLeaveHint() {
     if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
       getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
     }
+
+        if (accountChangeReceiver != null) {
+        unregisterReceiver(accountChangeReceiver);
+        }
   }
   
   public class CustomWebClient extends WebChromeClient {
