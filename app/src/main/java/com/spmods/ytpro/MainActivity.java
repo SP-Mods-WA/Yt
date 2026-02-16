@@ -73,8 +73,7 @@ public class MainActivity extends Activity {
   private NotificationPreferences notificationPrefs;
   private NotificationFetcher notificationFetcher;
 
-  // Existing variables...
-    private BroadcastReceiver broadcastReceiver;
+  
     
     // ADD THIS:
     private BroadcastReceiver accountChangeReceiver;
