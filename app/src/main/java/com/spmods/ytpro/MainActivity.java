@@ -34,6 +34,12 @@ import android.window.OnBackInvokedDispatcher;
 import android.content.Context;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.EditorInfo;
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import android.accounts.AccountManagerCallback;
+import android.accounts.AccountManagerFuture;
+import android.accounts.AuthenticatorException;
+import android.accounts.OperationCanceledException;
 
 public class MainActivity extends Activity {
 
