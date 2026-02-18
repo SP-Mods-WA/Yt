@@ -34,18 +34,6 @@ import android.window.OnBackInvokedDispatcher;
 import android.content.Context;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.EditorInfo;
-import android.accounts.Account;
-import android.accounts.AccountManager;
-import android.accounts.AccountManagerCallback;
-import android.accounts.AccountManagerFuture;
-import android.accounts.AuthenticatorException;
-import android.accounts.OperationCanceledException;
-import android.content.DialogInterface;
-import android.os.Handler;
-
-import java.util.ArrayList;
-import java.util.List;
-
 
 public class MainActivity extends Activity {
 
@@ -89,20 +77,6 @@ public class MainActivity extends Activity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
-    
-    // ✅ ADD THIS: Request account permissions
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        if (checkSelfPermission(android.Manifest.permission.GET_ACCOUNTS) != 
-            PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                new String[]{
-                    android.Manifest.permission.GET_ACCOUNTS
-                    
-                },
-                300
-            );
-        }
-    }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         getWindow().setDecorFitsSystemWindows(false);
@@ -176,201 +150,6 @@ public class MainActivity extends Activity {
     
     MainActivity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
-  
-  // ✅ Account Picker - Full Working Code
-
-private void showAccountPickerDialog() {
-    // Check permission
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        if (checkSelfPermission(android.Manifest.permission.GET_ACCOUNTS) != 
-            PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.GET_ACCOUNTS}, 300);
-            return;
-        }
-    }
-    
-    try {
-        // Try system account picker first
-        Intent intent = AccountManager.newChooseAccountIntent(
-            null, null, new String[]{"com.google"}, null, null, null, null
-        );
-        startActivityForResult(intent, 301);
-        Log.d("AccountPicker", "🎯 System picker launched");
-        
-    } catch (Exception e) {
-        Log.e("AccountPicker", "❌ System picker failed, trying fallback");
-        showAccountPickerFallback();
-    }
-}
-
-
-private void showAccountPickerFallback() {
-    try {
-        AccountManager accountManager = AccountManager.get(this);
-        Account[] accounts = accountManager.getAccountsByType("com.google");
-        
-        Log.d("AccountPicker", "📱 Found " + accounts.length + " accounts");
-        
-        if (accounts.length == 0) {
-            new android.app.AlertDialog.Builder(this)
-                .setTitle("No Google Account")
-                .setMessage("No Google accounts found on this device.\n\nPlease add one in Settings → Accounts")
-                .setPositiveButton("OK", null)
-                .show();
-            return;
-        }
-        
-        final String[] accountNames = new String[accounts.length];
-        for (int i = 0; i < accounts.length; i++) {
-            accountNames[i] = accounts[i].name;
-        }
-        
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("Choose an account")
-            .setSingleChoiceItems(accountNames, -1, new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int which) {
-                    dialog.dismiss();
-                    loginWithAccount(accounts[which]);
-                }
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
-            
-    } catch (Exception e) {
-        Log.e("AccountPicker", "❌ Error: " + e.getMessage());
-        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-    }
-}
-
-protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-    super.onActivityResult(requestCode, resultCode, data);
-    
-    if (requestCode == 301 && resultCode == RESULT_OK && data != null) {
-        String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-        String accountType = data.getStringExtra(AccountManager.KEY_ACCOUNT_TYPE);
-        
-        Log.d("AccountPicker", "✅ Selected: " + accountName);
-        
-        if (accountName != null) {
-            Account account = new Account(
-                accountName, 
-                accountType != null ? accountType : "com.google"
-            );
-            loginWithAccount(account);
-        }
-    }
-}
-
-private void loginWithAccount(Account account) {
-    final String email = account.name;
-    final String name;
-    
-    String[] parts = email.split("@");
-    if (parts.length > 0 && parts[0].length() > 0) {
-        String tempName = parts[0];
-        name = tempName.substring(0, 1).toUpperCase() + tempName.substring(1);
-    } else {
-        name = "User";
-    }
-    
-    Log.d("Login", "🔑 Logging in as: " + email);
-    
-    SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
-    prefs.edit()
-        .putString("user_name", name)
-        .putString("user_email", email)
-        .putBoolean("is_logged_in", true)
-        .apply();
-    
-    Toast.makeText(this, "Logging in as " + email + "...", Toast.LENGTH_SHORT).show();
-    
-    new Thread(new Runnable() {
-        public void run() {
-            try {
-                android.accounts.AccountManager accountManager = 
-                    android.accounts.AccountManager.get(MainActivity.this);
-                
-                final String token = accountManager.blockingGetAuthToken(
-                    account, 
-                    "oauth2:https://www.googleapis.com/auth/youtube", 
-                    true
-                );
-                
-                Log.d("Login", "✅ Token: " + (token != null ? "OK" : "Failed"));
-                
-                if (token != null) {
-                    runOnUiThread(new Runnable() {
-                        public void run() {
-                            setCookiesForAccount(email, token);
-                            Toast.makeText(MainActivity.this, 
-                                "✅ Signed in as " + name, Toast.LENGTH_SHORT).show();
-                            
-                            if (web != null) {
-                                web.evaluateJavascript(
-                                    "if (window.onUserLoggedIn) { " +
-                                    "  window.onUserLoggedIn('" + name + "', '" + email + "'); " +
-                                    "}",
-                                    null
-                                );
-                                
-                                new Handler().postDelayed(new Runnable() {
-                                    public void run() {
-                                        web.reload();
-                                    }
-                                }, 1000);
-                            }
-                        }
-                    });
-                }
-                
-            } catch (Exception e) {
-                Log.e("Login", "❌ Error: " + e.getMessage());
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        Toast.makeText(MainActivity.this, 
-                            "Login failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        }
-    }).start();
-}
-    
-
-private void setCookiesForAccount(String email, String token) {
-    CookieManager cookieManager = CookieManager.getInstance();
-    
-    // Set basic YouTube cookies
-    String domain = ".youtube.com";
-    
-    cookieManager.setCookie(domain, "SID=" + token + "; Domain=" + domain + "; Path=/; Secure");
-    cookieManager.setCookie(domain, "HSID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; HttpOnly");
-    cookieManager.setCookie(domain, "SSID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; Secure; HttpOnly");
-    cookieManager.setCookie(domain, "APISID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; Secure");
-    cookieManager.setCookie(domain, "SAPISID=" + generateRandomString(16) + "; Domain=" + domain + "; Path=/; Secure");
-    
-    cookieManager.flush();
-    
-    // Notify WebView
-    if (web != null) {
-        web.evaluateJavascript(
-            "if (window.onAccountSelected) { " +
-            "  window.onAccountSelected('" + email + "', document.cookie); " +
-            "}",
-            null
-        );
-    }
-}
-
-private String generateRandomString(int length) {
-    String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    StringBuilder result = new StringBuilder();
-    java.util.Random random = new java.util.Random();
-    for (int i = 0; i < length; i++) {
-        result.append(chars.charAt(random.nextInt(chars.length())));
-    }
-    return result.toString();
-}
   
   private void initLoadingScreen() {
     loadingScreen = new RelativeLayout(this);
@@ -680,35 +459,8 @@ private String generateRandomString(int length) {
         }
 
         new Handler().postDelayed(() -> hideLoadingScreen(), 500);
-        
-        // ✅ YouTube accounts page එකේ නම් account picker එක show කරන්න
-    if (url.contains("accounts.google.com") || 
-        url.contains("accounts.youtube.com") ||
-        url.contains("ServiceLogin")) {
-        
-        p1.evaluateJavascript(
-            "(function() {" +
-            "  setTimeout(function() {" +
-            "    var allButtons = document.querySelectorAll('button, a, div[role=\"button\"]');" +
-            "    allButtons.forEach(function(btn) {" +
-            "      btn.addEventListener('click', function(e) {" +
-            "        e.preventDefault();" +
-            "        e.stopPropagation();" +
-            "        if (window.Android && window.Android.openAccountPicker) {" +
-            "          window.Android.openAccountPicker();" +
-            "        }" +
-            "        return false;" +
-            "      }, true);" +
-            "    });" +
-            "  }, 500);" +
-            "})();",
-            null
-        );
-    }
         super.onPageFinished(p1, url);
       }
-
-
 
       @Override
       public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -783,7 +535,6 @@ private String generateRandomString(int length) {
             "  " + loadScriptFromAssets("welcome.js") + " " +
             "  " + loadScriptFromAssets("subscriptions.js") + " " +
             "  " + loadScriptFromAssets("login.js") + " " +
-            "  " + loadScriptFromAssets("youtube_login_injector.js") + " " +
             "  window.YTPRO_LOADED = true;" +
             "})();";
         
@@ -1007,22 +758,6 @@ private String generateRandomString(int length) {
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-    if (requestCode == 300) { // GET_ACCOUNTS permission
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Log.d("Permission", "✅ GET_ACCOUNTS permission granted");
-            // Permission granted - දැන් account picker show කරන්න
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    showAccountPickerDialog();
-                }
-            }, 500);
-        } else {
-            Log.d("Permission", "❌ GET_ACCOUNTS permission denied");
-            Toast.makeText(this, "Account permission is required to sign in", Toast.LENGTH_LONG).show();
-        }
-    }
     
     if (requestCode == 101) {
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -1265,29 +1000,6 @@ protected void onUserLeaveHint() {
     @JavascriptInterface public float getBrightness() { try { return (Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f) * 100f; } catch (Exception e) { return 50f; } }
     @JavascriptInterface public void setBrightness(final float value){ runOnUiThread(() -> { WindowManager.LayoutParams layout = getWindow().getAttributes(); layout.screenBrightness = Math.max(0f, Math.min(value, 1f)); getWindow().setAttributes(layout); }); }
     @JavascriptInterface public void pipvid(String x) { if (Build.VERSION.SDK_INT >= 26) { try { enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(x.equals("portrait") ? 9 : 16, x.equals("portrait") ? 16 : 9)).build()); } catch (Exception e) {} } else { Toast.makeText(getApplicationContext(), getString(R.string.no_pip), Toast.LENGTH_SHORT).show(); } }
-    
-        @JavascriptInterface
-    public void openAccountPicker() {
-        runOnUiThread(() -> {
-            showAccountPickerDialog();
-        });
-    }
-    
-    @JavascriptInterface
-    public void onUserLoggedIn(String name, String email) {
-        runOnUiThread(() -> {
-            if (email != null && !email.isEmpty()) {
-                SharedPreferences prefs = getSharedPreferences("YTPRO", MODE_PRIVATE);
-                prefs.edit()
-                    .putString("user_name", name != null ? name : email.split("@")[0])
-                    .putString("user_email", email)
-                    .apply();
-                
-                Toast.makeText(MainActivity.this, "Logged in as " + email, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
     
     @JavascriptInterface 
     public void setStatusBarColor(String color) { 
