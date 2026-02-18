@@ -26,7 +26,7 @@ window.location.href=`javascript:(function () { var script = document.createElem
 if(!YTProVer){
 
 /*Few Stupid Inits*/
-var YTProVer="2.0";
+var YTProVer="2.1";
 var ytoldV="";
 var isF=false;   //what is this for?
 var isAp=false; // oh it's for bg play 
