@@ -762,10 +762,14 @@ public class MainActivity extends Activity {
         web.loadUrl("https://m.youtube.com/feed/subscriptions");
     });
     
-    navYou.setOnClickListener(v -> {
-        userNavigated = true;
-        setActiveTab(iconYou, textYou, iconHome, textHome, iconShorts, textShorts, iconSubscriptions, textSubscriptions);
-        web.loadUrl("https://m.youtube.com/feed/account");
+        navYou.setOnClickListener(v -> {
+        setActiveTab(iconYou, textYou, iconHome, textHome,
+                     iconShorts, textShorts, iconSubscriptions, textSubscriptions);
+        // User info extract කරලා save කරනවා — YouActivity open වෙන්න කලිනුත්
+        extractAndSaveUserInfo();
+        Intent intent = new Intent(MainActivity.this, YouActivity.class);
+        startActivity(intent);
+        overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.fade_out);
     });
   }
 
