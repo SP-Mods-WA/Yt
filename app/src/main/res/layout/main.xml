@@ -116,47 +116,71 @@
 
     </RelativeLayout>
 
-        <RelativeLayout
-        android:id="@+id/searchBarContainer"
-        android:background="#ff0f0f0f"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
-        android:visibility="gone"
+<RelativeLayout
+    android:id="@+id/searchBarContainer"
+    android:background="#ff0f0f0f"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:visibility="gone"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_alignParentTop="true"
+    android:translationZ="8dp"
+    android:elevation="8dp">
+
+    <!-- Back Button -->
+    <ImageView
+        android:id="@+id/searchBackButton"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginTop="16dp"
+        android:src="@drawable/ic_arrow_back"
+        android:tint="#FFFFFF"
+        android:contentDescription="Back"/>
+
+    <!-- Voice Button -->
+    <ImageView
+        android:id="@+id/voiceSearchButton"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="16dp"
+        android:src="@drawable/ic_mic"
+        android:tint="#FFFFFF"
+        android:contentDescription="Voice Search"/>
+
+    <!-- Search Input -->
+    <EditText
+        android:id="@+id/searchInput"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_alignParentTop="true"
-        android:translationZ="8dp"
-        android:elevation="8dp">
+        android:layout_height="40dp"
+        android:layout_toEndOf="@id/searchBackButton"
+        android:layout_toStartOf="@id/voiceSearchButton"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/search_bg"
+        android:hint="Search YouTube"
+        android:textColorHint="#AAAAAA"
+        android:textColor="#FFFFFF"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:singleLine="true"
+        android:imeOptions="actionSearch"/>
 
-        <!-- Back Button -->
-        <ImageView
-            android:id="@+id/searchBackButton"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_centerVertical="true"
-            android:src="@drawable/ic_arrow_back"
-            android:tint="#FFFFFF"
-            android:contentDescription="Back"/>
+    <!-- Suggestions List -->
+    <ListView
+        android:id="@+id/suggestionsList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/searchInput"
+        android:layout_marginTop="4dp"
+        android:visibility="gone"
+        android:background="#1A1A1A"
+        android:divider="#2A2A2A"
+        android:dividerHeight="1dp"/>
 
-        <!-- Search Input -->
-        <EditText
-            android:id="@+id/searchInput"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_centerVertical="true"
-            android:layout_toEndOf="@id/searchBackButton"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/search_bg"
-            android:hint="Search YouTube"
-            android:textColorHint="#AAAAAA"
-            android:textColor="#FFFFFF"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:singleLine="true"
-            android:imeOptions="actionSearch"/>
-
-    </RelativeLayout>
+</RelativeLayout>
     
 
         <com.spmods.ytpro.YTProWebview
