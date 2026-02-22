@@ -639,33 +639,56 @@ public class MainActivity extends Activity {
     RelativeLayout searchBarContainer = findViewById(R.id.searchBarContainer);
     ImageView searchBackButton = findViewById(R.id.searchBackButton);
     EditText searchInput = findViewById(R.id.searchInput);
+    ImageView voiceSearchButton = findViewById(R.id.voiceSearchButton);
+    ListView suggestionsList = findViewById(R.id.suggestionsList);
+
+    ArrayAdapter<String> suggestionsAdapter = new ArrayAdapter<>(this,
+        android.R.layout.simple_list_item_1, new ArrayList<>());
+    if (suggestionsList != null) {
+        suggestionsList.setAdapter(suggestionsAdapter);
+        suggestionsList.setBackgroundColor(Color.parseColor("#1A1A1A"));
+        suggestionsList.setOnItemClickListener((parent, view, position, id) -> {
+            String query = suggestionsAdapter.getItem(position);
+            if (query != null) {
+                userNavigated = true;
+                web.loadUrl("https://m.youtube.com/results?search_query=" + Uri.encode(query));
+                closeSearchBar(searchBarContainer, searchInput);
+            }
+        });
+    }
+
+    Runnable hideSearchBar = () -> closeSearchBar(searchBarContainer, searchInput);
 
     iconSearch.setOnClickListener(v -> {
         searchBarContainer.setVisibility(View.VISIBLE);
         searchBarContainer.setAlpha(0f);
         searchBarContainer.setTranslationY(-56f);
-        
-        searchBarContainer.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(300)
-            .start();
-        
+        searchBarContainer.animate().alpha(1f).translationY(0f).setDuration(300).start();
         searchInput.requestFocus();
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
     });
 
-    searchBackButton.setOnClickListener(v -> {
-        searchBarContainer.animate()
-            .alpha(0f)
-            .translationY(-56f)
-            .setDuration(300)
-            .withEndAction(() -> searchBarContainer.setVisibility(View.GONE))
-            .start();
-        
-        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.hideSoftInputFromWindow(searchInput.getWindowToken(), 0);
+    searchBackButton.setOnClickListener(v -> hideSearchBar.run());
+
+    searchInput.addTextChangedListener(new android.text.TextWatcher() {
+        private final Handler handler = new Handler();
+        private Runnable searchRunnable;
+
+        @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+        @Override public void afterTextChanged(android.text.Editable s) {}
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+            if (searchRunnable != null) handler.removeCallbacks(searchRunnable);
+            String query = s.toString().trim();
+            if (query.isEmpty()) {
+                if (suggestionsList != null) suggestionsList.setVisibility(View.GONE);
+                return;
+            }
+            searchRunnable = () -> fetchSuggestions(query, suggestionsAdapter, suggestionsList);
+            handler.postDelayed(searchRunnable, 300);
+        }
     });
 
     searchInput.setOnEditorActionListener((v, actionId, event) -> {
@@ -673,29 +696,32 @@ public class MainActivity extends Activity {
             String query = searchInput.getText().toString();
             if (!query.isEmpty()) {
                 userNavigated = true;
-                web.loadUrl("https://m.youtube.com/results?search_query=" + 
-                    android.net.Uri.encode(query));
-                searchBarContainer.setVisibility(View.GONE);
+                web.loadUrl("https://m.youtube.com/results?search_query=" + Uri.encode(query));
+                closeSearchBar(searchBarContainer, searchInput);
             }
             return true;
         }
         return false;
     });
 
+    if (voiceSearchButton != null) {
+        voiceSearchButton.setOnClickListener(v ->
+            startVoiceSearch(searchInput, suggestionsAdapter, suggestionsList));
+    }
+
     iconNotifications.setOnClickListener(v -> {
         Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
         startActivity(intent);
     });
 
-    iconCast.setOnClickListener(v -> {
-        Toast.makeText(this, "Cast feature coming soon! 📡", Toast.LENGTH_SHORT).show();
-    });
+    iconCast.setOnClickListener(v ->
+        Toast.makeText(this, "Cast feature coming soon! 📡", Toast.LENGTH_SHORT).show());
 
     iconSettings.setOnClickListener(v -> {
         userNavigated = true;
         web.evaluateJavascript("window.location.hash='settings';", null);
     });
-  }
+}
 
   private void setupBottomNavigation() {
     LinearLayout navHome = findViewById(R.id.navHome);
@@ -781,13 +807,30 @@ public class MainActivity extends Activity {
   }
 
   @Override
-  public void onBackPressed() {
-    if (web.canGoBack()) {
-      web.goBack();
-    } else {
-      finish();
+public void onBackPressed() {
+    RelativeLayout searchBarContainer = findViewById(R.id.searchBarContainer);
+    if (searchBarContainer != null && searchBarContainer.getVisibility() == View.VISIBLE) {
+        searchBarContainer.animate()
+            .alpha(0f)
+            .translationY(-56f)
+            .setDuration(300)
+            .withEndAction(() -> {
+                searchBarContainer.setVisibility(View.GONE);
+                EditText searchInput = findViewById(R.id.searchInput);
+                if (searchInput != null) searchInput.setText("");
+            })
+            .start();
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(searchBarContainer.getWindowToken(), 0);
+        return;
     }
-  }
+    
+    if (web.canGoBack()) {
+        web.goBack();
+    } else {
+        finish();
+    }
+}
 
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
@@ -1265,6 +1308,129 @@ protected void onUserLeaveHint() {
         updateNotificationBadge();
     }
   }
+  
+  private void closeSearchBar(RelativeLayout searchBarContainer, EditText searchInput) {
+    searchBarContainer.animate()
+        .alpha(0f)
+        .translationY(-56f)
+        .setDuration(300)
+        .withEndAction(() -> {
+            searchBarContainer.setVisibility(View.GONE);
+            if (searchInput != null) searchInput.setText("");
+            ListView suggestionsList = findViewById(R.id.suggestionsList);
+            if (suggestionsList != null) suggestionsList.setVisibility(View.GONE);
+        })
+        .start();
+    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+    imm.hideSoftInputFromWindow(searchBarContainer.getWindowToken(), 0);
+}
+
+private void fetchSuggestions(String query, ArrayAdapter<String> adapter, ListView list) {
+    new Thread(() -> {
+        try {
+            String url = "https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q="
+                + Uri.encode(query);
+            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            reader.close();
+
+            String response = sb.toString();
+            List<String> suggestions = new ArrayList<>();
+
+            int start = response.indexOf(",[");
+            if (start != -1) {
+                String inner = response.substring(start + 2);
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\[\"([^\"]+)\"");
+                java.util.regex.Matcher m = p.matcher(inner);
+                while (m.find() && suggestions.size() < 8) {
+                    suggestions.add(m.group(1));
+                }
+            }
+
+            runOnUiThread(() -> {
+                adapter.clear();
+                adapter.addAll(suggestions);
+                adapter.notifyDataSetChanged();
+                if (list != null) {
+                    list.setVisibility(suggestions.isEmpty() ? View.GONE : View.VISIBLE);
+                }
+            });
+        } catch (Exception e) {
+            Log.e("Suggestions", "Error: " + e.getMessage());
+        }
+    }).start();
+}
+
+private void startVoiceSearch(EditText searchInput, ArrayAdapter<String> adapter, ListView list) {
+    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
+        return;
+    }
+
+    android.speech.SpeechRecognizer recognizer =
+        android.speech.SpeechRecognizer.createSpeechRecognizer(this);
+    Intent speechIntent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+    speechIntent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+        android.speech.RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
+    speechIntent.putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+    speechIntent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Search YouTube...");
+
+    recognizer.setRecognitionListener(new android.speech.RecognitionListener() {
+        @Override
+        public void onResults(Bundle results) {
+            ArrayList<String> matches = results.getStringArrayList(
+                android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+            if (matches != null && !matches.isEmpty()) {
+                String query = matches.get(0);
+                runOnUiThread(() -> {
+                    searchInput.setText(query);
+                    searchInput.setSelection(query.length());
+                    fetchSuggestions(query, adapter, list);
+                });
+            }
+            recognizer.destroy();
+        }
+
+        @Override
+        public void onPartialResults(Bundle partialResults) {
+            ArrayList<String> partial = partialResults.getStringArrayList(
+                android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+            if (partial != null && !partial.isEmpty()) {
+                String text = partial.get(0);
+                runOnUiThread(() -> {
+                    searchInput.setText(text);
+                    searchInput.setSelection(text.length());
+                });
+            }
+        }
+
+        @Override
+        public void onError(int error) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                "Voice search failed, try again 🎤", Toast.LENGTH_SHORT).show());
+            recognizer.destroy();
+        }
+
+        @Override public void onReadyForSpeech(Bundle params) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                "Listening... 🎤", Toast.LENGTH_SHORT).show());
+        }
+        @Override public void onBeginningOfSpeech() {}
+        @Override public void onRmsChanged(float rmsdB) {}
+        @Override public void onBufferReceived(byte[] buffer) {}
+        @Override public void onEndOfSpeech() {}
+        @Override public void onEvent(int eventType, Bundle params) {}
+    });
+
+    recognizer.startListening(speechIntent);
+}
 
   private void setupSystemBarsInsets() {
     View rootView = findViewById(android.R.id.content);
