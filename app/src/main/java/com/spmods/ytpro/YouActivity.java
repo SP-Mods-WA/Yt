@@ -63,18 +63,17 @@ public class YouActivity extends Activity {
         gestureControls  = "true".equals(prefs.getString("gesC",    "true"));
         shortsBlocked    = "true".equals(prefs.getString("shorts",  "false"));
 
-        // ✅ MainActivity layout use කරනවා — exact same layout
-        setContentView(R.layout.activity_main);
+        // ✅ MainActivity layout use කරනවා
+        setContentView(R.layout.main);
 
-        // ✅ Header icons hide කරනවා (You tab වලට ඒවා ඕනෙ නෑ)
-        // Logo + right icons — hide
-        View appLogo         = findViewById(R.id.appLogo);
-        View iconCast        = findViewById(R.id.iconCast);
-        View iconNotif       = findViewById(R.id.iconNotifications);
-        View iconSearch      = findViewById(R.id.iconSearch);
-        View iconSettings    = findViewById(R.id.iconSettings);
-        View notifBadge      = findViewById(R.id.notificationBadge);
-        View searchBar       = findViewById(R.id.searchBarContainer);
+        // ✅ Header icons hide කරනවා
+        View appLogo      = findViewById(R.id.appLogo);
+        View iconCast     = findViewById(R.id.iconCast);
+        View iconNotif    = findViewById(R.id.iconNotifications);
+        View iconSearch   = findViewById(R.id.iconSearch);
+        View iconSettings = findViewById(R.id.iconSettings);
+        View notifBadge   = findViewById(R.id.notificationBadge);
+        View searchBar    = findViewById(R.id.searchBarContainer);
 
         if (appLogo      != null) appLogo.setVisibility(View.GONE);
         if (iconCast     != null) iconCast.setVisibility(View.GONE);
@@ -106,11 +105,10 @@ public class YouActivity extends Activity {
         View webView = findViewById(R.id.web);
         if (webView != null) webView.setVisibility(View.GONE);
 
-        // ✅ You content inject කරනවා — WebView replace කරලා
+        // ✅ You content inject කරනවා
         RelativeLayout rootView = findViewById(R.id.rootLayout);
         if (rootView != null) {
             ScrollView youScroll = buildYouContent();
-
             RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
                 RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.MATCH_PARENT
