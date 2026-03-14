@@ -31,3 +31,6 @@ jobs:
       with:
           name: YTPRO
           path: "app/build/outputs/apk/release/youtube_pro_signed.apk"
+
+    env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true      
