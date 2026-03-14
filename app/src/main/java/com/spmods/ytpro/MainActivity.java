@@ -1328,14 +1328,16 @@ protected void onUserLeaveHint() {
 private void fetchSuggestions(String query, ArrayAdapter<String> adapter, ListView list) {
     new Thread(() -> {
         try {
-            String url = "https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q="
+            String url = "https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&hl=si&q="
                 + Uri.encode(query);
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept-Charset", "UTF-8");
             conn.setConnectTimeout(3000);
             conn.setReadTimeout(3000);
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), "UTF-8")); // 👈 UTF-8 explicitly
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) sb.append(line);
@@ -1350,22 +1352,50 @@ private void fetchSuggestions(String query, ArrayAdapter<String> adapter, ListVi
                 java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\[\"([^\"]+)\"");
                 java.util.regex.Matcher m = p.matcher(inner);
                 while (m.find() && suggestions.size() < 8) {
-                    suggestions.add(m.group(1));
+                    String suggestion = m.group(1);
+                    // Unicode escape decode කිරීම (e.g. \u0DB8 → මු)
+                    suggestion = decodeUnicodeEscapes(suggestion);
+                    suggestions.add(suggestion);
                 }
             }
 
+            final List<String> finalSuggestions = suggestions;
             runOnUiThread(() -> {
                 adapter.clear();
-                adapter.addAll(suggestions);
+                adapter.addAll(finalSuggestions);
                 adapter.notifyDataSetChanged();
                 if (list != null) {
-                    list.setVisibility(suggestions.isEmpty() ? View.GONE : View.VISIBLE);
+                    list.setVisibility(finalSuggestions.isEmpty() ? View.GONE : View.VISIBLE);
                 }
             });
         } catch (Exception e) {
             Log.e("Suggestions", "Error: " + e.getMessage());
         }
     }).start();
+}
+
+// Unicode escape sequences decode කරන helper method
+private String decodeUnicodeEscapes(String input) {
+    if (input == null || !input.contains("\\u")) return input;
+    
+    StringBuilder sb = new StringBuilder();
+    int i = 0;
+    while (i < input.length()) {
+        if (i + 5 < input.length() && input.charAt(i) == '\\' && input.charAt(i + 1) == 'u') {
+            try {
+                int codePoint = Integer.parseInt(input.substring(i + 2, i + 6), 16);
+                sb.append((char) codePoint);
+                i += 6;
+            } catch (NumberFormatException e) {
+                sb.append(input.charAt(i));
+                i++;
+            }
+        } else {
+            sb.append(input.charAt(i));
+            i++;
+        }
+    }
+    return sb.toString();
 }
 
 private void startVoiceSearch(EditText searchInput, ArrayAdapter<String> adapter, ListView list) {
