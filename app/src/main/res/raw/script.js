@@ -2707,16 +2707,26 @@ try {
 const clone = response.clone();
 let data = await clone.json();
 
-if(data.responseContext.webResponseContextExtensionData.webResponseContextPreloadData.preloadMessageNames[0] == "adSlotRenderer" || data.responseContext.webResponseContextExtensionData.webResponseContextPreloadData.preloadMessageNames[0] == "shortsAdsRenderer"){
+
+//older version
+if(data?.responseContext?.webResponseContextExtensionData?.webResponseContextPreloadData?.preloadMessageNames?.[0] == "adSlotRenderer" || data?.responseContext?.webResponseContextExtensionData?.webResponseContextPreloadData?.preloadMessageNames?.[0] == "shortsAdsRenderer"){
 data={};
 }
 
 
+
 //remove the ad content
-delete data.adSlots;
-delete data.playerAds;
-delete data.adPlacements;
-delete data.adBreakHeartbeatParams;
+delete data?.adSlots;
+delete data?.playerAds;
+delete data?.adPlacements;
+delete data?.adBreakHeartbeatParams;
+
+
+//newer version update: 09 Feb , 2026  23:27 IST
+delete data?.[0]?.playerResponse?.adSlots;
+delete data?.[0]?.playerResponse?.playerAds;
+delete data?.[0]?.playerResponse?.adPlacements;
+delete data?.[0]?.playerResponse?.adBreakHeartbeatParams;
 
 const newBody = JSON.stringify(data);
 
