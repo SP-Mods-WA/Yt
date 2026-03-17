@@ -8,8 +8,8 @@ android {
         applicationId "com.spmods.ytpro"
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode 210
-        versionName "2.1"
+        versionCode 300
+        versionName "3.0"
     }
 
     compileOptions {
