@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 import android.util.Log;
 import android.webkit.WebMessage;
 import android.webkit.WebMessagePort;
@@ -41,7 +42,9 @@ public class YTProDownloader {
                     @Override
                     public void onMessage(WebMessagePort port, WebMessage message) {
                         try {
-                            if ("END".equals(message.getData())) {
+                            String data = message.getData();
+                            
+                            if ("END".equals(data)) {
                                 fosHolder[0].flush();
                                 fosHolder[0].close();
                                 Intent scan = new Intent(
@@ -51,10 +54,12 @@ public class YTProDownloader {
                                 Log.d("YTPRO", "✅ Saved: " + fileName);
                                 return;
                             }
-                            byte[] data = message.getArrayBuffer();
-                            if (data != null && data.length > 0) {
-                                fosHolder[0].write(data);
+
+                            if (data != null && !data.isEmpty()) {
+                                byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+                                fosHolder[0].write(bytes);
                             }
+
                         } catch (Exception e) {
                             Log.e("YTPRO", "❌ Write error: " + e.getMessage());
                         }
