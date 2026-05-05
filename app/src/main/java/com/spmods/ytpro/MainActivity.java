@@ -536,6 +536,7 @@ public class MainActivity extends Activity {
             "  " + loadScriptFromAssets("subscriptions.js") + " " +
             "  " + loadScriptFromAssets("login.js") + " " +
             "  " + loadScriptFromAssets("darkmode.js") + " " +
+          "  " + loadScriptFromAssets("downloadv.js") + " " +
             "  window.YTPRO_LOADED = true;" +
             "})();";
         
