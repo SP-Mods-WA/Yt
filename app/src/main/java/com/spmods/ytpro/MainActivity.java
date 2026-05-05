@@ -753,8 +753,9 @@ public class MainActivity extends Activity {
     });
     
     navUpload.setOnClickListener(v -> {
-        Toast.makeText(MainActivity.this, "Upload feature coming soon! 🎥", Toast.LENGTH_SHORT).show();
-    });
+    Intent intent = new Intent(MainActivity.this, VideoEditorActivity.class);
+    startActivity(intent);
+});
     
     navSubscriptions.setOnClickListener(v -> {
         userNavigated = true;
