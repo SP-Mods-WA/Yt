@@ -10,7 +10,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.widget.Toast;
 
-import com.google.android.youtube.pro.R;
+import com.spmods.ytpro.R;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
