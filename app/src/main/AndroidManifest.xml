@@ -135,7 +135,9 @@
     android:theme="@android:style/Theme.NoTitleBar"/>
 
 		
-		
+		<activity android:name=".VideoEditorActivity"
+    android:screenOrientation="portrait"
+    android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
 	</application>
 </manifest>
 
