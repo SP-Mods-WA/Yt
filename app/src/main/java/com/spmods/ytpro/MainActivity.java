@@ -51,7 +51,7 @@ public class MainActivity extends Activity {
   private boolean isPip = false;
   private boolean dL = false;
 
-  public YTProWebview web;
+  private YTProWebview web;
   private OnBackInvokedCallback backCallback;
   
   private RelativeLayout offlineLayout;
@@ -536,7 +536,6 @@ public class MainActivity extends Activity {
             "  " + loadScriptFromAssets("subscriptions.js") + " " +
             "  " + loadScriptFromAssets("login.js") + " " +
             "  " + loadScriptFromAssets("darkmode.js") + " " +
-            "  " + loadScriptFromAssets("downloadv.js") + " " +
             "  window.YTPRO_LOADED = true;" +
             "})();";
         
@@ -1060,33 +1059,6 @@ protected void onUserLeaveHint() {
                 }
             }
         });
-    }
-    
-    @JavascriptInterface
-    public void requestBinaryPort(String fileName) {
-        new YTProDownloader(MainActivity.this).requestBinaryPort(fileName);
-    }
-
-    @JavascriptInterface
-    public void muxVideoAudio(String v, String a, String o) {
-        new YTProDownloader(MainActivity.this).muxVideoAudio(v, a, o);
-    }
-
-    @JavascriptInterface
-    public void onDownloadProgress(int percent, long bytes) {
-        Log.d("YTPRO", "📥 " + percent + "%");
-    }
-
-    @JavascriptInterface
-    public boolean isWebViewSupported() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M;
-    }
-
-    @JavascriptInterface
-    public boolean hasStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return true;
-        return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            == PackageManager.PERMISSION_GRANTED;
     }
   }
   
