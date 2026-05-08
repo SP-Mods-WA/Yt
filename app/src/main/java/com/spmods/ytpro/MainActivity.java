@@ -752,10 +752,9 @@ public class MainActivity extends Activity {
         web.loadUrl("https://m.youtube.com/shorts");
     });
     
-    navUpload.setOnClickListener(v -> {
-    Intent intent = new Intent(MainActivity.this, VideoEditorActivity.class);
-    startActivity(intent);
-});
+        navUpload.setOnClickListener(v -> {
+        Toast.makeText(MainActivity.this, "Upload feature coming soon! 🎥", Toast.LENGTH_SHORT).show();
+    });
     
     navSubscriptions.setOnClickListener(v -> {
         userNavigated = true;
