@@ -52,6 +52,7 @@ public class MainActivity extends Activity {
   private boolean dL = false;
 
   private YTProWebview web;
+  public BinaryStreamManager streamManager;
   private OnBackInvokedCallback backCallback;
   
   private RelativeLayout offlineLayout;
@@ -328,6 +329,7 @@ public class MainActivity extends Activity {
     lastUrl = url;
     web.loadUrl(url);
     web.addJavascriptInterface(new WebAppInterface(this), "Android");
+    streamManager = new BinaryStreamManager(web, this);
     web.setWebChromeClient(new CustomWebClient());
 
     CookieManager cookieManager = CookieManager.getInstance();
@@ -531,6 +533,7 @@ public class MainActivity extends Activity {
             "  " + loadScriptFromAssets("script.js") + " " +
             "  " + loadScriptFromAssets("bgplay.js") + " " +
             "  " + loadScriptFromAssets("innertube.js") + " " +
+            "  " + loadScriptFromAssets("downloadv.js") + " " +
             "  " + loadScriptFromAssets("styles.js") + " " +
             "  " + loadScriptFromAssets("welcome.js") + " " +
             "  " + loadScriptFromAssets("subscriptions.js") + " " +
@@ -926,6 +929,8 @@ protected void onUserLeaveHint() {
         wakeLock.release();
     }
     
+    if (streamManager != null) streamManager.cleanup();
+    
     Intent intent = new Intent(getApplicationContext(), ForegroundService.class);
     stopService(intent);
     if (broadcastReceiver != null) unregisterReceiver(broadcastReceiver);
@@ -1017,6 +1022,106 @@ protected void onUserLeaveHint() {
     }
   }
 
+  private void fetchVideoFormatsNative(String videoId) {
+    try {
+      if (videoId == null || videoId.isEmpty()) {
+        runOnUiThread(() -> web.evaluateJavascript("window.ytproShowError('No video ID found.')", null));
+        return;
+      }
+
+      JSONObject client = new JSONObject();
+      client.put("clientName", "ANDROID");
+      client.put("clientVersion", "20.10.38");
+      client.put("userAgent", "com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip");
+      client.put("hl", "en");
+      client.put("gl", "US");
+
+      JSONObject context = new JSONObject();
+      context.put("client", client);
+
+      JSONObject body = new JSONObject();
+      body.put("videoId", videoId);
+      body.put("context", context);
+      body.put("racyCheckOk", true);
+      body.put("contentCheckOk", true);
+
+      URL url = new URL("https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8");
+      HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+      conn.setRequestMethod("POST");
+      conn.setRequestProperty("Content-Type", "application/json");
+      conn.setDoOutput(true);
+      conn.setConnectTimeout(15000);
+      conn.setReadTimeout(15000);
+
+      try (OutputStream os = conn.getOutputStream()) {
+        os.write(body.toString().getBytes("UTF-8"));
+      }
+
+      int status = conn.getResponseCode();
+      InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+      BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+      StringBuilder sb = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) sb.append(line);
+      reader.close();
+
+      if (status < 200 || status >= 300) {
+        final String msg = "Request failed (HTTP " + status + ")";
+        runOnUiThread(() -> web.evaluateJavascript("window.ytproShowError(" + JSONObject.quote(msg) + ")", null));
+        return;
+      }
+
+      JSONObject data = new JSONObject(sb.toString());
+
+      if (data.has("playabilityStatus")) {
+        JSONObject playability = data.getJSONObject("playabilityStatus");
+        String playStatus = playability.optString("status", "OK");
+        if (!"OK".equals(playStatus)) {
+          String reason = playability.optString("reason", playStatus);
+          runOnUiThread(() -> web.evaluateJavascript("window.ytproShowError(" + JSONObject.quote(reason) + ")", null));
+          return;
+        }
+      }
+
+      if (!data.has("streamingData")) {
+        runOnUiThread(() -> web.evaluateJavascript("window.ytproShowError('Video unavailable or has no downloadable streams.')", null));
+        return;
+      }
+
+      JSONObject streamingData = data.getJSONObject("streamingData");
+      JSONArray formats = streamingData.optJSONArray("formats");
+      if (formats == null) formats = new JSONArray();
+      JSONArray adaptiveFormats = streamingData.optJSONArray("adaptiveFormats");
+      if (adaptiveFormats == null) adaptiveFormats = new JSONArray();
+
+      String title = "video";
+      JSONArray thumbs = new JSONArray();
+      if (data.has("videoDetails")) {
+        JSONObject videoDetails = data.getJSONObject("videoDetails");
+        title = videoDetails.optString("title", "video");
+        if (videoDetails.has("thumbnail")) {
+          JSONObject thumbObj = videoDetails.getJSONObject("thumbnail");
+          JSONArray t = thumbObj.optJSONArray("thumbnails");
+          if (t != null) thumbs = t;
+        }
+      }
+
+      final String finalTitle = title;
+      final String formatsJson = formats.toString();
+      final String adaptiveJson = adaptiveFormats.toString();
+      final String thumbJson = thumbs.toString();
+
+      runOnUiThread(() -> web.evaluateJavascript(
+        "window.ytproShowFormats(" + JSONObject.quote(finalTitle) + "," + JSONObject.quote(formatsJson) + "," + JSONObject.quote(adaptiveJson) + "," + JSONObject.quote(thumbJson) + ")",
+        null
+      ));
+
+    } catch (Exception e) {
+      final String msg = e.toString();
+      runOnUiThread(() -> web.evaluateJavascript("window.ytproShowError(" + JSONObject.quote(msg) + ")", null));
+    }
+  }
+
   public class WebAppInterface {
     Context mContext;
     WebAppInterface(Context c) { mContext = c; }
@@ -1024,6 +1129,31 @@ protected void onUserLeaveHint() {
     @JavascriptInterface public void showToast(String txt) { Toast.makeText(getApplicationContext(), txt, Toast.LENGTH_SHORT).show(); }
     @JavascriptInterface public void gohome(String x) { Intent i = new Intent(Intent.ACTION_MAIN); i.addCategory(Intent.CATEGORY_HOME); i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); }
     @JavascriptInterface public void downvid(String name, String url, String m) { downloadFile(name, url, m); }
+    @JavascriptInterface public void fetchVideoFormats(String videoId) { new Thread(() -> fetchVideoFormatsNative(videoId)).start(); }
+    @JavascriptInterface public boolean isWebViewSupported() { return androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER); }
+    @JavascriptInterface public boolean hasStoragePermission() {
+      if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED || checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+          runOnUiThread(() -> Toast.makeText(MainActivity.this, R.string.grant_storage, Toast.LENGTH_SHORT).show());
+          requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+        }
+        return !(checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED || checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED);
+      }
+      return true;
+    }
+    @JavascriptInterface public void requestBinaryPort(String fileName) {
+      runOnUiThread(() -> { if (streamManager != null) streamManager.openStreamForFile(fileName); });
+    }
+    @JavascriptInterface public void muxVideoAudio(String videoFileName, String audioFileName, String outputFileName) {
+      File downloads = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "YTPRO");
+      File video = new File(downloads, videoFileName);
+      File audio = new File(downloads, audioFileName);
+      File output = new File(downloads, outputFileName);
+      MediaMuxerUtils.muxVideoAudio(getApplicationContext(), video, audio, output, new MediaMuxerUtils.MuxCallback() {
+        @Override public void onSuccess(File outFile) { Toast.makeText(MainActivity.this, "Done: " + outFile.getName(), Toast.LENGTH_SHORT).show(); }
+        @Override public void onFailure(Exception e) { Toast.makeText(MainActivity.this, "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show(); }
+      });
+    }
     @JavascriptInterface public void fullScreen(boolean value) { portrait = value; }
     @JavascriptInterface public void oplink(String url) { Intent i = new Intent(); i.setAction(Intent.ACTION_VIEW); i.setData(Uri.parse(url)); startActivity(i); }
     @JavascriptInterface public String getInfo() { try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "1.0"; } }
