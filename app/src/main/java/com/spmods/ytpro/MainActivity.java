@@ -357,6 +357,54 @@ public class MainActivity extends Activity {
       }
       
       @Override
+      public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+        String url = request.getUrl().toString();
+        
+        if (url.contains("cdn.jsdelivr.net") || url.contains("esm.sh")) {
+          try {
+            java.net.URL newUrl = new java.net.URL(url);
+            javax.net.ssl.HttpsURLConnection connection = (javax.net.ssl.HttpsURLConnection) newUrl.openConnection();
+            
+            connection.setUseCaches(false);
+            connection.setDefaultUseCaches(false);
+            connection.addRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
+            connection.addRequestProperty("Pragma", "no-cache");
+            connection.addRequestProperty("Expires", "0");
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+            connection.setRequestProperty("Accept", "*/*");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            connection.setRequestMethod("GET");
+            connection.connect();
+            
+            String contentType = connection.getContentType();
+            if (contentType == null) contentType = "application/javascript";
+            String encoding = connection.getContentEncoding();
+            if (encoding == null) encoding = "utf-8";
+            
+            java.util.Map<String, String> headers = new java.util.HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            headers.put("Access-Control-Allow-Headers", "*");
+            headers.put("Content-Type", contentType);
+            headers.put("Access-Control-Allow-Credentials", "true");
+            headers.put("Cross-Origin-Resource-Policy", "cross-origin");
+            
+            if (request.getMethod().equals("OPTIONS")) {
+              return new android.webkit.WebResourceResponse("text/plain", "UTF-8", 204, "No Content", headers, null);
+            }
+            
+            return new android.webkit.WebResourceResponse(contentType, encoding, connection.getResponseCode(), "OK", headers, connection.getInputStream());
+          } catch (Exception e) {
+            Log.e("YTPRO_CDN", "CDN fetch failed for " + url + ": " + e.getMessage());
+            return super.shouldInterceptRequest(view, request);
+          }
+        }
+        
+        return super.shouldInterceptRequest(view, request);
+      }
+      
+      @Override
       public void onPageStarted(WebView p1, String p2, Bitmap p3) {
         super.onPageStarted(p1, p2, p3);
         scriptsInjected = false;
