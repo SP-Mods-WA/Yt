@@ -359,6 +359,64 @@ public class MainActivity extends Activity {
       @Override
       public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         String url = request.getUrl().toString();
+
+        if (url.contains("accounts.google.com") ||
+            url.contains("myaccount.google.com") ||
+            url.contains("accounts.youtube.com") ||
+            url.contains("google.com/signin") ||
+            url.contains("google.com/oauth") ||
+            url.contains("googleapis.com/oauth") ||
+            url.contains("/signin") ||
+            url.contains("SetSID")) {
+          return super.shouldInterceptRequest(view, request);
+        }
+
+        if (request.isForMainFrame() && (url.contains("m.youtube.com") || url.contains("www.youtube.com"))) {
+          try {
+            java.net.URL newUrl = new java.net.URL(url);
+            javax.net.ssl.HttpsURLConnection connection = (javax.net.ssl.HttpsURLConnection) newUrl.openConnection();
+            connection.setRequestMethod(request.getMethod());
+
+            for (java.util.Map.Entry<String, String> header : request.getRequestHeaders().entrySet()) {
+              if (!header.getKey().equalsIgnoreCase("Accept-Encoding")) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
+              }
+            }
+
+            String cookies = android.webkit.CookieManager.getInstance().getCookie(url);
+            if (cookies != null) connection.setRequestProperty("Cookie", cookies);
+
+            connection.connect();
+
+            java.util.Map<String, String> safeHeaders = new java.util.HashMap<>();
+            for (java.util.Map.Entry<String, java.util.List<String>> entry : connection.getHeaderFields().entrySet()) {
+              if (entry.getKey() != null) {
+                String headerName = entry.getKey().toLowerCase();
+                if (!headerName.equals("content-security-policy") && !headerName.equals("content-security-policy-report-only")) {
+                  safeHeaders.put(entry.getKey(), String.join(", ", entry.getValue()));
+                }
+              }
+            }
+
+            InputStream is = connection.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            StringBuilder html = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+              if (line.toLowerCase().contains("content-security-policy")) {
+                line = line.replaceAll("<meta.*?http-equiv=[\"']?Content-Security-Policy[\"']?.*?>", "");
+              }
+              html.append(line).append("\n");
+            }
+
+            InputStream modifiedHtmlStream = new ByteArrayInputStream(html.toString().getBytes("UTF-8"));
+            return new android.webkit.WebResourceResponse("text/html", "utf-8", connection.getResponseCode(), "OK", safeHeaders, modifiedHtmlStream);
+
+          } catch (Exception e) {
+            Log.e("YTPRO_CSP", "Main-frame CSP-strip failed: " + e.getMessage());
+            return super.shouldInterceptRequest(view, request);
+          }
+        }
         
         if (url.contains("cdn.jsdelivr.net") || url.contains("esm.sh")) {
           try {
