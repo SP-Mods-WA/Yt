@@ -631,6 +631,11 @@ return ` | ${s.toFixed(1)} ${ss[i]}`;
 
 async function ytproDownVid(){
 var ytproDown=document.createElement("div");
+
+
+
+async function ytproDownVid(){
+var ytproDown=document.createElement("div");
 var ytproDownDiv=document.createElement("div");
 ytproDownDiv.setAttribute("id","downytprodiv");
 ytproDown.setAttribute("id","outerdownytprodiv");
@@ -654,10 +659,28 @@ ytproDownDiv.innerHTML="⏳ Loading...";
 try{
 const response = await fetch(`https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8`,{
 method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({videoId:id,context:{client:{clientName:"ANDROID",clientVersion:"19.09.37",androidSdkVersion:30}}})
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+videoId:id,
+context:{
+client:{
+clientName:"ANDROID",
+clientVersion:"20.10.38",
+userAgent:"com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip",
+hl:"en",
+gl:"US"
+}
+},
+racyCheckOk:true,
+contentCheckOk:true
+})
 });
 const data = await response.json();
+if(data?.playabilityStatus?.status && data.playabilityStatus.status !== "OK"){
+throw new Error(data.playabilityStatus.reason || data.playabilityStatus.status);
+}
 if(!data.streamingData) throw new Error("Video unavailable");
 
 const formats = data.streamingData.formats || [];
@@ -727,6 +750,9 @@ ytproDownDiv.innerHTML=`<div style="padding:20px;color:${c};"><h3>❌ Error</h3>
 ytproDownDiv.addEventListener("click",(e)=>{ if(e.target.dataset.action=="close") history.back(); });
 }
 }
+
+
+    
 
 
 var stopProp = false;
