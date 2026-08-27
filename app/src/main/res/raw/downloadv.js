@@ -1158,3 +1158,34 @@ div.style.bottom="calc(50% + 40px)";
 
 
 
+
+// ── Diagnostic error surfacing ──────────────────────────────────────────
+// ytproSabrDownload has no internal try/catch, so any thrown error or
+// rejected promise inside it (CDN import failure, CSP block, PoToken
+// failure, etc.) becomes an unhandled rejection / uncaught error and the
+// UI just sits on "Loading...". These two listeners catch that and show
+// the real error message + stack directly in the download popup so it
+// can be read on-device without a separate devtools connection.
+window.addEventListener("unhandledrejection", function(ev){
+try{
+var msg = (ev.reason && (ev.reason.stack || ev.reason.message)) ? (ev.reason.stack || ev.reason.message) : String(ev.reason);
+var target = document.querySelector("#videoViewDiv");
+if(target){
+target.innerHTML = "<div style='color:#ff6b6b;font-size:12px;text-align:left;white-space:pre-wrap;word-break:break-word;padding:10px;'><b>Unhandled error:</b><br>" + msg.replace(/</g,"&lt;") + "</div>";
+}
+if(window.Android && window.Android.showToast){ window.Android.showToast("Download error - see popup"); }
+}catch(e){}
+});
+
+window.addEventListener("error", function(ev){
+try{
+var msg = ev.message + " (" + ev.filename + ":" + ev.lineno + ":" + ev.colno + ")" + (ev.error && ev.error.stack ? "\n" + ev.error.stack : "");
+var target = document.querySelector("#videoViewDiv");
+if(target && target.innerHTML.indexOf("Loading") > -1){
+target.innerHTML = "<div style='color:#ff6b6b;font-size:12px;text-align:left;white-space:pre-wrap;word-break:break-word;padding:10px;'><b>Script error:</b><br>" + msg.replace(/</g,"&lt;") + "</div>";
+}
+}catch(e){}
+});
+
+
+
