@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
 
   private YTProWebview web;
   public BinaryStreamManager streamManager;
+  private final java.util.List<String> cdnRequestLog = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
   private OnBackInvokedCallback backCallback;
   
   private RelativeLayout offlineLayout;
@@ -359,6 +360,13 @@ public class MainActivity extends Activity {
       @Override
       public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         String url = request.getUrl().toString();
+        
+        if (url.contains("jsdelivr") || url.contains("esm.sh")) {
+          synchronized (cdnRequestLog) {
+            cdnRequestLog.add(url);
+            if (cdnRequestLog.size() > 20) cdnRequestLog.remove(0);
+          }
+        }
 
         if (url.contains("accounts.google.com") ||
             url.contains("myaccount.google.com") ||
@@ -1244,6 +1252,11 @@ protected void onUserLeaveHint() {
     @JavascriptInterface public void showToast(String txt) { Toast.makeText(getApplicationContext(), txt, Toast.LENGTH_SHORT).show(); }
     @JavascriptInterface public void gohome(String x) { Intent i = new Intent(Intent.ACTION_MAIN); i.addCategory(Intent.CATEGORY_HOME); i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); }
     @JavascriptInterface public void downvid(String name, String url, String m) { downloadFile(name, url, m); }
+    @JavascriptInterface public String getCdnRequestLog() {
+      synchronized (cdnRequestLog) {
+        return new org.json.JSONArray(cdnRequestLog).toString();
+      }
+    }
     @JavascriptInterface public void fetchVideoFormats(String videoId) { new Thread(() -> fetchVideoFormatsNative(videoId)).start(); }
     @JavascriptInterface public boolean isWebViewSupported() { return androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER); }
     @JavascriptInterface public boolean hasStoragePermission() {
