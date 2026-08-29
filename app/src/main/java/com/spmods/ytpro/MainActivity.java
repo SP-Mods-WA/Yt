@@ -1258,6 +1258,43 @@ protected void onUserLeaveHint() {
       }
     }
     @JavascriptInterface public void fetchVideoFormats(String videoId) { new Thread(() -> fetchVideoFormatsNative(videoId)).start(); }
+    @JavascriptInterface public String fetchCdnResource(String url) {
+      try {
+        java.net.URL newUrl = new java.net.URL(url);
+        javax.net.ssl.HttpsURLConnection connection = (javax.net.ssl.HttpsURLConnection) newUrl.openConnection();
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+        connection.setRequestProperty("Accept", "*/*");
+        connection.setRequestProperty("Accept-Encoding", "identity");
+        connection.setConnectTimeout(20000);
+        connection.setReadTimeout(20000);
+        connection.connect();
+
+        int status = connection.getResponseCode();
+        InputStream is = (status >= 200 && status < 300) ? connection.getInputStream() : connection.getErrorStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+        StringBuilder sb = new StringBuilder();
+        char[] buf = new char[8192];
+        int n;
+        while ((n = reader.read(buf)) != -1) sb.append(buf, 0, n);
+        reader.close();
+
+        JSONObject result = new JSONObject();
+        result.put("status", status);
+        result.put("ok", status >= 200 && status < 300);
+        result.put("body", sb.toString());
+        return result.toString();
+
+      } catch (Exception e) {
+        try {
+          JSONObject err = new JSONObject();
+          err.put("status", 0);
+          err.put("ok", false);
+          err.put("error", e.toString());
+          return err.toString();
+        } catch (Exception e2) { return "{\"status\":0,\"ok\":false,\"error\":\"unknown\"}"; }
+      }
+    }
     @JavascriptInterface public boolean isWebViewSupported() { return androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER); }
     @JavascriptInterface public boolean hasStoragePermission() {
       if (Build.VERSION.SDK_INT > 22 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
