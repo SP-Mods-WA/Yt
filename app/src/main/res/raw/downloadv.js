@@ -1170,8 +1170,15 @@ window.addEventListener("unhandledrejection", function(ev){
 try{
 var msg = (ev.reason && (ev.reason.stack || ev.reason.message)) ? (ev.reason.stack || ev.reason.message) : String(ev.reason);
 var target = document.querySelector("#videoViewDiv");
+var logHtml = "";
+try{
+if(window.Android && window.Android.getCdnRequestLog){
+var log = JSON.parse(window.Android.getCdnRequestLog());
+logHtml = "<br><br><b>Native CDN request log (" + log.length + " entries):</b><br>" + (log.length ? log.map(u=>u.replace(/</g,"&lt;")).join("<br>") : "(empty - shouldInterceptRequest never saw a CDN URL)");
+}
+}catch(e2){ logHtml = "<br><br>(log fetch failed: " + e2.message + ")"; }
 if(target){
-target.innerHTML = "<div style='color:#ff6b6b;font-size:12px;text-align:left;white-space:pre-wrap;word-break:break-word;padding:10px;'><b>Unhandled error:</b><br>" + msg.replace(/</g,"&lt;") + "</div>";
+target.innerHTML = "<div style='color:#ff6b6b;font-size:12px;text-align:left;white-space:pre-wrap;word-break:break-word;padding:10px;'><b>Unhandled error:</b><br>" + msg.replace(/</g,"&lt;") + logHtml + "</div>";
 }
 if(window.Android && window.Android.showToast){ window.Android.showToast("Download error - see popup"); }
 }catch(e){}
