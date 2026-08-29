@@ -31,10 +31,13 @@ if(!result.ok){
 throw new Error("Native fetch failed for " + url + " (status " + result.status + "): " + (result.error || "no body"));
 }
 var body = result.body || "";
-// Detect nested static "import ... from '...'" statements - these would
-// try to network-fetch their own targets when the blob module is parsed,
-// hitting the same wall we're working around here, one level deeper.
-var staticImportMatches = body.match(/^\s*import\s+[^(][^;]*?from\s*['"][^'"]+['"]/gm) || [];
+// Detect nested import syntax that would try to network-fetch its own
+// targets when the blob module is parsed/executed, hitting the same wall
+// one level deeper. Not line-anchored since CDN bundles are minified
+// (everything on one line), so ^\s*import wouldn't match.
+var staticImportMatches = body.match(/import\s*(?:[\w${},*\s]+from\s*)?['"][^'"]+['"]/g) || [];
+var dynamicImportMatches = body.match(/import\s*\(\s*['"`][^'"`]+['"`]/g) || [];
+var hasImportMeta = body.indexOf("import.meta") !== -1;
 var blob = new Blob([body], {type: "text/javascript"});
 var blobUrl = URL.createObjectURL(blob);
 try{
@@ -45,8 +48,11 @@ return mod;
 var diag = "Blob-import failed for " + url + "\n"
 + "Fetched body length: " + body.length + " chars\n"
 + "First 150 chars: " + body.slice(0,150).replace(/\n/g," ") + "\n"
-+ "Nested static imports found: " + staticImportMatches.length
++ "Static 'import ... from' found: " + staticImportMatches.length
 + (staticImportMatches.length ? ("\n -> " + staticImportMatches.slice(0,5).join("\n -> ")) : "") + "\n"
++ "Dynamic import(...) found: " + dynamicImportMatches.length
++ (dynamicImportMatches.length ? ("\n -> " + dynamicImportMatches.slice(0,5).join("\n -> ")) : "") + "\n"
++ "Uses import.meta: " + hasImportMeta + "\n"
 + "Underlying error: " + (importErr && importErr.message ? importErr.message : String(importErr));
 throw new Error(diag);
 }
