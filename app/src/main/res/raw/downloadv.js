@@ -30,11 +30,26 @@ catch(e){ throw new Error("Native fetch returned invalid JSON for " + url + ": "
 if(!result.ok){
 throw new Error("Native fetch failed for " + url + " (status " + result.status + "): " + (result.error || "no body"));
 }
-var blob = new Blob([result.body], {type: "text/javascript"});
+var body = result.body || "";
+// Detect nested static "import ... from '...'" statements - these would
+// try to network-fetch their own targets when the blob module is parsed,
+// hitting the same wall we're working around here, one level deeper.
+var staticImportMatches = body.match(/^\s*import\s+[^(][^;]*?from\s*['"][^'"]+['"]/gm) || [];
+var blob = new Blob([body], {type: "text/javascript"});
 var blobUrl = URL.createObjectURL(blob);
+try{
 var mod = await import(blobUrl);
 __ytproModuleCache[url] = mod;
 return mod;
+}catch(importErr){
+var diag = "Blob-import failed for " + url + "\n"
++ "Fetched body length: " + body.length + " chars\n"
++ "First 150 chars: " + body.slice(0,150).replace(/\n/g," ") + "\n"
++ "Nested static imports found: " + staticImportMatches.length
++ (staticImportMatches.length ? ("\n -> " + staticImportMatches.slice(0,5).join("\n -> ")) : "") + "\n"
++ "Underlying error: " + (importErr && importErr.message ? importErr.message : String(importErr));
+throw new Error(diag);
+}
 }
 
 window.ytproSabrDownload= async function() {
