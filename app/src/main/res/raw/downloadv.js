@@ -7,57 +7,6 @@ Last Updated On: 1 May , 2026 , 19:25 IST
 
 
 
-// ── CDN module loader (native fetch + blob: import) ─────────────────────
-// WebView's shouldInterceptRequest cannot see the network fetch that a
-// dynamic import('https://...') triggers internally, so those requests
-// bypass any header/CORS/CSP fixes applied at that layer and just fail
-// with "Failed to fetch dynamically imported module". To work around this,
-// we fetch the module source ourselves via the native Android bridge
-// (plain HTTPS, already proven reliable elsewhere in this app), then
-// import() a blob: URL built from that source. blob: URLs are same-origin
-// and in-memory, so no network fetch is involved at import() time and
-// WebView's module loader handles them normally.
-var __ytproModuleCache = {};
-async function ytproLoadModule(url){
-if(__ytproModuleCache[url]) return __ytproModuleCache[url];
-if(!window.Android || !window.Android.fetchCdnResource){
-throw new Error("Android.fetchCdnResource bridge not available - update the app.");
-}
-var raw = window.Android.fetchCdnResource(url);
-var result;
-try{ result = JSON.parse(raw); }
-catch(e){ throw new Error("Native fetch returned invalid JSON for " + url + ": " + String(raw).slice(0,200)); }
-if(!result.ok){
-throw new Error("Native fetch failed for " + url + " (status " + result.status + "): " + (result.error || "no body"));
-}
-var body = result.body || "";
-// Detect nested import syntax that would try to network-fetch its own
-// targets when the blob module is parsed/executed, hitting the same wall
-// one level deeper. Not line-anchored since CDN bundles are minified
-// (everything on one line), so ^\s*import wouldn't match.
-var staticImportMatches = body.match(/import\s*(?:[\w${},*\s]+from\s*)?['"][^'"]+['"]/g) || [];
-var dynamicImportMatches = body.match(/import\s*\(\s*['"`][^'"`]+['"`]/g) || [];
-var hasImportMeta = body.indexOf("import.meta") !== -1;
-var blob = new Blob([body], {type: "text/javascript"});
-var blobUrl = URL.createObjectURL(blob);
-try{
-var mod = await import(blobUrl);
-__ytproModuleCache[url] = mod;
-return mod;
-}catch(importErr){
-var diag = "Blob-import failed for " + url + "\n"
-+ "Fetched body length: " + body.length + " chars\n"
-+ "First 150 chars: " + body.slice(0,150).replace(/\n/g," ") + "\n"
-+ "Static 'import ... from' found: " + staticImportMatches.length
-+ (staticImportMatches.length ? ("\n -> " + staticImportMatches.slice(0,5).join("\n -> ")) : "") + "\n"
-+ "Dynamic import(...) found: " + dynamicImportMatches.length
-+ (dynamicImportMatches.length ? ("\n -> " + dynamicImportMatches.slice(0,5).join("\n -> ")) : "") + "\n"
-+ "Uses import.meta: " + hasImportMeta + "\n"
-+ "Underlying error: " + (importErr && importErr.message ? importErr.message : String(importErr));
-throw new Error(diag);
-}
-}
-
 window.ytproSabrDownload= async function() {
 
 
@@ -82,13 +31,18 @@ videoId=new URLSearchParams(window.location.search).get("v");
 
 if (!videoId) { window.Android?.showToast?.('No video ID found in URL.'); return; }
 
-// Imports
-const { Innertube, Platform, Constants } = await ytproLoadModule(
-'https://cdn.jsdelivr.net/npm/youtubei.js@17.0.1/bundle/browser.min.js'
+// Imports - routed through youtube.com/ytpro_cdn/ so they stay same-origin.
+// shouldInterceptRequest rewrites these to the real CDN (cdn.jsdelivr.net /
+// esm.sh) and proxies the response back. This keeps the module's real
+// import.meta.url pointing at a normal https:// path (not an ephemeral
+// blob: URL), so any lazy/relative imports inside the bundle itself still
+// resolve correctly.
+const { Innertube, Platform, Constants } = await import(
+'https://youtube.com/ytpro_cdn/npm/youtubei.js@17.0.1/bundle/browser.min.js'
 );
-const { SabrStream } = await ytproLoadModule('https://esm.sh/googlevideo@4.0.4/sabr-stream');
-const { buildSabrFormat , EnabledTrackTypes } = await ytproLoadModule('https://esm.sh/googlevideo@4.0.4/utils');
-const { BG, buildURL, getHeaders } = await ytproLoadModule('https://esm.sh/bgutils-js@3.2.0');
+const { SabrStream } = await import('https://youtube.com/ytpro_cdn/esm/googlevideo@4.0.4/sabr-stream');
+const { buildSabrFormat , EnabledTrackTypes } = await import('https://youtube.com/ytpro_cdn/esm/googlevideo@4.0.4/utils');
+const { BG, buildURL, getHeaders } = await import('https://youtube.com/ytpro_cdn/esm/bgutils-js@3.2.0');
 
 
 Platform.shim.eval = async (data, env) => {
