@@ -427,35 +427,47 @@ public class MainActivity extends Activity {
         }
         
         if (url.contains("cdn.jsdelivr.net") || url.contains("esm.sh")) {
+          synchronized (cdnRequestLog) {
+            cdnRequestLog.add("DIRECT-CDN-SEEN: " + url);
+            if (cdnRequestLog.size() > 20) cdnRequestLog.remove(0);
+          }
+        }
+
+        if (url.contains("youtube.com/ytpro_cdn/")) {
+          synchronized (cdnRequestLog) {
+            cdnRequestLog.add(url);
+            if (cdnRequestLog.size() > 20) cdnRequestLog.remove(0);
+          }
+          String modifiedUrl = url;
+          if (url.contains("youtube.com/ytpro_cdn/esm")) modifiedUrl = url.replace("youtube.com/ytpro_cdn/esm", "esm.sh");
+          else if (url.contains("youtube.com/ytpro_cdn/npm")) modifiedUrl = url.replace("youtube.com/ytpro_cdn", "cdn.jsdelivr.net");
+
           try {
-            java.net.URL newUrl = new java.net.URL(url);
+            java.net.URL newUrl = new java.net.URL(modifiedUrl);
             javax.net.ssl.HttpsURLConnection connection = (javax.net.ssl.HttpsURLConnection) newUrl.openConnection();
-            
+
             connection.setUseCaches(false);
             connection.setDefaultUseCaches(false);
             connection.addRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
             connection.addRequestProperty("Pragma", "no-cache");
             connection.addRequestProperty("Expires", "0");
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
-            connection.setRequestProperty("Accept", "*/*");
-            connection.setRequestProperty("Accept-Encoding", "identity");
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(15000);
+            connection.setRequestProperty("User-Agent", "YTPRO");
+            connection.setRequestProperty("Accept", "**");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+
             connection.setRequestMethod("GET");
             connection.connect();
-            
-            int responseCode = connection.getResponseCode();
-            if (responseCode < 200 || responseCode >= 300) {
-              Log.e("YTPRO_CDN", "CDN returned HTTP " + responseCode + " for " + url);
-            }
-            
+
+            String mimeType = connection.getContentType() != null ? connection.getContentType() : "application/javascript";
+            String encoding = connection.getContentEncoding() != null ? connection.getContentEncoding() : "utf-8";
+
+            if (encoding == null) encoding = "utf-8";
             String contentType = connection.getContentType();
-            if (contentType == null || !contentType.toLowerCase().contains("charset")) {
-              if (url.endsWith(".js") || url.contains("javascript") || contentType == null) {
-                contentType = "application/javascript; charset=utf-8";
-              }
+            if (contentType == null) {
+              contentType = "application/javascript";
             }
-            
+
             java.util.Map<String, String> headers = new java.util.HashMap<>();
             headers.put("Access-Control-Allow-Origin", "*");
             headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -463,15 +475,14 @@ public class MainActivity extends Activity {
             headers.put("Content-Type", contentType);
             headers.put("Access-Control-Allow-Credentials", "true");
             headers.put("Cross-Origin-Resource-Policy", "cross-origin");
-            
+
             if (request.getMethod().equals("OPTIONS")) {
               return new android.webkit.WebResourceResponse("text/plain", "UTF-8", 204, "No Content", headers, null);
             }
-            
-            InputStream responseStream = (responseCode >= 200 && responseCode < 300) ? connection.getInputStream() : connection.getErrorStream();
-            return new android.webkit.WebResourceResponse("application/javascript", "UTF-8", responseCode, connection.getResponseMessage() != null ? connection.getResponseMessage() : "OK", headers, responseStream);
+
+            return new android.webkit.WebResourceResponse(mimeType, encoding, connection.getResponseCode(), "OK", headers, connection.getInputStream());
           } catch (Exception e) {
-            Log.e("YTPRO_CDN", "CDN fetch failed for " + url + ": " + e.getMessage());
+            Log.e("YTPRO_CDN", "ytpro_cdn fetch failed for " + url + ": " + e.getMessage());
             return super.shouldInterceptRequest(view, request);
           }
         }
